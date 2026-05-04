@@ -77,6 +77,27 @@ const BookingBook = () => {
     setIsModalOpen(true);
   };
 
+  const handleStatusCycle = async (e, record) => {
+    e.stopPropagation(); // Don't trigger row click (view details)
+    if (!canManage) return;
+
+    const statuses = ['Confirmed', 'Active', 'Completed', 'Cancelled'];
+    const currentIdx = statuses.indexOf(record.status || 'Confirmed');
+    const nextStatus = statuses[(currentIdx + 1) % statuses.length];
+
+    try {
+      setLoading(true);
+      await bookingAPI.update(record._id, { status: nextStatus });
+      setSuccess(`Status updated to ${nextStatus}`);
+      fetchBookings();
+      setTimeout(() => setSuccess(null), 2000);
+    } catch (err) {
+      setError('Quick update failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (id) => {
     if (window.confirm('Delete this booking record?')) {
       try {
@@ -181,7 +202,16 @@ const BookingBook = () => {
             RETURN: r.displayReturn,
             DAYS: <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{r.totalDays || 1} Days</span>,
             TOTAL: <strong style={{ color: 'var(--accent)' }}>LKR {r.displayTotal}</strong>,
-            STATUS: <span className={`status-badge status-${r.displayStatus.toLowerCase()}`}>{r.displayStatus}</span>,
+            STATUS: (
+              <span 
+                className={`status-badge status-${r.displayStatus.toLowerCase()}`} 
+                onClick={(e) => handleStatusCycle(e, r)}
+                style={{ cursor: canManage ? 'pointer' : 'default', userSelect: 'none' }}
+                title={canManage ? "Click to cycle status" : ""}
+              >
+                {r.displayStatus}
+              </span>
+            ),
             ACTION: (
               <div className="table-actions" onClick={e => e.stopPropagation()}>
                 {canManage && <button className="edit-btn" onClick={() => handleEdit(r)}>Edit</button>}
@@ -198,7 +228,12 @@ const BookingBook = () => {
         <RecordDetails data={selectedRecord} type="booking" />
       </Modal>
 
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? 'Edit Booking' : 'New Vehicle Booking'}>
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => { setIsModalOpen(false); setEditingItem(null); }} 
+        title={editingItem ? 'Edit Booking' : 'New Vehicle Booking'}
+        wide={true}
+      >
         <BookingForm onSubmit={handleFormSubmit} onCancel={() => { setIsModalOpen(false); setEditingItem(null); }} initialData={editingItem} />
       </Modal>
     </div>

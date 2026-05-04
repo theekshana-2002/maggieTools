@@ -20,7 +20,7 @@ import {
 import './Sidebar.css';
 import logo from '../logo.png';
 
-const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen, onClose }) => {
+const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen, isCollapsed, onClose, onToggleCollapse }) => {
   const allMenuItems = [
     { id: 'dashboard',  label: 'Main Dashboard',     icon: LayoutDashboard },
     { id: 'bookings',   label: 'Bookings',           icon: Car },
@@ -44,7 +44,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
   });
 
   return (
-    <div className={`sidebar ${isOpen ? 'open' : ''}`}>
+    <div className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-logo">
         <div className="logo-row">
           <img src={logo} alt="RAXWO" className="raxwo-logo-img" />
@@ -52,26 +52,38 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
             <X size={20} />
           </button>
         </div>
-        <div className="logo-text">
-          <span className="logo-subtitle">PREMIUM FLEET MANAGEMENT</span>
-        </div>
+        {!isCollapsed && (
+          <div className="logo-text">
+            <span className="logo-subtitle">PREMIUM FLEET MANAGEMENT</span>
+          </div>
+        )}
       </div>
       
-      <div className="sidebar-user-section">
-        <div className="user-profile-glass">
-          <div className="avatar-wrapper">
-             <div className="profile-initials">{(userName || 'A')[0].toUpperCase()}</div>
-             <div className="online-indicator"></div>
-          </div>
-          <div className="profile-info">
-            <p className="profile-name">{userName && userName !== 'null' ? userName : 'Administrator'}</p>
-            <div className="role-badge">
-               <Shield size={10} />
-               <span>{role || 'System'}</span>
+      {!isCollapsed && (
+        <div className="sidebar-user-section">
+          <div className="user-profile-glass">
+            <div className="avatar-wrapper">
+               <div className="profile-initials">{(userName || 'A')[0].toUpperCase()}</div>
+               <div className="online-indicator"></div>
+            </div>
+            <div className="profile-info">
+              <p className="profile-name">{userName && userName !== 'null' ? userName : 'Administrator'}</p>
+              <div className="role-badge">
+                 <Shield size={10} />
+                 <span>{role || 'System'}</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {isCollapsed && (
+        <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
+            <div className="profile-initials" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
+                {(userName || 'A')[0].toUpperCase()}
+            </div>
+        </div>
+      )}
 
       <nav className="sidebar-nav">
         {menuItems.map((item) => {
@@ -80,6 +92,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
             <button
               key={item.id}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              title={isCollapsed ? item.label : ''}
               onClick={() => {
                 setActiveTab(item.id);
                 if (window.innerWidth <= 1024) onClose();
@@ -88,7 +101,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
               <div className="nav-icon-box">
                 <Icon size={18} />
               </div>
-              <span>{item.label}</span>
+              {!isCollapsed && <span>{item.label}</span>}
             </button>
           );
         })}
@@ -97,7 +110,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
       <div className="sidebar-footer">
         <button className="logout-btn" onClick={handleLogout}>
           <LogOut size={18} />
-          <span>Logout</span>
+          {!isCollapsed && <span>Logout</span>}
         </button>
       </div>
     </div>

@@ -7,8 +7,7 @@ const Modal = ({ isOpen, onClose, title, children, wide }) => {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div
-        className="modal-content"
-        style={wide ? { maxWidth: '780px' } : {}}
+        className={`modal-content ${wide ? 'wide' : ''}`}
         onClick={e => e.stopPropagation()}
       >
         <div className="modal-header">

@@ -45,6 +45,7 @@ const App = () => {
   const [selectedRole, setSelectedRole] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(localStorage.getItem('raxwo_sidebar_collapsed') === 'true');
   const [theme, setTheme] = useState(localStorage.getItem('raxwo_theme') || 'light');
   
   const userRole = localStorage.getItem('raxwo_user_role');
@@ -57,6 +58,14 @@ const App = () => {
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+        const next = !prev;
+        localStorage.setItem('raxwo_sidebar_collapsed', String(next));
+        return next;
+    });
   };
 
   const handleLogout = () => {
@@ -134,7 +143,7 @@ const App = () => {
   }
 
   return (
-    <div className={`app-layout ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+    <div className={`app-layout ${isSidebarOpen ? 'sidebar-open' : ''} ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {isSidebarOpen && (
         <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />
       )}
@@ -149,7 +158,9 @@ const App = () => {
         role={userRole} 
         userName={userName}
         isOpen={isSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
         onClose={() => setIsSidebarOpen(false)}
+        onToggleCollapse={toggleSidebarCollapse}
       />
 
       <main className="main-content">
@@ -157,6 +168,9 @@ const App = () => {
           <div className="header-left">
             <button className="mobile-menu-btn" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
               {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+            <button className="desktop-collapse-btn" onClick={toggleSidebarCollapse} title="Toggle Sidebar">
+               <Menu size={20} />
             </button>
             <h2>{PAGE_TITLES[activeTab] || 'Dashboard'}</h2>
           </div>

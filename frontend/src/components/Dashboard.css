@@ -439,3 +439,71 @@
   font-weight: 600;
   margin: 0;
 }
+
+/* ── Business Insights ── */
+.insights-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 24px;
+  margin-bottom: 30px;
+}
+
+.insight-card {
+  background: var(--bg-card);
+  padding: 24px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.insight-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.insight-item:last-child {
+  border-bottom: none;
+}
+
+.insight-rank {
+  width: 24px;
+  height: 24px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.insight-info {
+  flex: 1;
+}
+
+.insight-name {
+  display: block;
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.insight-sub {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.insight-value {
+  text-align: right;
+}
+
+.insight-main-val {
+  display: block;
+  font-weight: 800;
+  color: var(--accent);
+  font-size: 0.95rem;
+}

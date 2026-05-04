@@ -17,6 +17,60 @@ async function getNextSequence(name) {
   return counter.seq;
 }
 
+// Get dashboard insights (Top vehicles, Top customers)
+router.get('/insights', authMiddleware, async (req, res) => {
+  try {
+    const bookings = await Booking.find().populate('vehicle');
+    
+    // Top Vehicles
+    const vehicleStats = {};
+    bookings.forEach(b => {
+      if (b.vehicle) {
+        const id = b.vehicle._id.toString();
+        if (!vehicleStats[id]) {
+          vehicleStats[id] = { 
+            name: `${b.vehicle.number} - ${b.vehicle.model}`, 
+            count: 0, 
+            revenue: 0,
+            image: b.vehicle.images?.[0] || null
+          };
+        }
+        vehicleStats[id].count += 1;
+        vehicleStats[id].revenue += (b.totalAmount || 0);
+      }
+    });
+    
+    const topVehicles = Object.values(vehicleStats)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Top Customers
+    const customerStats = {};
+    bookings.forEach(b => {
+      const name = b.clientName || 'Unknown';
+      if (!customerStats[name]) {
+        customerStats[name] = { 
+          name, 
+          count: 0, 
+          revenue: 0, 
+          latestVehicle: b.vehicle ? b.vehicle.model : 'N/A' 
+        };
+      }
+      customerStats[name].count += 1;
+      customerStats[name].revenue += (b.totalAmount || 0);
+      customerStats[name].latestVehicle = b.vehicle ? b.vehicle.model : customerStats[name].latestVehicle;
+    });
+
+    const topCustomers = Object.values(customerStats)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    res.json({ topVehicles, topCustomers });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Get all bookings
 router.get('/', authMiddleware, async (req, res) => {
   try {
@@ -259,5 +313,55 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Get customer history by NIC
+router.get('/customer/:nic', authMiddleware, async (req, res) => {
+  try {
+    const { nic } = req.params;
+    const cleanNic = (nic || '').trim();
+    console.log('RAXWO Debug: Searching history for NIC:', cleanNic);
+    
+    // Find latest booking by this NIC (prefix match) to get details
+    const lastBooking = await Booking.findOne({ 
+      clientNic: { $regex: new RegExp(`^${cleanNic}`, 'i') } 
+    }).populate('vehicle').sort({ createdAt: -1 });
+    
+    if (!lastBooking) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+    console.log('RAXWO Debug: Found customer:', lastBooking.clientName, 'Photos:', !!lastBooking.customerIdFront);
+
+    // Get a few previous bookings for history (using the full NIC from the found customer)
+    const history = await Booking.find({ clientNic: lastBooking.clientNic })
+      .populate('vehicle')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    console.log('RAXWO Debug: Backend returning photos. Front length:', (lastBooking.customerIdFront || '').length);
+
+    res.json({
+      details: {
+        name: lastBooking.clientName,
+        phone: lastBooking.clientPhone,
+        nic: lastBooking.clientNic,
+        drivingLicenseNo: lastBooking.drivingLicenseNo,
+        customerIdFront: lastBooking.customerIdFront,
+        customerIdBack: lastBooking.customerIdBack
+      },
+      history: history.map(h => ({
+        _id: h._id,
+        date: h.pickupDate,
+        vehicle: h.vehicle ? `${h.vehicle.number} - ${h.vehicle.model}` : 'Unknown',
+        price: h.totalAmount,
+        dailyRate: h.dailyRate, // Added daily rate
+        status: h.status
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
 
 module.exports = router;

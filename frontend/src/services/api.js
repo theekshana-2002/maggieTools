@@ -167,7 +167,11 @@ export const bookingAPI     = {
   checkAvailability: (pickupDate, returnDate, vehicleId) => 
     api.get(`bookings/check-availability`, { params: { pickupDate, returnDate, vehicleId } }),
   getAvailableVehicles: (pickupDate, returnDate) => 
-    api.get(`bookings/available-vehicles`, { params: { pickupDate, returnDate } })
+    api.get(`bookings/available-vehicles`, { params: { pickupDate, returnDate } }),
+  getCustomerHistory: (nic) => 
+    api.get(`bookings/customer/${nic}`),
+  getInsights: () => 
+    api.get(`bookings/insights`)
 };
 
 export default api;

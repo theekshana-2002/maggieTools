@@ -212,6 +212,37 @@
   }
 }
 
+.sidebar-collapsed .sidebar {
+    width: 80px;
+}
+
+.sidebar-collapsed .main-content {
+    margin-left: 80px;
+}
+
+.desktop-collapse-btn {
+    display: flex;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    align-items: center;
+    justify-content: center;
+}
+
+.desktop-collapse-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(1.05);
+}
+
+@media (max-width: 1024px) {
+    .desktop-collapse-btn { display: none; }
+}
+
 @media (max-width: 640px) {
   .main-header { padding: 0 16px; }
   .content-area { padding: 24px 16px; }

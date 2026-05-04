@@ -248,8 +248,34 @@
   font-size: 0.875rem;
 }
 
+/* ── History Panel Animations ── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.loading-input {
+  border-color: var(--accent) !important;
+  background-image: linear-gradient(90deg, var(--bg-main) 0%, var(--accent-soft) 50%, var(--bg-main) 100%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
+  .booking-form-wrapper {
+    flex-direction: column !important;
+  }
+  .history-panel {
+    width: 100% !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border);
+  }
   .hire-form-footer {
     flex-direction: column;
     padding: 20px;

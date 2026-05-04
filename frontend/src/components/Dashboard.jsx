@@ -124,6 +124,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
   }, []);
 
   const [data, setData] = useState({ bookings: [], diesel: [], salaries: [], payments: [], invoices: [], vehicles: [], expenses: [], extraIncome: [] });
+  const [insights, setInsights] = useState({ topVehicles: [], topCustomers: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
@@ -144,10 +145,11 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
   const fetchAll = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const [b, d, s, p, inv, v, ex, ei] = await Promise.all([
+      const [b, d, s, p, inv, v, ex, ei, insRes] = await Promise.all([
         bookingAPI.get(), dieselAPI.get(), salaryAPI.get(),
         paymentAPI.get(), invoiceAPI.get(), vehicleAPI.get(),
-        expenseAPI.get(), extraIncomeAPI.get()
+        expenseAPI.get(), extraIncomeAPI.get(),
+        bookingAPI.getInsights()
       ]);
       setData({
         bookings: Array.isArray(b.data)   ? b.data   : [],
@@ -159,6 +161,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         expenses: Array.isArray(ex.data)  ? ex.data  : [],
         extraIncome: Array.isArray(ei.data) ? ei.data : [],
       });
+      if (insRes.data) setInsights(insRes.data);
       setLastFetch(new Date());
       setError(null);
     } catch (err) {
@@ -364,6 +367,57 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       <div className="stats-grid">
         {stats.map(s => <StatCard key={s.id} {...s} onClick={s.tab ? () => setActiveTab(s.tab) : null} />)}
       </div>
+
+      {/* ── Business Insights ── */}
+      {isAdmin && (
+        <div className="insights-row">
+            <div className="insight-card">
+                <div className="section-header" style={{ marginBottom: '20px' }}>
+                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Car size={20} style={{ color: 'var(--accent)' }} />
+                        Top Customer Choice
+                    </h3>
+                </div>
+                <div className="insight-list">
+                    {insights.topVehicles.length > 0 ? insights.topVehicles.map((v, i) => (
+                        <div key={i} className="insight-item">
+                            <div className="insight-rank">{i + 1}</div>
+                            <div className="insight-info">
+                                <span className="insight-name">{v.name}</span>
+                                <span className="insight-sub">{v.count} Hires · Most Popular</span>
+                            </div>
+                            <div className="insight-value">
+                                <span className="insight-main-val">{fmt(v.revenue)}</span>
+                            </div>
+                        </div>
+                    )) : <p className="insight-sub">No data available yet</p>}
+                </div>
+            </div>
+
+            <div className="insight-card">
+                <div className="section-header" style={{ marginBottom: '20px' }}>
+                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <Users size={20} style={{ color: 'var(--success)' }} />
+                        Best Customers
+                    </h3>
+                </div>
+                <div className="insight-list">
+                    {insights.topCustomers.length > 0 ? insights.topCustomers.map((c, i) => (
+                        <div key={i} className="insight-item">
+                            <div className="insight-rank" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}>{i + 1}</div>
+                            <div className="insight-info">
+                                <span className="insight-name">{c.name}</span>
+                                <span className="insight-sub">{c.count} Bookings · Latest: {c.latestVehicle}</span>
+                            </div>
+                            <div className="insight-value">
+                                <span className="insight-main-val" style={{ color: 'var(--success)' }}>{fmt(c.revenue)}</span>
+                            </div>
+                        </div>
+                    )) : <p className="insight-sub">No data available yet</p>}
+                </div>
+            </div>
+        </div>
+      )}
 
       {/* ── Recent Activity ── */}
       <div className="recent-activity">

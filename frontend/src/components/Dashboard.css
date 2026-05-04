@@ -327,3 +327,115 @@
     font-size: 1.5rem;
   }
 }
+
+/* ── Critical Alerts Section (Premium Design) ── */
+.critical-alerts-section {
+  background: #fdf5f5; /* light red */
+  border: 1px solid #fc8181; /* red border */
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+[data-theme='dark'] .critical-alerts-section {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.critical-alerts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.critical-alerts-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ef4444;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.pending-actions-badge {
+  background: #fecaca;
+  color: #ef4444;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.reminders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.reminder-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-left: 4px solid #3b82f6; /* Default, overridden inline */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-height: 72px; /* Ensure consistent height */
+}
+
+[data-theme='dark'] .reminder-card {
+  background: var(--bg-card);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.reminder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.reminder-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reminder-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reminder-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reminder-vehicle {
+  font-weight: 800;
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.reminder-badge {
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reminder-type {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 0;
+}

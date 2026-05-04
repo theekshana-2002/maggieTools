@@ -90,3 +90,13 @@
   color: #fff;
   transform: translateY(-2px);
 }
+
+.detail-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-field.full-width p {
+  padding: 0;
+  background: transparent;
+  border: none;
+}

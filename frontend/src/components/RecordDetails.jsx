@@ -30,12 +30,25 @@ const RecordDetails = ({ data, type }) => {
       </h4>
       <div className="detail-grid">
         {fields.map((f, i) => (
-          <div key={i} className="detail-field">
+          <div key={i} className={`detail-field ${f.isImage ? 'full-width' : ''}`}>
             <label>{f.label}</label>
             <p>
               {(() => {
                 const val = data[f.key] !== undefined && data[f.key] !== null ? data[f.key] : data[f.key === 'vehicle' ? 'vehicleNo' : f.key === 'vehicleNo' ? 'vehicle' : ''];
-                if (val === undefined || val === null) return '—';
+                if (val === undefined || val === null || val === '') return '—';
+
+                if (f.isImage) {
+                  return (
+                    <div style={{ marginTop: '10px' }}>
+                      <img 
+                        src={val} 
+                        alt={f.label} 
+                        style={{ maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--border)', cursor: 'pointer' }} 
+                        onClick={() => window.open(val, '_blank')}
+                      />
+                    </div>
+                  );
+                }
 
                 const isCurrency = (f.key.toLowerCase().includes('salary') || f.key.toLowerCase().includes('premium') || f.key.toLowerCase().includes('rate') || f.key.toLowerCase().includes('amount') || f.key.toLowerCase().includes('fee') || f.key.toLowerCase().includes('earnings') || f.key.toLowerCase().includes('allowance') || f.key.toLowerCase().includes('pay') || f.key.toLowerCase().includes('incentive') || f.key.toLowerCase().includes('advance') || f.key.toLowerCase().includes('total') || f.key.toLowerCase().includes('cost')) && 
                                    !f.key.toLowerCase().includes('days') && 
@@ -44,7 +57,6 @@ const RecordDetails = ({ data, type }) => {
                 
                 if (isCurrency && !isNaN(val) && val !== '') return `LKR ${Number(val).toLocaleString()}`;
                 
-                // If value is an object (like vehicle), try to get number or name
                 if (val && typeof val === 'object' && !Array.isArray(val)) {
                   return val.number || val.name || JSON.stringify(val);
                 }
@@ -282,8 +294,8 @@ const RecordDetails = ({ data, type }) => {
       { label: 'Customer Name', key: 'clientName' },
       { label: 'Phone', key: 'clientPhone' },
       { label: 'NIC / Passport', key: 'clientNic' },
-      { label: 'ID Front Link', key: 'customerIdFront' },
-      { label: 'ID Back Link', key: 'customerIdBack' }
+      { label: 'ID Front Side', key: 'customerIdFront', isImage: true },
+      { label: 'ID Back Side', key: 'customerIdBack', isImage: true }
     ]},
     { title: 'Vehicle & Schedule', fields: [
       { label: 'Vehicle Number', key: 'vehicle' },

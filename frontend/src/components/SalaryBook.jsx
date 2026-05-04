@@ -4,7 +4,7 @@ import Modal from './Modal';
 import SalaryForm from './SalaryForm';
 import { salaryAPI, vehicleAPI, employeeAPI, bookingAPI, attendanceAPI, advanceAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, RefreshCw, Calendar, Users, Wallet, CreditCard, ChevronRight, TrendingUp, ShieldCheck, Clock, AlertCircle } from 'lucide-react';
+import { Download, Search, RefreshCw, Calendar, Users, Wallet, CreditCard, ChevronRight, TrendingUp, ShieldCheck, Clock, AlertCircle, PlusCircle } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import RecordDetails from './RecordDetails';
@@ -107,7 +107,7 @@ const SalaryBook = () => {
         netPay_val: netPay,
         ACTION: canManage ? (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" onClick={() => handleEdit(dbRecord || { employee: emp.name, month: targetMonth, basic, hourlyEarnings, dailyAllowance, netPay })}>{dbRecord ? 'Edit' : 'Finalize'}</button>
+            <button className="edit-btn" onClick={() => handleEdit(dbRecord || { _id: `live-${emp.name}`, employee: emp.name, month: targetMonth, basic, hourlyEarnings, dailyAllowance, netPay })}> {dbRecord ? 'Edit' : 'Finalize'}</button>
           </div>
         ) : null
       };
@@ -149,6 +149,20 @@ const SalaryBook = () => {
            <button className="theme-toggle-btn" onClick={fetchBaseData}><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
         </div>
       </div>
+
+      {error && (
+        <div className="form-info-banner" style={{ background: 'var(--danger)', color: '#fff', border: 'none', marginBottom: '24px' }}>
+          <AlertCircle size={18} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {success && (
+        <div className="form-info-banner" style={{ background: 'var(--success)', color: '#fff', border: 'none', marginBottom: '24px' }}>
+          <ShieldCheck size={18} />
+          <span>{success}</span>
+        </div>
+      )}
 
       {/* ── Summary ── */}
       <div className="book-summary">
@@ -216,7 +230,27 @@ const SalaryBook = () => {
       </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem?._id?.startsWith('live') ? 'Finalize Salary' : 'Edit Salary'}>
-        <SalaryForm onSubmit={async (d) => { if (editingItem?._id?.startsWith('live')) await salaryAPI.create(d); else await salaryAPI.update(editingItem._id, d); setIsModalOpen(false); fetchBaseData(); }} onCancel={() => setIsModalOpen(false)} initialData={editingItem} />
+        <SalaryForm 
+          onSubmit={async (d) => { 
+            try {
+              if (editingItem?._id?.startsWith('live')) {
+                await salaryAPI.create(d);
+                setSuccess('Salary finalized successfully!');
+              } else {
+                await salaryAPI.update(editingItem._id, d);
+                setSuccess('Salary record updated!');
+              }
+              setIsModalOpen(false); 
+              fetchBaseData();
+              setTimeout(() => setSuccess(null), 3000);
+            } catch (err) {
+              console.error(err);
+              alert('Failed to save salary record: ' + (err.response?.data?.message || err.message));
+            }
+          }} 
+          onCancel={() => setIsModalOpen(false)} 
+          initialData={editingItem} 
+        />
       </Modal>
     </div>
   );

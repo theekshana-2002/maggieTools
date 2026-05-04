@@ -8,7 +8,7 @@ const isLocal =
   window.location.hostname.startsWith('10.') ||
   window.location.hostname.startsWith('172.');
 
-const localApiUrl = `http://${window.location.hostname}:5000/api`;
+const localApiUrl = `http://${window.location.hostname}:5001/api`;
 const rawApiUrl = import.meta.env.VITE_API_URL || (isLocal ? localApiUrl : 'https://krishan-transport-1.onrender.com/api');
 
 const normalizeApiUrl = (url) => {

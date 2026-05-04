@@ -33,29 +33,19 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-// Database Connection & Index Sync
-if (!process.env.MONGODB_URI) {
-  console.error("⚠️ MONGODB_URI is not set! Missing environment variable.");
+// Database Connection
+const dbUri = process.env.MONGODB_URI;
+const dbName = dbUri ? dbUri.split('/').pop().split('?')[0] : 'unknown';
+
+if (!dbUri) {
+  console.error("⚠️ MONGODB_URI is not set!");
 } else {
-  mongoose.connect(process.env.MONGODB_URI)
-    .then(async () => {
-      console.log('✅ MongoDB Connected');
-      // Safer index sync - only attempt if we can get the collection
-      try {
-        const collections = await mongoose.connection.db.listCollections({ name: 'employees' }).toArray();
-        if (collections.length > 0) {
-          const employeeCollection = mongoose.connection.collection('employees');
-          const indexes = await employeeCollection.indexes();
-          if (indexes.some(i => i.name === 'username_1')) {
-            console.log('🔄 Cleaning up stale indexes...');
-            await employeeCollection.dropIndex('username_1').catch(e => console.log('Index drop non-critical error'));
-          }
-        }
-      } catch (err) {
-        console.log('ℹ️ Startup maintenance skipped.');
-      }
+  mongoose.connect(dbUri)
+    .then(() => {
+      console.log(`✅ MongoDB Connected to database: ${dbName}`);
     })
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
 }
@@ -82,12 +72,11 @@ app.get('/', (req, res) => {
 });
 
 // Start server for Node hosts (Render/local), but avoid starting inside Vercel serverless runtime.
-const isVercelRuntime = process.env.VERCEL === '1';
-if (!isVercelRuntime) {
-  const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-  });
-}
+// Start server
+const PORT = process.env.PORT || 5001;
+app.listen(PORT, () => {
+  console.log(`🚀 RAXWO Backend running on PORT: ${PORT}`);
+  console.log(`📡 Database: ${dbName}`);
+});
 
 module.exports = app;

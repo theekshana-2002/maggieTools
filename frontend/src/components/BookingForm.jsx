@@ -35,7 +35,9 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     securityDeposit: 0,
     fuelLevel: 'Full',
     totalAmount: 0,
-    balanceAmount: 0
+    balanceAmount: 0,
+    customerIdFront: '',
+    customerIdBack: ''
   };
 
   const [formData, setFormData] = useState({ ...defaults, ...initialData });
@@ -149,6 +151,21 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     }
   };
 
+  const handleIdPhotoChange = (e, field) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('File size too large. Please select an image under 2MB.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, [field]: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const submissionData = { ...formData, totalDays, ...costs };
@@ -203,22 +220,50 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
           </div>
           <div className="form-grid-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
-                <label>Customer ID Front Side (Link)</label>
+                <label>Customer ID Front Side</label>
                 <input 
-                    type="text" 
-                    placeholder="Paste front side image link"
-                    value={formData.customerIdFront}
-                    onChange={e => setFormData({...formData, customerIdFront: e.target.value})}
+                    type="file" 
+                    accept="image/*"
+                    onChange={e => handleIdPhotoChange(e, 'customerIdFront')}
+                    style={{ border: 'none', padding: '8px 0' }}
                 />
+                {formData.customerIdFront && (
+                  <div style={{ marginTop: '8px', position: 'relative' }}>
+                    <img 
+                      src={formData.customerIdFront} 
+                      alt="ID Front Preview" 
+                      style={{ width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setFormData({...formData, customerIdFront: ''})}
+                      style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}
+                    >✕</button>
+                  </div>
+                )}
             </div>
             <div className="form-group">
-                <label>Customer ID Back Side (Link)</label>
+                <label>Customer ID Back Side</label>
                 <input 
-                    type="text" 
-                    placeholder="Paste back side image link"
-                    value={formData.customerIdBack}
-                    onChange={e => setFormData({...formData, customerIdBack: e.target.value})}
+                    type="file" 
+                    accept="image/*"
+                    onChange={e => handleIdPhotoChange(e, 'customerIdBack')}
+                    style={{ border: 'none', padding: '8px 0' }}
                 />
+                {formData.customerIdBack && (
+                  <div style={{ marginTop: '8px', position: 'relative' }}>
+                    <img 
+                      src={formData.customerIdBack} 
+                      alt="ID Back Preview" 
+                      style={{ width: '100%', maxHeight: '150px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--border)' }} 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setFormData({...formData, customerIdBack: ''})}
+                      style={{ position: 'absolute', top: '5px', right: '5px', background: 'rgba(239, 68, 68, 0.8)', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}
+                    >✕</button>
+                  </div>
+                )}
             </div>
           </div>
         </div>

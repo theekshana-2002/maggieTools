@@ -165,17 +165,28 @@ const SalaryForm = ({ onSubmit, onCancel, initialData }) => {
     });
   };
 
-  const netPay_val = parseFloat(formData.basic || 0) + 
-                    parseFloat(formData.hourlyEarnings || 0) + 
-                    parseFloat(formData.dailyAllowance || 0) + 
-                    parseFloat(formData.attendanceBonus || 0) + 
-                    parseFloat(formData.incentive || 0) - 
-                    parseFloat(formData.attendancePenalty || 0) - 
-                    parseFloat(formData.advance || 0);
+  const parseVal = (val) => {
+    const n = parseFloat(val);
+    return isNaN(n) ? 0 : n;
+  };
+
+  const netPay_val = parseVal(formData.basic) + 
+                    parseVal(formData.hourlyEarnings) + 
+                    parseVal(formData.dailyAllowance) + 
+                    parseVal(formData.attendanceBonus) + 
+                    parseVal(formData.incentive) - 
+                    parseVal(formData.attendancePenalty) - 
+                    parseVal(formData.advance);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ ...formData, netPay: netPay_val });
+    const finalData = { ...formData };
+    // Ensure all numeric fields are actual numbers, not empty strings or NaN
+    ['basic', 'hourlyEarnings', 'dailyAllowance', 'attendanceBonus', 'attendancePenalty', 'incentive', 'advance', 'workingDays', 'totalHours', 'jobsCount'].forEach(field => {
+      finalData[field] = parseVal(finalData[field]);
+    });
+
+    onSubmit({ ...finalData, netPay: netPay_val });
   };
 
   return (

@@ -46,30 +46,45 @@ const isExpiringSoon = (date, daysThreshold = 7) => {
 
 /* ── Reminder Card ── */
 const ReminderCard = ({ r }) => {
-  const color = getUrgencyColor(r.date);
   const isToday = r.daysLeft <= 0;
   const isTomorrow = r.daysLeft === 1;
 
+  let urgencyColor = '#3b82f6'; // default blue
+  let iconColor = '#3b82f6';
+  
+  if (r.daysLeft <= 0) {
+    urgencyColor = '#ef4444'; // red
+    iconColor = '#ef4444';
+  } else if (r.daysLeft <= 2) {
+    urgencyColor = '#f59e0b'; // orange
+    iconColor = '#f59e0b';
+  }
+
+  let badgeStyle = {
+    background: '#eff6ff', 
+    color: '#3b82f6', 
+  };
+  let badgeText = `${r.daysLeft}d`;
+
+  if (isToday) {
+    badgeStyle = { background: '#ef4444', color: '#fff' };
+    badgeText = 'DUE';
+  } else if (isTomorrow) {
+    badgeStyle = { background: '#f59e0b', color: '#fff' };
+    badgeText = 'TOMORROW';
+  }
+
   return (
-    <div className="stat-card" style={{ padding: '20px', gap: '16px', borderLeft: `4px solid ${color}` }}>
-      <div className="stat-icon" style={{ background: `${color}15`, color: color, width: '48px', height: '48px' }}>
-        <r.icon size={22} />
+    <div className="reminder-card" style={{ borderLeftColor: urgencyColor }}>
+      <div className="reminder-icon" style={{ color: iconColor }}>
+        <r.icon size={20} strokeWidth={2.5} />
       </div>
-      <div className="stat-info">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <p className="stat-title" style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{r.vehicle}</p>
-          <span style={{ 
-            fontSize: '0.65rem', 
-            padding: '2px 8px', 
-            borderRadius: '20px', 
-            background: isToday ? 'var(--danger)' : isTomorrow ? 'var(--warning)' : 'var(--accent-soft)',
-            color: (isToday || isTomorrow) ? '#fff' : 'var(--accent)',
-            fontWeight: 800
-          }}>
-            {isToday ? 'DUE' : isTomorrow ? 'TOMORROW' : `${r.daysLeft}d`}
-          </span>
+      <div className="reminder-info">
+        <div className="reminder-header">
+          <span className="reminder-vehicle">{r.vehicle}</span>
+          <span className="reminder-badge" style={badgeStyle}>{badgeText}</span>
         </div>
-        <p className="stat-subtext">{r.type}</p>
+        <p className="reminder-type">{r.type}</p>
       </div>
     </div>
   );
@@ -309,15 +324,15 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
 
       {/* ── Reminders ── */}
       {isAdmin && hasAnyReminders && (
-        <div className="recent-activity critical-alerts-section" style={{ border: '2px solid var(--danger)', background: 'rgba(239, 68, 68, 0.05)', boxShadow: '0 0 20px rgba(239, 68, 68, 0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Bell size={20} color="var(--danger)" className="pulse-icon" />
-                <h3 style={{ margin: 0, color: 'var(--danger)' }}>Critical Attention Required</h3>
-            </div>
-            <span className="status-badge status-cancelled">Pending Actions</span>
+        <div className="critical-alerts-section">
+          <div className="critical-alerts-header">
+            <h3 className="critical-alerts-title">
+                <Bell size={20} className="pulse-icon" />
+                Critical Attention Required
+            </h3>
+            <span className="pending-actions-badge">Pending Actions</span>
           </div>
-          <div className="stats-grid">
+          <div className="reminders-grid">
             {Object.values(groupedReminders).flat().slice(0, 4).map((r, i) => <ReminderCard key={i} r={r} />)}
           </div>
         </div>

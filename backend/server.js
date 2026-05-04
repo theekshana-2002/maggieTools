@@ -15,6 +15,7 @@ const allowedOrigins = [
   'http://[::1]:3000',
   'https://krishantransports.netlify.app',
   'https://krishan-transport-frontend.vercel.app',
+  'https://raxwo-rent-a-car.netlify.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 

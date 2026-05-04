@@ -1,0 +1,85 @@
+/* ═══════════════════════════════════════════
+   RAXWO VEHICLE FILTER — Premium Navigation
+   ═══════════════════════════════════════════ */
+
+.vehicle-filter-container {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.filter-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 8px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  width: 100%;
+}
+
+.filter-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-pill {
+  position: relative;
+  white-space: nowrap;
+  padding: 10px 24px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  overflow: visible;
+}
+
+.filter-pill:hover {
+  background: var(--bg-main);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-2px);
+}
+
+/* ── Modern Active State (No Solid Block) ── */
+.filter-pill.active {
+  background: var(--accent-soft);
+  color: var(--accent) !important;
+  border-color: var(--accent);
+  box-shadow: 0 4px 15px var(--accent-soft);
+  font-weight: 800;
+}
+
+/* Underline Indicator */
+.filter-pill.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px var(--accent-soft);
+}
+
+[data-theme='dark'] .filter-pill {
+  background: rgba(31, 41, 55, 0.3);
+}
+
+[data-theme='dark'] .filter-pill.active {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: var(--accent);
+}
+
+.filter-pill span {
+  letter-spacing: 0.05em;
+}

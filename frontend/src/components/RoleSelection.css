@@ -1,0 +1,203 @@
+/* ═══════════════════════════════════════════
+   RAXWO GATEWAY — Premium Role Selection
+   ═══════════════════════════════════════════ */
+
+.gateway-layout {
+  min-height: 100vh;
+  background: var(--bg-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 40px 20px;
+}
+
+/* ── Animated Background ── */
+.gateway-bg-decoration {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.blob {
+  position: absolute;
+  filter: blur(120px);
+  opacity: 0.15;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.blob-1 {
+  width: 600px; height: 600px;
+  background: var(--accent);
+  top: -200px; left: -100px;
+  animation: float 20s infinite linear;
+}
+
+.blob-2 {
+  width: 500px; height: 500px;
+  background: #10B981;
+  bottom: -150px; right: -100px;
+  animation: float 25s infinite linear reverse;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(100px, 50px) scale(1.1); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+/* ── Content ── */
+.gateway-content {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1200px;
+  text-align: center;
+  animation: fadeIn 1s ease;
+}
+
+.gateway-header {
+  margin-bottom: 64px;
+}
+
+.gateway-logo {
+  height: 80px;
+  margin-bottom: 32px;
+}
+
+.gateway-header h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.04em;
+  margin-bottom: 12px;
+}
+
+.gateway-header h1 span {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.gateway-header p {
+  font-size: 1.125rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Role Grid ── */
+.gateway-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 32px;
+  margin-bottom: 64px;
+}
+
+.gateway-card {
+  background: var(--bg-card);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  padding: 40px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 380px;
+  box-shadow: var(--shadow-sm);
+}
+
+.gateway-card:hover {
+  transform: translateY(-12px);
+  border-color: var(--role-color);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  background: var(--bg-main);
+}
+
+.gateway-icon-box {
+  width: 72px;
+  height: 72px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--role-color);
+  margin-bottom: 32px;
+  transition: all 0.4s ease;
+}
+
+.gateway-card:hover .gateway-icon-box {
+  background: var(--role-color);
+  color: #fff;
+  border-color: var(--role-color);
+  box-shadow: 0 8px 20px var(--role-color);
+}
+
+.gateway-card h3 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 16px;
+}
+
+.gateway-card p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ── Footer Action ── */
+.gateway-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 40px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.gateway-card-footer span {
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: var(--text-main);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.action-circle {
+  width: 44px;
+  height: 44px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+  transition: all 0.4s ease;
+}
+
+.gateway-card:hover .action-circle {
+  background: var(--role-color);
+  color: #fff;
+  border-color: var(--role-color);
+  transform: rotate(-45deg);
+}
+
+/* ── Footer ── */
+.gateway-footer p {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .gateway-header h1 { font-size: 2.25rem; }
+  .gateway-card { min-height: auto; padding: 32px; }
+}

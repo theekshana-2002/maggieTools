@@ -1,0 +1,174 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import DataTable from './DataTable';
+import Modal from './Modal';
+import DieselForm from './DieselForm';
+import { dieselAPI, vehicleAPI } from '../services/api';
+import { generatePDFReport } from '../utils/reportGenerator';
+import { Download, Search, RefreshCw, PlusCircle, Fuel, Droplets, TrendingDown, Clock, Info, CheckCircle, AlertCircle } from 'lucide-react';
+import '../styles/forms.css';
+import '../styles/books.css';
+import VehicleFilter from './VehicleFilter';
+import RecordDetails from './RecordDetails';
+
+const FUEL_TYPES = ['All', 'Diesel', 'Petrol'];
+
+const DieselBook = () => {
+  const userRole = localStorage.getItem('raxwo_user_role');
+  const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [dieselRecords, setDieselRecords] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [selectedFuelType, setSelectedFuelType] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const columns = ['DATE', 'VEHICLE', 'FUEL TYPE', 'DRIVER', 'LITERS', 'TOTAL COST', 'STATUS', 'ACTION'];
+
+  useEffect(() => {
+    fetchRecords();
+    fetchVehicles();
+  }, []);
+
+  const fetchVehicles = async () => {
+    try {
+      const res = await vehicleAPI.get();
+      setVehicles(Array.isArray(res.data) ? res.data : []);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchRecords = async () => {
+    setLoading(true);
+    try {
+      const response = await dieselAPI.get();
+      const rawData = Array.isArray(response.data) ? response.data : [];
+      const formatted = rawData.map(item => ({
+        ...item,
+        rawData: item,
+        date: new Date(item.date).toLocaleDateString(),
+        vehicle_disp: <strong style={{ color: 'var(--text-main)' }}>{item.vehicle}</strong>,
+        fuelType_disp: (
+          <span className={`status-badge ${item.fuelType === 'Petrol' ? 'status-confirmed' : 'status-active'}`} style={item.fuelType === 'Petrol' ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : {}}>
+            {item.fuelType || 'Diesel'}
+          </span>
+        ),
+        driver: item.employee || '—',
+        liters_disp: <span style={{ fontWeight: 700 }}>{item.liters} L</span>,
+        totalCost: <strong style={{ color: 'var(--text-main)' }}>LKR {(item.total || 0).toLocaleString()}</strong>,
+        status_disp: (
+          <span className={`status-badge ${item.status === 'Verified' ? 'status-completed' : 'status-active'}`}>
+            {item.status || 'Logged'}
+          </span>
+        ),
+        action: (
+          <div className="table-actions" onClick={e => e.stopPropagation()}>
+            {canManage && <button className="edit-btn" onClick={() => { setEditingItem(item); setIsModalOpen(true); }}>Edit</button>}
+          </div>
+        )
+      }));
+      setDieselRecords(formatted);
+      setError(null);
+    } catch (err) { setError('Connection issue: could not load fuel records.'); }
+    finally { setLoading(false); }
+  };
+
+  const filteredRecords = useMemo(() => {
+    return dieselRecords.filter(r => {
+      const matchVehicle  = !selectedVehicle || r.rawData?.vehicle === selectedVehicle;
+      const matchFuelType = selectedFuelType === 'All' || (r.rawData?.fuelType || 'Diesel') === selectedFuelType;
+      const matchSearch   = !searchQuery || (r.employee || '').toLowerCase().includes(searchQuery.toLowerCase()) || (r.rawData?.vehicle || '').toLowerCase().includes(searchQuery.toLowerCase());
+      return matchVehicle && matchFuelType && matchSearch;
+    });
+  }, [dieselRecords, selectedVehicle, selectedFuelType, searchQuery]);
+
+  const stats = useMemo(() => {
+    const totalLiters = filteredRecords.reduce((sum, r) => sum + (parseFloat(r.rawData?.liters) || 0), 0);
+    const totalCost   = filteredRecords.reduce((sum, r) => sum + (parseFloat(r.rawData?.total) || 0), 0);
+    const avgPrice    = totalLiters > 0 ? totalCost / totalLiters : 0;
+    return { totalLiters, totalCost, avgPrice };
+  }, [filteredRecords]);
+
+  return (
+    <div className="book-container">
+      {/* ── Header ── */}
+      <div className="dashboard-header">
+        <div>
+          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Inventory & Operations</p>
+          <h1>Fuel Records Book</h1>
+        </div>
+        <div className="header-controls">
+           <div className="search-box">
+             <Search className="search-icon" size={18} />
+             <input type="text" placeholder="Search fuel logs..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+           </div>
+           <button className="theme-toggle-btn" onClick={fetchRecords} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+           {canManage && (
+             <button className="refresh-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
+               <PlusCircle size={18} /> Add Entry
+             </button>
+           )}
+        </div>
+      </div>
+
+      {/* ── Summary ── */}
+      <div className="book-summary">
+        <div className="summary-item">
+          <label>Total Consumption</label>
+          <h3>{stats.totalLiters.toFixed(1)} Liters</h3>
+          <Droplets size={16} color="var(--accent)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
+        </div>
+        <div className="summary-item">
+          <label>Total Fuel Cost</label>
+          <h3 style={{ color: 'var(--danger)' }}>LKR {stats.totalCost.toLocaleString()}</h3>
+          <TrendingDown size={16} color="var(--danger)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
+        </div>
+        <div className="summary-item">
+          <label>Avg Price / Liter</label>
+          <h3 style={{ color: 'var(--success)' }}>LKR {stats.avgPrice.toFixed(2)}</h3>
+          <Info size={16} color="var(--success)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
+        </div>
+      </div>
+
+      {/* ── Filters ── */}
+      <div className="book-filters">
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <div className="tab-switcher" style={{ margin: 0, flexShrink: 0 }}>
+            {FUEL_TYPES.map(type => (
+              <button key={type} className={selectedFuelType === type ? 'active-tab' : ''} onClick={() => setSelectedFuelType(type)}>
+                {type}
+              </button>
+            ))}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <VehicleFilter vehicles={vehicles} selectedVehicle={selectedVehicle} onSelect={setSelectedVehicle} />
+          </div>
+        </div>
+        <button className="theme-toggle-btn" onClick={() => {}} title="Export PDF" style={{ width: '48px', height: '48px' }}><Download size={18} /></button>
+      </div>
+
+      {success && <div className="form-info-banner" style={{ background: 'var(--success)', color: '#fff', border: 'none' }}><CheckCircle size={18} /> {success}</div>}
+      {error && <div className="form-info-banner" style={{ background: 'var(--danger)', color: '#fff', border: 'none' }}><AlertCircle size={18} /> {error}</div>}
+
+      <div className="compliance-card">
+        <DataTable columns={columns} data={filteredRecords} loading={loading} onRowClick={(row) => { setSelectedRecord(row); setViewModalOpen(true); }} />
+      </div>
+
+      <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="Fuel Transaction Details">
+        <RecordDetails data={selectedRecord} type="diesel" />
+      </Modal>
+
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? 'Edit Fuel Entry' : 'Add Fuel Entry'}>
+        <DieselForm onSubmit={async (d) => { if (editingItem) await dieselAPI.update(editingItem._id, d); else await dieselAPI.create(d); setIsModalOpen(false); fetchRecords(); }} onCancel={() => setIsModalOpen(false)} initialData={editingItem} />
+      </Modal>
+    </div>
+  );
+};
+
+export default DieselBook;

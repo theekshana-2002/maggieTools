@@ -3,7 +3,7 @@ import '../styles/forms.css';
 
 const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
-    name: '', nic: '', role: 'Driver', contact: '',
+    name: '', nic: '', role: 'Technician', contact: '',
     joinedDate: new Date().toISOString().split('T')[0],
     status: 'Active', username: '', password: ''
   });
@@ -20,7 +20,7 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
       });
     } else {
       setFormData({
-        name: '', nic: '', role: 'Driver', contact: '',
+        name: '', nic: '', role: 'Technician', contact: '',
         joinedDate: new Date().toISOString().split('T')[0],
         status: 'Active', username: '', password: '',
         basicSalary: 0, hourlyRate: 0
@@ -82,8 +82,9 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
             <div className="form-group">
               <label>Role</label>
               <select name="role" value={formData.role} onChange={handleChange}>
-                <option value="Driver">Driver</option>
-                <option value="Helper">Helper</option>
+                <option value="Technician">Technician</option>
+                <option value="Operator">Operator</option>
+                <option value="Helper">Staff / Helper</option>
                 <option value="Mechanic">Mechanic</option>
                 <option value="Manager">Manager</option>
                 <option value="Admin">Admin</option>
@@ -108,7 +109,7 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
               <input type="number" name="basicSalary" value={formData.basicSalary} onChange={handleChange} placeholder="e.g. 30000" />
             </div>
             <div className="form-group">
-              <label>Hourly Rate (Hires)</label>
+              <label>Hourly Rate (Rentals)</label>
               <input type="number" name="hourlyRate" value={formData.hourlyRate} onChange={handleChange} placeholder="e.g. 200" />
             </div>
           </div>

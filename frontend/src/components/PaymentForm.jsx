@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { vehicleAPI, clientAPI, paymentAPI } from '../services/api';
+import { toolAPI, clientAPI, paymentAPI } from '../services/api';
 import Autocomplete from './Autocomplete';
 import '../styles/books.css';
 import '../styles/forms.css';
@@ -8,15 +8,14 @@ import '../styles/forms.css';
 const blank = () => ({
   date:         new Date().toISOString().split('T')[0],
   client:       '',
-  vehicle:      '',
+  tool:         '',
   address:      '',
   city:         '',
   days:         1,
-  startKm:      0,
-  endKm:        0,
-  extraKmCharges: 0,
+  startHours:   0,
+  endHours:     0,
+  extraCharges: 0,
   hireAmount:   0,
-  commission:   0,
   dayPayment:   0,
   takenAmount:  0,
   balance:      0,
@@ -30,11 +29,10 @@ const fromDB = (d) => ({
   address:        d?.address || '',
   city:           d?.city    || d?.location || '',
   days:           d?.days    ?? 1,
-  startKm:        d?.startKm ?? 0,
-  endKm:          d?.endKm   ?? 0,
-  extraKmCharges: d?.extraKmCharges ?? 0,
+  startHours:     d?.startHours ?? d?.startKm ?? 0,
+  endHours:       d?.endHours   ?? d?.endKm   ?? 0,
+  extraCharges:   d?.extraCharges ?? d?.extraKmCharges ?? 0,
   hireAmount:     d?.hireAmount     ?? 0,
-  commission:     d?.commission     ?? 0,
   dayPayment:     d?.dayPayment     ?? 0,
   takenAmount:    d?.takenAmount    ?? 0,
   balance:        d?.balance        ?? 0,
@@ -44,14 +42,13 @@ const fromDB = (d) => ({
 const compute = (f) => {
   const next = { ...f };
 
-  // Balance = hire + extraKm - commission - dayPayment - takenAmount
+  // Balance = hire + extra - commission - dayPayment - takenAmount
   const hire    = parseFloat(next.hireAmount)      || 0;
-  const extra   = parseFloat(next.extraKmCharges)  || 0;
-  const comm    = parseFloat(next.commission)      || 0;
+  const extra   = parseFloat(next.extraCharges)    || 0;
   const dayPay  = parseFloat(next.dayPayment)      || 0;
   const taken   = parseFloat(next.takenAmount)     || 0;
   
-  next.balance = +(hire + extra - comm - dayPay - taken).toFixed(2);
+  next.balance = +(hire + extra - dayPay - taken).toFixed(2);
   return next;
 };
 
@@ -64,7 +61,7 @@ const suggestStatus = (f) => {
 /* ─── Component ─────────────────────────────────────────────── */
 const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
   /* Reference data */
-  const [vehicles,  setVehicles]  = useState([]);
+  const [tools,  setTools]  = useState([]);
   const [clients,   setClients]   = useState([]);
   const [prevJobs,  setPrevJobs]  = useState([]); // for auto-fill
 
@@ -81,12 +78,12 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
     const load = async () => {
       try {
         const [vR, cR, pR] = await Promise.all([
-          vehicleAPI.get(),
+          toolAPI.get(),
           clientAPI.get(),
           paymentAPI.get(),
         ]);
 
-        setVehicles(Array.isArray(vR.data) ? vR.data : []);
+        setTools(Array.isArray(vR.data) ? vR.data : []);
         setClients (Array.isArray(cR.data) ? cR.data : []);
         setPrevJobs(Array.isArray(pR.data) ? pR.data : []);
       } catch (err) {
@@ -103,10 +100,10 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
     setForm(prev => {
       const next = { ...prev, [name]: value };
 
-      /* Smart auto-fill on vehicle select (only in Add mode) */
-      if (name === 'vehicle' && value && !initialData) {
+      /* Smart auto-fill on tool select (only in Add mode) */
+      if (name === 'tool' && value && !initialData) {
         const last = prevJobs
-          .filter(j => j.vehicle === value)
+          .filter(j => j.tool === value || j.vehicle === value)
           .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
         if (last) {
           // no driver/helper autofill
@@ -128,9 +125,8 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
       /* Smart logic: if status is changed to 'Paid', auto-fill takenAmount to clear balance */
       if (name === 'status' && value === 'Paid') {
         const hire = parseFloat(next.hireAmount) || 0;
-        const comm = parseFloat(next.commission) || 0;
         const dayP = parseFloat(next.dayPayment) || 0;
-        next.takenAmount = Math.max(0, +(hire - comm - dayP).toFixed(2));
+        next.takenAmount = Math.max(0, +(hire - dayP).toFixed(2));
       }
 
       return compute(next);
@@ -145,8 +141,8 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
       if (form.client && !clients.find(c => c.name.toLowerCase() === form.client.toLowerCase())) {
         await clientAPI.create({ name: form.client, status: 'Active' });
       }
-      if (form.vehicle && !vehicles.find(v => v.number.toLowerCase() === form.vehicle.toLowerCase())) {
-        await vehicleAPI.create({ number: form.vehicle, status: 'Active' });
+      if (form.tool && !tools.find(v => v.number.toLowerCase() === form.tool.toLowerCase())) {
+        await toolAPI.create({ number: form.tool, status: 'Active' });
       }
     } catch (err) { console.error(err); }
 
@@ -181,13 +177,13 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
             </div>
 
             <div className="form-group">
-              <label>Vehicle Number</label>
+              <label>Tool ID / Serial</label>
               <Autocomplete 
-                name="vehicle" 
-                value={form.vehicle} 
+                name="tool" 
+                value={form.tool} 
                 onChange={handleChange} 
-                options={vehicles.map(v => v.number)}
-                placeholder="Vehicle No"
+                options={tools.map(v => v.number)}
+                placeholder="Tool ID"
               />
             </div>
 
@@ -213,16 +209,16 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
               <input type="number" name="days" value={form.days} onChange={handleChange} min="1" />
             </div>
             <div className="form-group">
-              <label>Start KM</label>
-              <input type="number" name="startKm" value={form.startKm} onChange={handleChange} min="0" />
+              <label>Start Reading (Hrs/Units)</label>
+              <input type="number" name="startHours" value={form.startHours} onChange={handleChange} min="0" />
             </div>
             <div className="form-group">
-              <label>End KM</label>
-              <input type="number" name="endKm" value={form.endKm} onChange={handleChange} min="0" />
+              <label>End Reading (Hrs/Units)</label>
+              <input type="number" name="endHours" value={form.endHours} onChange={handleChange} min="0" />
             </div>
             <div className="form-group">
-              <label>Total KM <span style={{color:'#2563EB',fontSize:'11px'}}>(auto)</span></label>
-              <input type="number" value={Math.max(0, form.endKm - form.startKm)} readOnly className="input-highlight-blue" />
+              <label>Total Usage <span style={{color:'#2563EB',fontSize:'11px'}}>(auto)</span></label>
+              <input type="number" value={Math.max(0, form.endHours - form.startHours)} readOnly className="input-highlight-blue" />
             </div>
           </div>
         </div>
@@ -237,14 +233,10 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
               <input type="number" name="hireAmount" value={form.hireAmount} onChange={handleChange} min="0" required />
             </div>
 
-            <div className="form-group">
-              <label>Commission (LKR)</label>
-              <input type="number" name="commission" value={form.commission} onChange={handleChange} min="0" />
-            </div>
 
             <div className="form-group">
-              <label>Extra KM Charges (LKR)</label>
-              <input type="number" name="extraKmCharges" value={form.extraKmCharges} onChange={handleChange} min="0" />
+              <label>Other Charges (LKR)</label>
+              <input type="number" name="extraCharges" value={form.extraCharges} onChange={handleChange} min="0" />
             </div>
             <div className="form-group">
               <label>Day Payment / Advance (LKR)</label>

@@ -1,0 +1,32 @@
+const mongoose = require('mongoose');
+
+const toolSchema = new mongoose.Schema({
+  number: { type: String, required: true, unique: true }, // Tool ID / Serial Number
+  model: { type: String },
+  category: { type: String, default: 'General' }, 
+  powerSource: { type: String, enum: ['Electric', 'Battery', 'Petrol', 'Manual'], default: 'Electric' },
+  status: { type: String, enum: ['Available', 'Booked', 'Maintenance', 'Repair'], default: 'Available' },
+  dailyRate: { type: Number, default: 0 },
+  
+  // Maintenance & Warranty
+  warrantyExpirationDate: { type: Date },
+  lastServiceDate: { type: Date },
+  nextServiceDate: { type: Date },
+
+  // Ownership/Leasing (if applicable)
+  hasLeasing: { type: Boolean, default: false },
+  leasingCompany: { type: String },
+  monthlyPremium: { type: Number, default: 0 },
+  leaseDueDate: { type: Number }, // Day of month (1-31)
+  leaseFinalDate: { type: Date },
+  leasePayments: [{
+    year: Number,
+    month: Number,
+    paid: { type: Boolean, default: false },
+    paidDate: Date
+  }],
+
+  createdAt: { type: Date, default: Date.now }
+});
+
+module.exports = mongoose.model('Tool', toolSchema);

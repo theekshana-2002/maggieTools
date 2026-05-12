@@ -9,7 +9,11 @@ const isLocal =
   window.location.hostname.startsWith('172.');
 
 const localApiUrl = `http://${window.location.hostname}:5001/api`;
-const rawApiUrl = import.meta.env.VITE_API_URL || (isLocal ? localApiUrl : 'https://krishan-transport-1.onrender.com/api');
+const rawApiUrl = import.meta.env.VITE_API_URL || (isLocal ? localApiUrl : ''); 
+
+if (!rawApiUrl && !isLocal) {
+  console.error("⚠️ VITE_API_URL is not set in production!");
+}
 
 const normalizeApiUrl = (url) => {
   let trimmed = (url || '').trim();
@@ -131,28 +135,29 @@ const wrapAPI = (endpoint, storageKey) => {
   };
 };
 
-export const dieselAPI     = wrapAPI('diesel',     'raxwo_diesel');
+export const accessoryAPI  = wrapAPI('accessories', 'raxwo_accessories');
 export const hireAPI       = wrapAPI('hires',      'raxwo_hires');
 export const salaryAPI     = wrapAPI('salaries',   'raxwo_salaries');
 export const paymentAPI    = wrapAPI('payments',   'raxwo_payments');
 export const clientAPI     = wrapAPI('clients',    'raxwo_clients');
-export const vehicleAPI    = wrapAPI('vehicles',   'raxwo_vehicles');
-export const markLeasePayment = async (vehicleId, year, month, paid) => {
+export const toolAPI    = wrapAPI('tools',   'raxwo_tools');
+export const vehicleAPI = toolAPI; // Alias for backward compatibility
+export const markLeasePayment = async (toolId, year, month, paid) => {
   const res = await api.patch(
-    `vehicles/${vehicleId}/lease-payment`,
+    `tools/${toolId}/lease-payment`,
     { year, month, paid }
   );
-  const cached = JSON.parse(localStorage.getItem('raxwo_vehicles') || '[]');
-  const updated = cached.map(v => v._id === vehicleId ? res.data : v);
-  localStorage.setItem('raxwo_vehicles', JSON.stringify(updated));
+  const cached = JSON.parse(localStorage.getItem('raxwo_tools') || '[]');
+  const updated = cached.map(t => t._id === toolId ? res.data : t);
+  localStorage.setItem('raxwo_tools', JSON.stringify(updated));
   window.dispatchEvent(new Event('raxwo_lease_updated'));
   return res;
 };
-export const renewVehicleDocument = async (vehicleId, type, newExpirationDate, cost) => {
-  const res = await api.patch(`vehicles/${vehicleId}/renew`, { type, newExpirationDate, cost });
-  const cached = JSON.parse(localStorage.getItem('raxwo_vehicles') || '[]');
-  const updated = cached.map(v => v._id === vehicleId ? res.data.vehicle : v);
-  localStorage.setItem('raxwo_vehicles', JSON.stringify(updated));
+export const renewToolDocument = async (toolId, type, newExpirationDate, cost) => {
+  const res = await api.patch(`tools/${toolId}/renew`, { type, newExpirationDate, cost });
+  const cached = JSON.parse(localStorage.getItem('raxwo_tools') || '[]');
+  const updated = cached.map(t => t._id === toolId ? res.data.tool : t);
+  localStorage.setItem('raxwo_tools', JSON.stringify(updated));
   return res;
 };
 export const employeeAPI   = wrapAPI('employees',  'raxwo_employees');
@@ -162,16 +167,21 @@ export const attendanceAPI = wrapAPI('attendance', 'raxwo_attendance');
 export const advanceAPI    = wrapAPI('advances',   'raxwo_advances');
 export const extraIncomeAPI = wrapAPI('extra-income', 'raxwo_extra_income');
 export const expenseAPI     = wrapAPI('expenses', 'raxwo_expenses');
+export const settingsAPI    = wrapAPI('settings', 'raxwo_settings');
 export const bookingAPI     = {
   ...wrapAPI('bookings', 'raxwo_bookings'),
-  checkAvailability: (pickupDate, returnDate, vehicleId) => 
-    api.get(`bookings/check-availability`, { params: { pickupDate, returnDate, vehicleId } }),
-  getAvailableVehicles: (pickupDate, returnDate) => 
-    api.get(`bookings/available-vehicles`, { params: { pickupDate, returnDate } }),
+  checkAvailability: (pickupDate, returnDate, toolId) => 
+    api.get(`bookings/check-availability`, { params: { pickupDate, returnDate, toolId } }),
+  getAvailableTools: (pickupDate, returnDate) => 
+    api.get(`bookings/available-tools`, { params: { pickupDate, returnDate } }),
   getCustomerHistory: (nic) => 
     api.get(`bookings/customer/${nic}`),
   getInsights: () => 
-    api.get(`bookings/insights`)
+    api.get(`bookings/insights`),
+  bulkCreate: (bookings) => 
+    api.post(`bookings/bulk`, { bookings }),
+  sendReminder: (id) =>
+    api.post(`bookings/${id}/remind`)
 };
 
 export default api;

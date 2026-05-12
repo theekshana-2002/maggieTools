@@ -23,7 +23,7 @@ router.get('/', authMiddleware, async (req, res) => {
     // Restrict access for all roles EXCEPT Admin and Manager
     if (req.user.role !== 'Admin' && req.user.role !== 'Manager') {
       query.$or = [
-        { driverName: req.user.name },
+        { operatorName: req.user.name },
         { helperName: req.user.name }
       ];
     }
@@ -59,10 +59,10 @@ router.post('/', authMiddleware, async (req, res) => {
         await mongoose.connection.collection('payments').insertOne({
           date: savedHire.date ? new Date(savedHire.date) : new Date(),
           client: savedHire.client,
-          vehicle: savedHire.vehicle,
+          tool: savedHire.toolId,
           address: savedHire.address,
           city: savedHire.city,
-          driverName: savedHire.driverName,
+          operatorName: savedHire.operatorName,
           helperName: savedHire.helperName,
           startTime: savedHire.startTime,
           endTime: savedHire.endTime,
@@ -88,16 +88,16 @@ router.post('/', authMiddleware, async (req, res) => {
       try {
         const invSeq = await getNextSequence('invoiceNo');
         const invYear = new Date().getFullYear().toString().slice(-2);
-        const invoiceNo = `INV-${invYear}-${invSeq.toString().padStart(4, '0')}`;
+        const invoiceNo = `RT-INV-${invYear}-${invSeq.toString().padStart(4, '0')}`;
 
         const newInvoice = new Invoice({
           invoiceNo: invoiceNo,
           date: savedHire.date,
           clientName: savedHire.client,
           site: `${savedHire.address || ''}, ${savedHire.city || ''}`.trim(),
-          vehicleNo: savedHire.vehicle,
-          vehicleType: savedHire.vehicleType,
-          jobDescription: savedHire.details || `Hire charges for ${savedHire.vehicle}`,
+          toolNo: savedHire.toolId,
+          toolCategory: savedHire.toolCategory,
+          jobDescription: savedHire.details || `Hire charges for ${savedHire.toolId}`,
           startTime: savedHire.startTime,
           endTime: savedHire.endTime,
           totalUnits: savedHire.workingHours,
@@ -121,10 +121,11 @@ router.post('/', authMiddleware, async (req, res) => {
         try {
           await mongoose.connection.collection('expenses').insertOne({
             date: savedHire.date ? new Date(savedHire.date) : new Date(),
-            description: `[EXT] Hire: ${savedHire.vehicle} - ${savedHire.client}`,
+            description: `[EXT] Hire: ${savedHire.toolId} - ${savedHire.client}`,
             amount: Number(savedHire.externalCost),
-            category: 'Vehicle Hire',
-            note: `Auto-generated from Hire Bill ${savedHire.billNumber}. Category: ${savedHire.vehicleType || 'N/A'}`,
+            category: 'Tool Hire',
+            toolNo: savedHire.toolId,
+            note: `Auto-generated from Hire Bill ${savedHire.billNumber}. Category: ${savedHire.toolCategory || 'N/A'}`,
             hireId: savedHire._id,
             createdAt: new Date(),
             updatedAt: new Date()
@@ -156,10 +157,10 @@ router.put('/:id', authMiddleware, authorizeRoles('Admin', 'Manager'), async (re
             $set: {
               date: updated.date ? new Date(updated.date) : new Date(),
               client: updated.client,
-              vehicle: updated.vehicle,
+              tool: updated.toolId,
               address: updated.address,
               city: updated.city,
-              driverName: updated.driverName,
+              operatorName: updated.operatorName,
               helperName: updated.helperName,
               startTime: updated.startTime,
               endTime: updated.endTime,
@@ -193,10 +194,11 @@ router.put('/:id', authMiddleware, authorizeRoles('Admin', 'Manager'), async (re
             {
               $set: {
                 date: updated.date ? new Date(updated.date) : new Date(),
-                description: `[EXT] Hire: ${updated.vehicle} - ${updated.client}`,
+                description: `[EXT] Hire: ${updated.toolId} - ${updated.client}`,
                 amount: Number(updated.externalCost),
-                category: 'Vehicle Hire',
-                note: `Auto-generated from Hire Bill ${updated.billNumber}. Category: ${updated.vehicleType || 'N/A'}`,
+                category: 'Tool Hire',
+                toolNo: updated.toolId,
+                note: `Auto-generated from Hire Bill ${updated.billNumber}. Category: ${updated.toolCategory || 'N/A'}`,
                 updatedAt: new Date()
               },
               $setOnInsert: {
@@ -222,9 +224,9 @@ router.put('/:id', authMiddleware, authorizeRoles('Admin', 'Manager'), async (re
               date: updated.date,
               clientName: updated.client,
               site: `${updated.address || ''}, ${updated.city || ''}`.trim(),
-              vehicleNo: updated.vehicle,
-              vehicleType: updated.vehicleType,
-              jobDescription: updated.details || `Hire charges for ${updated.vehicle}`,
+              toolNo: updated.toolId,
+              toolCategory: updated.toolCategory,
+              jobDescription: updated.details || `Hire charges for ${updated.toolId}`,
               startTime: updated.startTime,
               endTime: updated.endTime,
               totalUnits: updated.workingHours,

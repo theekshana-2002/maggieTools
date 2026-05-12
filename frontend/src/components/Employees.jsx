@@ -207,7 +207,7 @@ const Employees = () => {
         title="Employee Profile Details"
       >
         <RecordDetails data={selectedRecord} type="employee" />
-        <div className="modal-footer" style={{ padding: '15px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', background: '#F8FAFC' }}>
+        <div className="modal-footer" style={{ padding: '15px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', background: 'var(--bg-main)' }}>
             <button className="secondary-btn" onClick={() => setViewModalOpen(false)}>Close</button>
         </div>
       </Modal>

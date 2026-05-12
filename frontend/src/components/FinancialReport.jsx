@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Download, TrendingUp, TrendingDown, Wallet, Fuel, FileText, RefreshCw } from 'lucide-react';
-import { hireAPI, dieselAPI, salaryAPI, paymentAPI, extraIncomeAPI, expenseAPI, vehicleAPI } from '../services/api';
+import { Download, TrendingUp, TrendingDown, Wallet, FileText, RefreshCw, Package } from 'lucide-react';
+import { hireAPI, salaryAPI, paymentAPI, extraIncomeAPI, expenseAPI, toolAPI } from '../services/api';
 import logoUrl from '../logo.png';
 import '../styles/report.css';
 
@@ -13,7 +13,7 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 const FinancialReport = () => {
-  const [data, setData] = useState({ hires: [], diesel: [], salaries: [], payments: [], extraIncome: [], expenses: [], vehicles: [] });
+  const [data, setData] = useState({ hires: [], salaries: [], payments: [], extraIncome: [], expenses: [], tools: [] });
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('All');
@@ -25,23 +25,21 @@ const FinancialReport = () => {
     if (!isSilent) setLoading(true);
     else setRefreshing(true);
     try {
-      const [h, d, s, p, ei, ex, v] = await Promise.all([
+      const [h, s, p, ei, ex, t] = await Promise.all([
         hireAPI.get(),
-        dieselAPI.get(),
         salaryAPI.get(),
         paymentAPI.get(),
         extraIncomeAPI.get(),
         expenseAPI.get(),
-        vehicleAPI.get()
+        toolAPI.get()
       ]);
       setData({
         hires: h.data || [],
-        diesel: d.data || [],
         salaries: s.data || [],
         payments: p.data || [],
         extraIncome: ei.data || [],
         expenses: ex.data || [],
-        vehicles: v.data || []
+        tools: t.data || []
       });
     } catch (err) {
       console.error('Report fetch failed:', err);
@@ -53,11 +51,7 @@ const FinancialReport = () => {
 
   useEffect(() => {
     fetchAll();
-    
-    // Auto-refresh every 15 seconds silently
     const interval = setInterval(() => fetchAll(true), 15000);
-
-    // Refresh on window focus or lease payment toggle
     const handleFocus = () => fetchAll(true);
     const handleLease = () => fetchAll(true);
     window.addEventListener('focus', handleFocus);
@@ -70,7 +64,6 @@ const FinancialReport = () => {
     };
   }, []);
 
-  // ── Helper: filter records by selected month/year ──
   const filterByPeriod = (records, dateField = 'date') => {
     return records.filter(r => {
       const d = new Date(r[dateField] || r.createdAt);
@@ -82,7 +75,7 @@ const FinancialReport = () => {
 
   const filterSalaries = (records) => {
     return records.filter(r => {
-      const period = r.month || ''; // e.g. "April 2025"
+      const period = r.month || '';
       if (selectedMonth === 'All') return period.includes(selectedYear);
       return period.includes(selectedMonth) && period.includes(selectedYear);
     });
@@ -90,21 +83,18 @@ const FinancialReport = () => {
 
   const stats = useMemo(() => {
     const fHires       = filterByPeriod(data.hires, 'date');
-    const fDiesel      = filterByPeriod(data.diesel, 'date');
     const fSalaries    = filterSalaries(data.salaries);
     const fPayments    = filterByPeriod(data.payments, 'date');
     const fExtraIncome = filterByPeriod(data.extraIncome, 'date');
     const fExpenses    = filterByPeriod(data.expenses, 'date');
 
     const totalHire        = fPayments.reduce((s, r) => s + (parseFloat(r.hireAmount) || 0), 0);
-    const totalDiesel      = fDiesel.reduce((s, r) => s + (parseFloat(r.total) || 0), 0);
     const totalSalary      = fSalaries.reduce((s, r) => s + (parseFloat(r.netPay) || 0), 0);
     const totalPayments    = fPayments.reduce((s, r) => s + (parseFloat(r.takenAmount) || 0), 0);
     const totalExtraIncome = fExtraIncome.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const totalOtherExp    = fExpenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
-    // Leasing — only count months marked as PAID
-    const totalLeasing = data.vehicles
+    const totalLeasing = data.tools
       .filter(v => v.hasLeasing && v.monthlyPremium)
       .reduce((s, v) => {
         const premium = parseFloat(v.monthlyPremium) || 0;
@@ -125,13 +115,13 @@ const FinancialReport = () => {
 
 
     const totalIncome   = totalHire + totalExtraIncome;
-    const totalExpense  = totalDiesel + totalSalary + totalOtherExp + totalLeasing;
+    const totalExpense  = totalSalary + totalOtherExp + totalLeasing;
     const netProfit     = totalIncome - totalExpense;
     const cashBalance   = (totalPayments + totalExtraIncome) - totalExpense;
 
     return {
-      fHires, fDiesel, fSalaries, fPayments, fExtraIncome, fExpenses,
-      totalHire, totalDiesel, totalSalary, totalPayments, totalExtraIncome, totalOtherExp, totalLeasing,
+      fHires, fSalaries, fPayments, fExtraIncome, fExpenses,
+      totalHire, totalSalary, totalPayments, totalExtraIncome, totalOtherExp, totalLeasing,
       totalIncome, totalExpense, netProfit, cashBalance
     };
   }, [data, selectedMonth, selectedYear]);
@@ -140,7 +130,6 @@ const FinancialReport = () => {
     ? `Full Year ${selectedYear}`
     : `${selectedMonth} ${selectedYear}`;
 
-  // ── PDF Download using jsPDF + html2canvas ──
   const handleDownload = async () => {
     setDownloading(true);
     try {
@@ -162,7 +151,6 @@ const FinancialReport = () => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-      // Multi-page support
       const pageHeight = pdf.internal.pageSize.getHeight();
       let heightLeft = pdfHeight;
       let position = 0;
@@ -177,7 +165,7 @@ const FinancialReport = () => {
         heightLeft -= pageHeight;
       }
 
-      const filename = `KT_Report_${selectedMonth === 'All' ? selectedYear : `${selectedMonth}_${selectedYear}`}.pdf`;
+      const filename = `Financial_Report_${selectedMonth === 'All' ? selectedYear : `${selectedMonth}_${selectedYear}`}.pdf`;
       pdf.save(filename);
     } catch (err) {
       alert('Could not generate PDF. Please try again.\n' + err.message);
@@ -198,7 +186,6 @@ const FinancialReport = () => {
   return (
     <div className="report-container">
 
-      {/* ── Controls ── */}
       <div className="report-controls">
         <label>Month</label>
         <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
@@ -224,16 +211,14 @@ const FinancialReport = () => {
         </button>
       </div>
 
-      {/* ── Report Document (captured for PDF) ── */}
       <div id="report-document" ref={reportRef}>
 
-        {/* Header */}
         <div className="report-header">
           <div className="report-header-left">
             <img src={logoUrl} alt="Logo" className="report-logo" />
             <div className="report-title">
-              <h2>RAXWO Rent A Car</h2>
-              <p>Premium Car Rental & Fleet Management</p>
+              <h2>RAXWO Tool Rentals</h2>
+              <p>Premium Tool Rental &amp; Equipment Management</p>
             </div>
           </div>
           <div className="report-contact-info">
@@ -254,22 +239,21 @@ const FinancialReport = () => {
           </div>
         </div>
 
-        {/* ── KPI Cards ── */}
         <div className="report-kpi-grid">
           <div className="kpi-card" style={{ '--kpi-color': '#2563EB' }}>
             <div className="kpi-label">Total Revenue</div>
             <div className="kpi-value">LKR {stats.totalIncome.toLocaleString()}</div>
-            <div className="kpi-sub">Hire + Extra Income</div>
+            <div className="kpi-sub">Rental + Extra Income</div>
           </div>
           <div className="kpi-card" style={{ '--kpi-color': '#EF4444' }}>
             <div className="kpi-label">Total Outgoings</div>
             <div className="kpi-value">LKR {stats.totalExpense.toLocaleString()}</div>
-            <div className="kpi-sub">Salaries, Fuel, Lease, Other</div>
+            <div className="kpi-sub">Staff, Lease, Other Expenses</div>
           </div>
           <div className="kpi-card" style={{ '--kpi-color': '#F59E0B' }}>
-            <div className="kpi-label">Hire Revenue</div>
+            <div className="kpi-label">Rental Revenue</div>
             <div className="kpi-value">LKR {stats.totalHire.toLocaleString()}</div>
-            <div className="kpi-sub">{stats.fHires.length} jobs completed</div>
+            <div className="kpi-sub">{stats.fHires.length} bookings completed</div>
           </div>
           <div className="kpi-card" style={{ '--kpi-color': '#10B981' }}>
             <div className="kpi-label">Payments Received</div>
@@ -289,11 +273,8 @@ const FinancialReport = () => {
           </div>
         </div>
 
-
-
-        {/* ── Income & Expense Breakdown ── */}
         <div className="report-section">
-          <div className="report-section-title">Income & Expense Breakdown</div>
+          <div className="report-section-title">Income &amp; Expense Breakdown</div>
           <table className="breakdown-table">
             <thead>
               <tr>
@@ -306,7 +287,7 @@ const FinancialReport = () => {
             </thead>
             <tbody>
               <tr>
-                <td><span className="cat-badge cat-revenue">Hire Revenue</span></td>
+                <td><span className="cat-badge cat-revenue">Rental Revenue</span></td>
                 <td>Income</td>
                 <td>{stats.fHires.length}</td>
                 <td className="amount-cell amount-pos">+ {stats.totalHire.toLocaleString()}</td>
@@ -327,23 +308,16 @@ const FinancialReport = () => {
                 <td>—</td>
               </tr>
               <tr>
-                <td><span className="cat-badge cat-expense">Salary Payments</span></td>
+                <td><span className="cat-badge cat-expense">Staff Wages</span></td>
                 <td>Expense</td>
                 <td>{stats.fSalaries.length}</td>
                 <td className="amount-cell amount-neg">− {stats.totalSalary.toLocaleString()}</td>
                 <td>{stats.totalIncome > 0 ? ((stats.totalSalary / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
               </tr>
               <tr>
-                <td><span className="cat-badge cat-expense">Fuel Cost</span></td>
-                <td>Expense</td>
-                <td>{stats.fDiesel.length}</td>
-                <td className="amount-cell amount-neg">− {stats.totalDiesel.toLocaleString()}</td>
-                <td>{stats.totalIncome > 0 ? ((stats.totalDiesel / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
-              </tr>
-              <tr>
                 <td><span className="cat-badge cat-expense">Leasing Payments</span></td>
                 <td>Expense</td>
-                <td>{data.vehicles.filter(v => v.hasLeasing).length} units</td>
+                <td>{data.tools.filter(t => t.hasLeasing).length} units</td>
                 <td className="amount-cell amount-neg">− {stats.totalLeasing.toLocaleString()}</td>
                 <td>{stats.totalIncome > 0 ? ((stats.totalLeasing / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
               </tr>
@@ -365,16 +339,15 @@ const FinancialReport = () => {
           </table>
         </div>
 
-        {/* ── Recent Hire Transactions ── */}
         {stats.fHires.length > 0 && (
           <div className="report-section">
-            <div className="report-section-title">Recent Hire Jobs</div>
+            <div className="report-section-title">Recent Rental Transactions</div>
             <div className="transactions-list">
               {stats.fHires.slice(0, 6).map((h, i) => (
                 <div key={i} className="txn-item">
                   <div className="txn-dot" style={{ background: '#2563EB' }}></div>
                   <div className="txn-info">
-                    <p>{h.client || 'Unknown Client'} — {h.vehicle || 'N/A'}</p>
+                    <p>{h.client || 'Customer'} — {h.vehicle || 'Tool ID'}</p>
                     <span>{h.city || '—'} · {h.date ? new Date(h.date).toLocaleDateString() : '—'}</span>
                   </div>
                   <div className="txn-amount" style={{ color: '#2563EB' }}>
@@ -386,16 +359,15 @@ const FinancialReport = () => {
           </div>
         )}
 
-        {/* ── Recent Salary Records ── */}
         {stats.fSalaries.length > 0 && (
           <div className="report-section">
-            <div className="report-section-title">Salary Disbursements</div>
+            <div className="report-section-title">Staff Salary Disbursements</div>
             <div className="transactions-list">
               {stats.fSalaries.slice(0, 6).map((s, i) => (
                 <div key={i} className="txn-item">
                   <div className="txn-dot" style={{ background: '#F59E0B' }}></div>
                   <div className="txn-info">
-                    <p>{s.employee || 'Employee'} — {s.vehicle || '—'}</p>
+                    <p>{s.employee || 'Staff'} — {s.role || 'Role'}</p>
                     <span>{s.month}</span>
                   </div>
                   <div className="txn-amount" style={{ color: '#EF4444' }}>
@@ -407,51 +379,8 @@ const FinancialReport = () => {
           </div>
         )}
 
-        {/* ── Recent Extra Income ── */}
-        {stats.fExtraIncome.length > 0 && (
-          <div className="report-section">
-            <div className="report-section-title">Other Income Sources</div>
-            <div className="transactions-list">
-              {stats.fExtraIncome.slice(0, 6).map((ei, i) => (
-                <div key={i} className="txn-item">
-                  <div className="txn-dot" style={{ background: '#10B981' }}></div>
-                  <div className="txn-info">
-                    <p>{ei.description || 'Other Income'}</p>
-                    <span>{ei.category || 'General'} · {ei.date ? new Date(ei.date).toLocaleDateString() : '—'}</span>
-                  </div>
-                  <div className="txn-amount" style={{ color: '#10B981' }}>
-                    LKR {parseFloat(ei.amount || 0).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Recent Expenses ── */}
-        {stats.fExpenses.length > 0 && (
-          <div className="report-section">
-            <div className="report-section-title">General Expenses</div>
-            <div className="transactions-list">
-              {stats.fExpenses.slice(0, 6).map((ex, i) => (
-                <div key={i} className="txn-item">
-                  <div className="txn-dot" style={{ background: '#EF4444' }}></div>
-                  <div className="txn-info">
-                    <p>{ex.description || 'Other Expense'}</p>
-                    <span>{ex.category || 'General'} · {ex.date ? new Date(ex.date).toLocaleDateString() : '—'}</span>
-                  </div>
-                  <div className="txn-amount" style={{ color: '#EF4444' }}>
-                    LKR {parseFloat(ex.amount || 0).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Footer */}
         <div className="report-footer">
-          <span>RAXWO Rent A Car Management System · Confidential</span>
+          <span>RAXWO Tool Rentals Management System · Confidential</span>
           <span>Generated on {new Date().toLocaleString()}</span>
         </div>
       </div>

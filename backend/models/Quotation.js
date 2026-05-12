@@ -7,10 +7,10 @@ const QuotationSchema = new mongoose.Schema({
   clientAddress: { type: String },
   
   // Specifications
-  vehicleType: { type: String },
-  vehicleNo: { type: String },
-  maxHeight: { type: String },
-  maxWeight: { type: String },
+  toolCategory: { type: String },
+  toolNo: { type: String },
+  toolSpec1: { type: String },
+  toolSpec2: { type: String },
   
   // Charges
   mandatoryCharge: { type: Number, default: 0 },

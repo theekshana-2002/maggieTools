@@ -4,7 +4,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
 import QuotationForm from './QuotationForm';
-import { FileCheck, Plus, Download, Trash2, Search, RefreshCw, FileDown } from 'lucide-react';
+import { FileCheck, Plus, Download, Trash2, Search, RefreshCw, FileDown, PlusCircle } from 'lucide-react';
 import { generateQuotationPDF } from '../utils/billingGenerator';
 import { generatePDFReport } from '../utils/reportGenerator';
 import '../styles/forms.css';
@@ -17,7 +17,7 @@ const DEFAULT_TERMS = `1. Prices are exclusive of any taxes unless mentioned.
 const QuotationBook = () => {
   const [quotations, setQuotations] = useState([]);
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const userRole = localStorage.getItem('kt_user_role');
+  const userRole = localStorage.getItem('raxwo_user_role');
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
 
   const [loading, setLoading] = useState(true);
@@ -47,7 +47,7 @@ const QuotationBook = () => {
         ),
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" style={{ background: '#ec4899', color:'white' }} onClick={() => generateQuotationPDF(quote)} title="Download PDF">
+            <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateQuotationPDF(quote)} title="Download PDF">
                <FileDown size={14} /> PDF
             </button>
             {canManage && <button className="edit-btn" onClick={() => handleEdit(quote)}>Edit</button>}
@@ -98,7 +98,7 @@ const QuotationBook = () => {
   };
 
   const handleExportFullReport = () => {
-    const columns = ['QUOTE#', 'DATE', 'CLIENT', 'VALIDITY', 'EST. TOTAL', 'STATUS'];
+    const columns = ['QUOTE#', 'DATE', 'CUSTOMER', 'VALIDITY', 'EST. TOTAL', 'STATUS'];
     const data = filtered.map(q => [
       q.quotationNo || '—',
       new Date(q.date).toLocaleDateString(),
@@ -129,6 +129,25 @@ const QuotationBook = () => {
   return (
     <div className="book-container">
       
+      <div className="dashboard-header">
+        <div>
+          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Sales & Proposals</p>
+          <h1>Service Quotations</h1>
+        </div>
+        <div className="header-controls">
+           <div className="search-box">
+             <Search className="search-icon" size={18} />
+             <input type="text" placeholder="Search quotes..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+           </div>
+           <button className="theme-toggle-btn" onClick={fetchQuotations} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+           {canManage && (
+             <button className="refresh-btn" onClick={handleAddNew} style={{ height: '48px', padding: '0 24px' }}>
+               <PlusCircle size={18} /> New Quotation
+             </button>
+           )}
+        </div>
+      </div>
+
       <div className="book-summary">
         <div className="summary-item">
           <label>TOTAL QUOTES</label>
@@ -136,46 +155,24 @@ const QuotationBook = () => {
         </div>
         <div className="summary-item">
           <label>ACTIVE / OPEN</label>
-          <h3 style={{ color: '#F59E0B' }}>{stats.activeCount} Open</h3>
+          <h3 style={{ color: 'var(--warning)' }}>{stats.activeCount} Open</h3>
         </div>
         <div className="summary-item" style={{ borderRight: 'none' }}>
           <label>POTENTIAL REVENUE</label>
-          <h3 style={{ color: '#2563EB' }}>LKR {stats.totalPotentialRevenue.toLocaleString()}</h3>
+          <h3 style={{ color: 'var(--accent)' }}>LKR {stats.totalPotentialRevenue.toLocaleString()}</h3>
         </div>
       </div>
 
-      <div className="book-filters">
-        <div className="search-box">
-          <Search className="search-icon" size={20} />
-          <input 
-            type="text" 
-            placeholder="Search by Quote No, Client..." 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="filter-actions">
-          <button className="secondary-btn" onClick={fetchQuotations} title="Refresh">
-            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
-          </button>
-          <button className="secondary-btn" onClick={handleExportFullReport}>
-            <Download size={18} /> <span>Export Report</span>
-          </button>
-          <button className="add-btn" onClick={handleAddNew}>
-            <Plus size={18} /> <span>New Quotation</span>
-          </button>
-        </div>
+      <div className="compliance-card">
+        <DataTable 
+          columns={['QUOTE#', 'DATE', 'CUSTOMER', 'VALIDITY', 'EST. TOTAL', 'STATUS', 'ACTION']}
+          data={filtered}
+          loading={loading}
+          onRowClick={handleRowClick}
+          emptyMessage="No quotations found."
+        />
       </div>
 
-      <DataTable 
-        columns={['QUOTE#', 'DATE', 'CLIENT', 'VALIDITY', 'EST. TOTAL', 'STATUS', 'ACTION']}
-        data={filtered}
-        loading={loading}
-        onRowClick={handleRowClick}
-        emptyMessage="No quotations found."
-      />
-
-      {/* New/Edit Quotation Modal */}
       <Modal 
         isOpen={showModal} 
         onClose={() => { setShowModal(false); setEditingItem(null); }} 
@@ -188,7 +185,6 @@ const QuotationBook = () => {
         />
       </Modal>
 
-      {/* Details Modal */}
       <Modal isOpen={isDetailsOpen} onClose={() => setIsDetailsOpen(false)} title="Quotation Details">
         {selectedRecord && <RecordDetails data={selectedRecord} type="quotation" />}
       </Modal>

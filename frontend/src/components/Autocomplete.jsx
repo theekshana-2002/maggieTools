@@ -61,28 +61,30 @@ const Autocomplete = ({
         value={userInput}
         onChange={handleInputChange}
         onFocus={() => {
-          if (userInput.trim() !== '') {
-            const filtered = options.filter(opt => 
-              opt.toLowerCase().includes(userInput.toLowerCase())
-            );
-            setSuggestions(filtered);
-            setIsOpen(true);
-          } else {
-            setSuggestions(options);
-            setIsOpen(true);
-          }
+          const filtered = options.filter(opt => 
+            (opt || '').toLowerCase().includes((userInput || '').toLowerCase())
+          );
+          setSuggestions(filtered);
+          setIsOpen(true);
         }}
         placeholder={placeholder}
         required={required}
         autoComplete="off"
       />
-      {isOpen && suggestions.length > 0 && (
+      {isOpen && (
         <ul className="suggestions-list">
-          {suggestions.map((opt, i) => (
-            <li key={i} onClick={() => handleSelect(opt)}>
-              {opt}
-            </li>
-          ))}
+          {suggestions.length > 0 ? (
+            suggestions.map((opt, i) => (
+              <li key={i} onMouseDown={(e) => {
+                e.preventDefault(); // Prevents input blur before selection
+                handleSelect(opt);
+              }}>
+                {opt}
+              </li>
+            ))
+          ) : (
+            <li className="no-suggestions">No matches found</li>
+          )}
         </ul>
       )}
     </div>

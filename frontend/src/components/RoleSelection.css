@@ -4,7 +4,7 @@
 
 .gateway-layout {
   min-height: 100vh;
-  background: var(--bg-main);
+  background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.9)), url('/gateway_background_1778526540019.png') center/cover fixed;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -18,12 +18,13 @@
   position: absolute;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
 }
 
 .blob {
   position: absolute;
   filter: blur(120px);
-  opacity: 0.15;
+  opacity: 0.2;
   border-radius: 50%;
   z-index: 1;
 }
@@ -68,21 +69,22 @@
 }
 
 .gateway-header h1 {
-  font-size: 3rem;
+  font-size: 3.5rem;
   font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -0.04em;
+  color: #fff;
+  letter-spacing: -0.01em;
   margin-bottom: 12px;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .gateway-header h1 span {
-  color: var(--text-muted);
-  font-weight: 400;
+  color: var(--accent);
+  font-weight: 800;
 }
 
 .gateway-header p {
-  font-size: 1.125rem;
-  color: var(--text-muted);
+  font-size: 1.25rem;
+  color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
 }
 
@@ -95,9 +97,10 @@
 }
 
 .gateway-card {
-  background: var(--bg-card);
-  backdrop-filter: var(--blur);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 32px;
   padding: 40px;
   text-align: left;
@@ -106,15 +109,15 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 380px;
-  box-shadow: var(--shadow-sm);
+  min-height: 400px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 }
 
 .gateway-card:hover {
   transform: translateY(-12px);
   border-color: var(--role-color);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  background: var(--bg-main);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .gateway-icon-box {
@@ -141,14 +144,14 @@
 .gateway-card h3 {
   font-size: 1.5rem;
   font-weight: 800;
-  color: var(--text-main);
+  color: #fff;
   margin-bottom: 16px;
 }
 
 .gateway-card p {
   font-size: 1rem;
   line-height: 1.6;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 500;
 }
 
@@ -165,7 +168,7 @@
 .gateway-card-footer span {
   font-size: 0.875rem;
   font-weight: 800;
-  color: var(--text-main);
+  color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }

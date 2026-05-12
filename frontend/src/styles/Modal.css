@@ -31,6 +31,11 @@
     0 10px 15px -3px rgba(0, 0, 0, 0.1), 
     0 4px 6px -2px rgba(0, 0, 0, 0.05),
     0 0 0 1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden; 
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (max-width: 640px) {
@@ -42,12 +47,6 @@
   .modal-header {
     padding: 16px 20px;
   }
-}
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden; 
-  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes modalSlideUp {
@@ -69,7 +68,7 @@
   font-size: 1.25rem;
   font-weight: 800;
   color: #1E293B;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .close-btn {

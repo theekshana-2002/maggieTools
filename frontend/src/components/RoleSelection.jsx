@@ -3,19 +3,19 @@ import { ShieldCheck, Users, HardHat, ChevronRight } from 'lucide-react';
 import './RoleSelection.css';
 import logo from '../logo.png';
 
-const RoleSelection = ({ onRoleSelect }) => {
+const RoleSelection = ({ onRoleSelect, appSettings }) => {
   const roles = [
     {
       id: 'Admin',
       title: 'System Administrator',
-      desc: 'Full access to financial records, fleet oversight, and global management.',
+      desc: 'Full access to financial records, inventory oversight, and global management.',
       icon: ShieldCheck,
       color: 'var(--accent)',
     },
     {
       id: 'Manager',
       title: 'Operations Manager',
-      desc: 'Manage day-to-day car bookings, client relations, and operational reports.',
+      desc: 'Manage day-to-day tool bookings, client relations, and operational reports.',
       icon: Users,
       color: '#10B981',
     },
@@ -37,9 +37,9 @@ const RoleSelection = ({ onRoleSelect }) => {
       
       <div className="gateway-content">
         <div className="gateway-header">
-          <img src={logo} alt="RAXWO Logo" className="gateway-logo" />
-          <h1>RAXWO <span>Rent A Car</span></h1>
-          <p>The Standard of Excellence in Fleet Management.</p>
+          <img src={appSettings?.logo || logo} alt={appSettings?.companyName || 'Logo'} className="gateway-logo" />
+          <h1>{appSettings?.companyName || 'RAXWO'} <span>Tool Rentals</span></h1>
+          <p>The Standard of Excellence in Equipment Management.</p>
         </div>
 
         <div className="gateway-grid">
@@ -72,7 +72,7 @@ const RoleSelection = ({ onRoleSelect }) => {
         </div>
 
         <footer className="gateway-footer">
-          <p>© {new Date().getFullYear()} RAXWO International. Secure Gateway System.</p>
+          <p>© {new Date().getFullYear()} {appSettings?.companyName || 'RAXWO International'}. Secure Gateway System.</p>
         </footer>
       </div>
     </div>

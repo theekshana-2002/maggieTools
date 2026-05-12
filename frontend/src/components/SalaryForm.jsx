@@ -93,7 +93,7 @@ const SalaryForm = ({ onSubmit, onCancel, initialData }) => {
 
     const jobs = hireData.filter(h => {
       const d = new Date(h.date);
-      return (h.driverName?.trim() === emp.name.trim() || h.helperName?.trim() === emp.name.trim()) && 
+      return (h.operatorName?.trim() === emp.name.trim() || h.helperName?.trim() === emp.name.trim()) && 
              d.getMonth() === targetMonth && d.getFullYear() === targetYear;
     });
 
@@ -114,12 +114,12 @@ const SalaryForm = ({ onSubmit, onCancel, initialData }) => {
     let attendanceBonus = 0;
     let attendancePenalty = 0;
 
-    if (emp.role === 'Driver' || emp.role === 'Manager') {
+    if (emp.role === 'Operator' || emp.role === 'Manager') {
       basic = emp.basicSalary || 0;
       if (workDays < 5 && workDays > 0) attendancePenalty = 1000;
       if (workDays > 25) attendanceBonus = (workDays - 25) * 1000;
-
-      if (emp.role === 'Driver') {
+      
+      if (emp.role === 'Operator') {
         totalHours = jobs.reduce((sum, j) => sum + (parseFloat(j.workingHours) || 0), 0);
         hourlyEarnings = totalHours * (emp.hourlyRate || 0);
         dailyAllowance = workDays * 500;

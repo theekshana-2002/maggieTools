@@ -29,7 +29,7 @@ router.post('/', async (req, res) => {
     if (!req.body.invoiceNo || req.body.invoiceNo === '') {
       const seq = await getNextSequence('invoiceNo');
       const year = new Date().getFullYear().toString().slice(-2);
-      req.body.invoiceNo = `INV-${year}-${seq.toString().padStart(4, '0')}`;
+      req.body.invoiceNo = `RT-INV-${year}-${seq.toString().padStart(4, '0')}`;
     }
 
     const newInvoice = new Invoice(req.body);

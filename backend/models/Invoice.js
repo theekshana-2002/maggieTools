@@ -5,15 +5,15 @@ const InvoiceSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   clientName: { type: String, required: true },
   site: { type: String },
-  vehicleNo: { type: String, required: true },
-  vehicleType: { type: String },
+  toolNo: { type: String, required: true },
+  toolCategory: { type: String },
   jobDescription: { type: String },
   
   // Time tracking
   startTime: { type: String },
   endTime: { type: String },
   totalUnits: { type: Number, default: 0 }, // Hours or Days
-  unitType: { type: String, enum: ['Hours', 'Days', 'Lumpsum', 'KM'], default: 'Hours' },
+  unitType: { type: String, enum: ['Hours', 'Days', 'Lumpsum', 'KM'], default: 'Days' },
   ratePerUnit: { type: Number, default: 0 },
   
   // Additional Charges
@@ -23,12 +23,19 @@ const InvoiceSchema = new mongoose.Schema({
   
   // Totals
   subtotal: { type: Number, default: 0 },
+  advancePayment: { type: Number, default: 0 },
   totalAmount: { type: Number, required: true },
+  balanceAmount: { type: Number, default: 0 },
   
   status: { type: String, enum: ['Draft', 'Sent', 'Paid', 'Cancelled'], default: 'Draft' },
   remarks: { type: String },
   hireId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hire' },
-  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' }
+  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
+  accessories: [{
+    name: String,
+    quantity: Number,
+    price: Number
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Invoice', InvoiceSchema);

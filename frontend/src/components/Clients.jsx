@@ -23,7 +23,7 @@ const Clients = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const columns = ['CLIENT NAME', 'CONTACT', 'TOTAL HIRES', 'OUTSTANDING', 'STATUS', 'ACTION'];
+  const columns = ['CUSTOMER NAME', 'CONTACT', 'TOTAL RENTALS', 'OUTSTANDING', 'STATUS', 'ACTION'];
 
   useEffect(() => { fetchRecords(); }, []);
 
@@ -36,7 +36,7 @@ const Clients = () => {
         rawData: item,
         name_disp: <strong style={{ color: 'var(--text-main)' }}>{item.name || '—'}</strong>,
         contact_disp: <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Phone size={14} color="var(--text-dim)" /> {item.contact || '—'}</div>,
-        hires_disp: <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{item.totalHires || 0} Hires</span>,
+        hires_disp: <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{item.totalHires || 0} Rentals</span>,
         outstanding_disp: <strong style={{ color: (item.outstanding || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {(item.outstanding || 0).toLocaleString()}</strong>,
         status_disp: (
           <span className={`status-badge ${item.status === 'Active' ? 'status-completed' : 'status-cancelled'}`}>

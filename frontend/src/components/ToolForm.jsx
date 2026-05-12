@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { vehicleAPI } from '../services/api';
-import { Truck, Hash, Gauge, Calendar, Shield, CreditCard, Droplet } from 'lucide-react';
+import { toolAPI } from '../services/api';
+import { Wrench, Hash, Zap, Calendar, Shield, CreditCard, Package } from 'lucide-react';
 import '../styles/forms.css';
 
-const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
+const ToolForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
     number: '',
     model: '',
-    category: 'Economy',
-    fuelType: 'Petrol',
+    category: 'General',
+    powerSource: 'Electric',
     status: 'Available',
     dailyRate: 0,
-    kmLimitPerDay: 100,
-    extraKmRate: 50,
-    insuranceExpirationDate: '',
-    licenseExpirationDate: '',
-    safetyExpirationDate: '',
+    warrantyExpirationDate: '',
+    nextServiceDate: '',
+    lastServiceDate: '',
     hasLeasing: false,
     leasingCompany: '',
     monthlyPremium: 0,
@@ -29,9 +27,9 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
     if (initialData) {
       setFormData({
         ...initialData,
-        insuranceExpirationDate: initialData.insuranceExpirationDate ? new Date(initialData.insuranceExpirationDate).toISOString().split('T')[0] : '',
-        licenseExpirationDate: initialData.licenseExpirationDate ? new Date(initialData.licenseExpirationDate).toISOString().split('T')[0] : '',
-        safetyExpirationDate: initialData.safetyExpirationDate ? new Date(initialData.safetyExpirationDate).toISOString().split('T')[0] : '',
+        warrantyExpirationDate: initialData.warrantyExpirationDate ? new Date(initialData.warrantyExpirationDate).toISOString().split('T')[0] : '',
+        nextServiceDate: initialData.nextServiceDate ? new Date(initialData.nextServiceDate).toISOString().split('T')[0] : '',
+        lastServiceDate: initialData.lastServiceDate ? new Date(initialData.lastServiceDate).toISOString().split('T')[0] : '',
         leaseFinalDate: initialData.leaseFinalDate ? new Date(initialData.leaseFinalDate).toISOString().split('T')[0] : ''
       });
     }
@@ -42,14 +40,14 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
     setLoading(true);
     try {
       if (initialData) {
-        await vehicleAPI.update(initialData._id, formData);
+        await toolAPI.update(initialData._id, formData);
       } else {
-        await vehicleAPI.create(formData);
+        await toolAPI.create(formData);
       }
       onSubmit();
     } catch (err) {
       console.error(err);
-      alert('Failed to save vehicle. Check if plate number is unique.');
+      alert('Failed to save tool. Check if Tool ID is unique.');
     } finally {
       setLoading(false);
     }
@@ -60,24 +58,24 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
       <div className="hire-form-scroll">
         
         <div className="form-section">
-          <p className="form-section-title"><Truck size={16} /> Basic Information</p>
+          <p className="form-section-title"><Package size={16} /> Basic Information</p>
           <div className="form-grid-2">
             <div className="form-group">
-              <label>Plate Number *</label>
+              <label>Tool ID / Serial *</label>
               <div className="select-wrapper">
                 <Hash className="input-icon-left" size={16} />
                 <input 
                   style={{ paddingLeft: '40px' }}
-                  type="text" required placeholder="e.g. WP CAA-1234"
+                  type="text" required placeholder="e.g. GRILL-001"
                   value={formData.number}
                   onChange={e => setFormData({...formData, number: e.target.value.toUpperCase()})}
                 />
               </div>
             </div>
             <div className="form-group">
-              <label>Vehicle Model</label>
+              <label>Tool Model</label>
               <input 
-                type="text" placeholder="e.g. Toyota Prius"
+                type="text" placeholder="e.g. Electric Grill Large"
                 value={formData.model}
                 onChange={e => setFormData({...formData, model: e.target.value})}
               />
@@ -88,23 +86,23 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
              <div className="form-group">
                <label>Category</label>
                <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                  <option value="Economy">Economy</option>
-                  <option value="Premium">Premium</option>
-                  <option value="Luxury">Luxury</option>
-                  <option value="SUV">SUV</option>
-                  <option value="Van">Van</option>
-                  <option value="Wedding Car">Wedding Car</option>
+                  <option value="General">General</option>
+                  <option value="Kitchen">Kitchen / Catering</option>
+                  <option value="Electric">Power Tools</option>
+                  <option value="Construction">Construction</option>
+                  <option value="Garden">Garden</option>
+                  <option value="Cleaning">Cleaning</option>
                </select>
              </div>
              <div className="form-group">
-               <label>Fuel Type</label>
+               <label>Power Source</label>
                <div className="select-wrapper">
-                 <Droplet className="input-icon-left" size={16} />
-                 <select style={{ paddingLeft: '40px' }} value={formData.fuelType} onChange={e => setFormData({...formData, fuelType: e.target.value})}>
-                    <option value="Petrol">Petrol</option>
-                    <option value="Diesel">Diesel</option>
-                    <option value="Hybrid">Hybrid</option>
-                    <option value="Electric">Electric</option>
+                 <Zap className="input-icon-left" size={16} />
+                 <select style={{ paddingLeft: '40px' }} value={formData.powerSource} onChange={e => setFormData({...formData, powerSource: e.target.value})}>
+                    <option value="Electric">Electric (Corded)</option>
+                    <option value="Battery">Battery Powered</option>
+                    <option value="Petrol">Petrol / Diesel</option>
+                    <option value="Manual">Manual / Mechanical</option>
                  </select>
                </div>
              </div>
@@ -114,25 +112,18 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
                   <option value="Available">Available</option>
                   <option value="Booked">Booked</option>
                   <option value="Maintenance">Maintenance</option>
+                  <option value="Repair">Under Repair</option>
                </select>
              </div>
           </div>
         </div>
 
         <div className="form-section" style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-glow)' }}>
-          <p className="form-section-title" style={{ color: 'var(--accent)' }}><CreditCard size={16} /> Rates & Limitations</p>
-          <div className="form-grid-3">
+          <p className="form-section-title" style={{ color: 'var(--accent)' }}><CreditCard size={16} /> Rates</p>
+          <div className="form-grid-1">
             <div className="form-group">
               <label>Daily Rate (LKR)</label>
               <input type="number" value={formData.dailyRate} onChange={e => setFormData({...formData, dailyRate: Number(e.target.value)})} />
-            </div>
-            <div className="form-group">
-              <label>KM Limit / Day</label>
-              <input type="number" value={formData.kmLimitPerDay} onChange={e => setFormData({...formData, kmLimitPerDay: Number(e.target.value)})} />
-            </div>
-            <div className="form-group">
-              <label>Extra KM Rate</label>
-              <input type="number" value={formData.extraKmRate} onChange={e => setFormData({...formData, extraKmRate: Number(e.target.value)})} />
             </div>
           </div>
         </div>
@@ -146,7 +137,7 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
                 checked={formData.hasLeasing} 
                 onChange={e => setFormData({...formData, hasLeasing: e.target.checked})} 
               />
-              This vehicle is on lease
+              This tool is on lease
             </label>
           </div>
 
@@ -177,19 +168,19 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
         </div>
 
         <div className="form-section">
-          <p className="form-section-title"><Shield size={16} /> Compliance & Renewals</p>
+          <p className="form-section-title"><Shield size={16} /> Warranty & Maintenance</p>
           <div className="form-grid-3">
             <div className="form-group">
-              <label>Insurance Expiry</label>
-              <input type="date" value={formData.insuranceExpirationDate} onChange={e => setFormData({...formData, insuranceExpirationDate: e.target.value})} />
+              <label>Warranty Expiry</label>
+              <input type="date" value={formData.warrantyExpirationDate} onChange={e => setFormData({...formData, warrantyExpirationDate: e.target.value})} />
             </div>
             <div className="form-group">
-              <label>License Expiry</label>
-              <input type="date" value={formData.licenseExpirationDate} onChange={e => setFormData({...formData, licenseExpirationDate: e.target.value})} />
+              <label>Next Service</label>
+              <input type="date" value={formData.nextServiceDate} onChange={e => setFormData({...formData, nextServiceDate: e.target.value})} />
             </div>
             <div className="form-group">
-              <label>Safety Cert Expiry</label>
-              <input type="date" value={formData.safetyExpirationDate} onChange={e => setFormData({...formData, safetyExpirationDate: e.target.value})} />
+              <label>Last Service</label>
+              <input type="date" value={formData.lastServiceDate} onChange={e => setFormData({...formData, lastServiceDate: e.target.value})} />
             </div>
           </div>
         </div>
@@ -198,13 +189,13 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
 
       <div className="hire-form-footer">
         <div className="total-display">
-          <span>{initialData ? 'Update Fleet Record' : 'Register New Vehicle'}</span>
+          <span>{initialData ? 'Update Inventory Record' : 'Register New Tool'}</span>
           <strong>{formData.number || 'New Unit'}</strong>
         </div>
         <div className="modal-actions">
           <button type="button" className="cancel-btn" onClick={onCancel}>Cancel</button>
           <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? 'Processing...' : initialData ? 'Update Vehicle' : 'Register Vehicle'}
+            {loading ? 'Processing...' : initialData ? 'Update Tool' : 'Register Tool'}
           </button>
         </div>
       </div>
@@ -212,4 +203,4 @@ const VehicleForm = ({ onSubmit, onCancel, initialData }) => {
   );
 };
 
-export default VehicleForm;
+export default ToolForm;

@@ -25,31 +25,55 @@ const InvoiceBook = () => {
 
   useEffect(() => { fetchInvoices(); }, []);
 
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this invoice? This cannot be undone.')) {
+      try {
+        await api.delete(`invoices/${id}`);
+        fetchInvoices();
+      } catch (err) {
+        alert('Failed to delete invoice.');
+      }
+    }
+  };
+
   const fetchInvoices = async () => {
     setLoading(true);
     try {
       const res = await api.get('invoices');
       const raw = Array.isArray(res.data) ? res.data : [];
-      setInvoices(raw.map(inv => ({
-        ...inv,
-        rawData: inv,
-        invoiceNo_disp: <strong style={{ color: 'var(--text-main)' }}>{inv.invoiceNo}</strong>,
-        date_disp: new Date(inv.date).toLocaleDateString(),
-        totalAmount_disp: <strong style={{ color: 'var(--accent)' }}>LKR {(inv.totalAmount || 0).toLocaleString()}</strong>,
-        status_disp: (
-          <span className={`status-badge ${inv.status === 'Paid' ? 'status-completed' : inv.status === 'Cancelled' ? 'status-cancelled' : 'status-active'}`}>
-            {inv.status || 'Draft'}
-          </span>
-        ),
-        action: (
-          <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateInvoicePDF(inv)}>
-               <FileDown size={14} /> PDF
-            </button>
-            {canManage && <button className="edit-btn" onClick={() => { setEditingItem(inv); setShowModal(true); }}>Edit</button>}
-          </div>
-        )
-      })));
+      setInvoices(raw.map(inv => {
+        const total = inv.totalAmount || 0;
+        const balance = inv.balanceAmount !== undefined ? inv.balanceAmount : total;
+        
+        return {
+          ...inv,
+          rawData: inv,
+          invoiceNo_disp: <strong style={{ color: 'var(--text-main)' }}>{inv.invoiceNo}</strong>,
+          date_disp: new Date(inv.date).toLocaleDateString(),
+          TOTAL: <strong style={{ color: 'var(--accent)' }}>LKR {total.toLocaleString()}</strong>,
+          BALANCE: <strong style={{ color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {balance.toLocaleString()}</strong>,
+          status_disp: (
+            <span className={`status-badge ${inv.status === 'Paid' ? 'status-completed' : inv.status === 'Cancelled' ? 'status-cancelled' : 'status-active'}`}>
+              {inv.status || 'Draft'}
+            </span>
+          ),
+          action: (
+            <div className="table-actions" onClick={e => e.stopPropagation()}>
+              <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateInvoicePDF(inv)}>
+                 <FileDown size={14} /> PDF
+              </button>
+              {canManage && (
+                <>
+                  <button className="edit-btn" onClick={() => { setEditingItem(inv); setShowModal(true); }}>Edit</button>
+                  <button className="delete-btn" onClick={() => handleDelete(inv._id)} style={{ color: 'var(--danger)' }}>
+                    <Trash2 size={14} />
+                  </button>
+                </>
+              )}
+            </div>
+          )
+        };
+      }));
     } catch (err) { console.error('RAXWO Invoices: Fetch failed', err); }
     finally { setLoading(false); }
   };
@@ -89,7 +113,7 @@ const InvoiceBook = () => {
            )}
         </div>
       </div>
-
+ 
       {/* ── Summary ── */}
       <div className="book-summary">
         <div className="summary-item">
@@ -111,7 +135,7 @@ const InvoiceBook = () => {
 
       <div className="compliance-card">
         <DataTable 
-          columns={['INV#', 'DATE', 'CLIENT', 'TOTAL', 'STATUS', 'ACTION']}
+          columns={['INV#', 'DATE', 'CLIENT', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION']}
           data={filtered}
           loading={loading}
           onRowClick={(r) => { setSelectedRecord(r.rawData || r); setIsDetailsOpen(true); }}

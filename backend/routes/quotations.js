@@ -19,11 +19,11 @@ router.post('/', async (req, res) => {
     if (!req.body.quotationNo) {
       const lastQuo = await Quotation.findOne().sort({ createdAt: -1 });
       let nextNum = 1001;
-      if (lastQuo && lastQuo.quotationNo && lastQuo.quotationNo.startsWith('KT-QUO-')) {
+      if (lastQuo && lastQuo.quotationNo && lastQuo.quotationNo.startsWith('RT-QUO-')) {
         const lastNum = parseInt(lastQuo.quotationNo.split('-')[2]);
         if (!isNaN(lastNum)) nextNum = lastNum + 1;
       }
-      req.body.quotationNo = `KT-QUO-${nextNum}`;
+      req.body.quotationNo = `RT-QUO-${nextNum}`;
     }
 
     const newQuo = new Quotation(req.body);

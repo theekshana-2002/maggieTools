@@ -3,7 +3,6 @@ import {
   LayoutDashboard, 
   Truck, 
   Users, 
-  Fuel, 
   CreditCard, 
   Contact,
   LogOut,
@@ -15,30 +14,38 @@ import {
   Wallet,
   TrendingDown,
   X,
-  Shield
+  Shield,
+  Package,
+  Wrench,
+  Clock,
+  Box,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import './Sidebar.css';
 import logo from '../logo.png';
 
-const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen, isCollapsed, onClose, onToggleCollapse }) => {
+const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen, isCollapsed, onClose, onToggleCollapse, appSettings }) => {
   const allMenuItems = [
     { id: 'dashboard',  label: 'Main Dashboard',     icon: LayoutDashboard },
-    { id: 'bookings',   label: 'Bookings',           icon: Car },
-    { id: 'vehicles',   label: 'Manage Fleet',       icon: Truck },
+    { id: 'stock',      label: 'Stock Inventory',    icon: Package },
+    { id: 'accessories', label: 'Parts & Accessories', icon: Box },
+    { id: 'bookings',   label: 'Rentals & Bookings', icon: FileCheck },
+    { id: 'tools',      label: 'Tool Inventory',     icon: Package },
     { id: 'salaries',   label: 'Staff Salaries',     icon: Contact },
     { id: 'payments',   label: 'Payment History',    icon: CreditCard },
     { id: 'invoices',   label: 'Customer Invoices',  icon: FileText },
     { id: 'quotations', label: 'Price Quotes',       icon: FileCheck },
     { id: 'expenses',    label: 'Other Expenses',    icon: TrendingDown },
-    { id: 'clients',    label: 'Client List',        icon: Users },
-    { id: 'compliance', label: 'Renewals & Safety',  icon: FileCheck },
+    { id: 'clients',    label: 'Customer List',      icon: Users },
+    { id: 'compliance', label: 'Service & Maint.',   icon: Wrench },
     { id: 'employees',  label: 'Our Team',           icon: UserCircle },
     { id: 'reports',    label: 'Financial Reports',  icon: FileBarChart },
+    { id: 'settings',   label: 'Settings',           icon: SettingsIcon },
   ];
 
   const menuItems = allMenuItems.filter(item => {
     if (role !== 'Admin' && role !== 'Manager') {
-      return ['dashboard', 'bookings', 'vehicles', 'compliance'].includes(item.id);
+      return ['dashboard', 'bookings', 'tools', 'compliance'].includes(item.id);
     }
     return true;
   });
@@ -47,14 +54,18 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     <div className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-logo">
         <div className="logo-row">
-          <img src={logo} alt="RAXWO" className="raxwo-logo-img" />
+          {appSettings?.logo ? (
+            <img src={appSettings.logo} alt="Logo" className="raxwo-logo-img" />
+          ) : (
+            <div className="placeholder-logo"><Package size={24} /></div>
+          )}
           <button className="sidebar-close-btn" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
         {!isCollapsed && (
           <div className="logo-text">
-            <span className="logo-subtitle">PREMIUM FLEET MANAGEMENT</span>
+            <span className="logo-subtitle">{appSettings?.companyName || 'TOOL RENTALS'}</span>
           </div>
         )}
       </div>

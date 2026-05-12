@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { LogOut, Menu, X, Sun, Moon } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
-import DieselBook from './components/DieselBook';
 import BookingBook from './components/BookingBook';
+import StockInventory from './components/StockInventory';
+import Accessories from './components/Accessories';
 import SalaryBook from './components/SalaryBook';
 import PaymentBook from './components/PaymentBook';
 import Clients from './components/Clients';
-import Vehicles from './components/Vehicles';
+import Tools from './components/Tools';
 import Employees from './components/Employees';
 import FinancialReport from './components/FinancialReport';
 import InvoiceBook from './components/InvoiceBook';
@@ -15,38 +16,46 @@ import QuotationBook from './components/QuotationBook';
 import AttendanceBook from './components/AttendanceBook';
 import ExtraIncome from './components/ExtraIncome';
 import Expenses from './components/Expenses';
+import { settingsAPI } from './services/api';
 import ComplianceBook from './components/ComplianceBook';
 import Login from './components/Login';
 import RoleSelection from './components/RoleSelection';
-import VehicleRegistration from './components/VehicleRegistration';
+import ToolRegistration from './components/ToolRegistration';
+import HireBook from './components/HireBook';
+import Settings from './components/Settings';
 import './App.css';
 
 const PAGE_TITLES = {
   dashboard: 'Main Overview',
-  bookings: 'Car Rental Bookings',
-  salaries: 'Employee Wages',
-  diesel: 'Fuel Records',
+  stock: 'Real-time Stock Availability',
+  accessories: 'Parts & Accessories Inventory',
+  bookings: 'Rentals & Bookings',
+  salaries: 'Staff Wages & Payroll',
   payments: 'Payment History',
   clients: 'Our Customers',
-  vehicles: 'Garage Fleet',
-  compliance: 'Document Renewals',
+  tools: 'Tool Inventory',
+  compliance: 'Maintenance & Service',
   employees: 'Team Members',
   reports: 'Profit & Loss Report',
   invoices: 'Customer Invoices',
   quotations: 'Service Quotes',
   attendance: 'Staff Attendance',
-  extraIncome: 'Other Income',
+  extraIncome: 'Operational Income',
   expenses: 'Business Expenses',
-  'vehicle-reg': 'Vehicle Registration',
+  'tool-reg': 'Tool Registration',
+  hires: 'Daily Rental Log',
+  settings: 'System Configuration',
 };
 
 const App = () => {
+  // Main application state
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('raxwo_auth_token'));
   const [selectedRole, setSelectedRole] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(localStorage.getItem('raxwo_sidebar_collapsed') === 'true');
   const [theme, setTheme] = useState(localStorage.getItem('raxwo_theme') || 'light');
+  const [appSettings, setAppSettings] = useState(null);
   
   const userRole = localStorage.getItem('raxwo_user_role');
   const userName = localStorage.getItem('raxwo_user_name');
@@ -55,6 +64,19 @@ const App = () => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('raxwo_theme', theme);
   }, [theme]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await settingsAPI.get();
+      setAppSettings(res.data);
+    } catch (err) {
+      console.error('Failed to fetch settings');
+    }
+  };
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -109,14 +131,14 @@ const App = () => {
 
     switch(activeTab) {
       case 'dashboard': return <Dashboard key="dashboard" role={userRole} name={userName} setActiveTab={setActiveTab} />;
+      case 'stock':     return <StockInventory />;
+      case 'accessories': return <Accessories />;
       case 'bookings':  return <BookingBook />;
-      case 'vehicle-reg': return <VehicleRegistration onComplete={() => setActiveTab('vehicles')} />;
-      case 'hires':     return <BookingBook />;
+      case 'tool-reg': return <ToolRegistration onComplete={() => setActiveTab('tools')} />;
       case 'salaries':  return <SalaryBook />;
-      case 'diesel':    return <DieselBook />;
       case 'payments':  return <PaymentBook />;
       case 'clients':   return <Clients />;
-      case 'vehicles':  return <Vehicles />;
+      case 'tools':     return <Tools />;
       case 'compliance': return <ComplianceBook />;
       case 'employees': return <Employees />;
       case 'reports':   return <FinancialReport />;
@@ -125,19 +147,21 @@ const App = () => {
       case 'attendance': return <AttendanceBook />;
       case 'extraIncome': return <ExtraIncome />;
       case 'expenses': return <Expenses />;
+      case 'settings': return <Settings onSettingsUpdate={fetchSettings} />;
       default:          return <Dashboard role={userRole} name={userName} setActiveTab={setActiveTab} />;
     }
   };
 
   if (!isAuthenticated) {
     if (!selectedRole) {
-      return <RoleSelection onRoleSelect={(role) => setSelectedRole(role)} />;
+      return <RoleSelection onRoleSelect={(role) => setSelectedRole(role)} appSettings={appSettings} />;
     }
     return (
       <Login 
         roleContext={selectedRole} 
         onLoginSuccess={() => setIsAuthenticated(true)} 
         onBack={() => setSelectedRole(null)} 
+        appSettings={appSettings}
       />
     );
   }
@@ -161,6 +185,7 @@ const App = () => {
         isCollapsed={isSidebarCollapsed}
         onClose={() => setIsSidebarOpen(false)}
         onToggleCollapse={toggleSidebarCollapse}
+        appSettings={appSettings}
       />
 
       <main className="main-content">

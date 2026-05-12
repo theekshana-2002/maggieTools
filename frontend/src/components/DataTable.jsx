@@ -31,18 +31,17 @@ const DataTable = ({ columns, data, emptyMessage, loading, onRowClick }) => {
                     // Field mapping logic
                     const fieldMap = {
                       'DATE': 'date',
-                      'CLIENT': 'clientName',
-                      'COMPANY': 'clientName',
                       'CLIENT NAME': 'name',
-                      'VEHICLE': 'vehicle',
-                      'VEHICLE NUMBER': 'number',
-                      'VEHICLE TYPE': 'vehicleType',
+                      'CUSTOMER NAME': 'name_disp',
+                      'CUSTOMER': 'clientName',
+                      'TOOL': 'tool',
+                      'TOOL NUMBER': 'toolNo',
+                      'TOOL CATEGORY': 'toolCategory',
                       'LOCATION': 'location',
                       'CITY': 'city',
                       'ADDRESS': 'address',
                       'SITE': 'site',
                       'AMOUNT': 'amount',
-                      'TOTAL': 'totalAmount_disp',
                       'TOTAL COST': 'totalCost',
                       'EST. TOTAL': 'total_disp',
                       'NET PAY': 'netPay',
@@ -56,17 +55,17 @@ const DataTable = ({ columns, data, emptyMessage, loading, onRowClick }) => {
                       'QUOTATION#': 'quotationNo',
                       'VALIDITY': 'validity_disp',
                       'EMPLOYEE': 'name',
-                      'DRIVER': 'driverName',
+                      'OPERATOR': 'operatorName',
                       'HELPER': 'helperName',
-                      'CONTACT': 'contact',
+                      'CONTACT': 'contact_disp',
                       'ROLE': 'role',
                       'JOINED': 'joined',
                       'BASIC': 'basic',
                       'INCENTIVE': 'incentive',
                       'ADVANCE': 'advance',
-                      'FUEL TYPE': 'fuelType_disp',
-                      'LITERS': 'liters',
-                      'PRICE/L': 'pricePerLiter_disp',
+                      'CONS. TYPE': 'consumableType',
+                      'QUANTITY': 'quantity',
+                      'PRICE/U': 'pricePerUnit',
                       'ODOMETER': 'odometer',
                       'NOTE': 'note',
                       'HIRE AMT':    'hireAmount',
@@ -84,7 +83,10 @@ const DataTable = ({ columns, data, emptyMessage, loading, onRowClick }) => {
                       'TOTAL HOURS': 'totalHours',
                       'HOURS IN BILL':'hoursInBill',
                       'TOTAL HIRES': 'totalHires',
-                      'OUTSTANDING': 'outstanding',
+                      'TOTAL RENTALS': 'hires_disp',
+                      'OUTSTANDING': 'outstanding_disp',
+                      'PICKUP': 'pickupDate',
+                      'RETURN': 'returnDate',
                       'NAME':        'name',
                       'NIC':         'nic',
                       'HOURS':       'workingHours',
@@ -97,7 +99,8 @@ const DataTable = ({ columns, data, emptyMessage, loading, onRowClick }) => {
                       'MONTHLY PREMIUM': 'amount',
                       'DAILY RATE': 'dailyRate_disp',
                       'CATEGORY': 'category',
-                      'MODEL': 'model'
+                      'MODEL': 'model',
+                      'TOOL ID / SERIAL': 'number'
                     };
                     
                     // Priority: Exact Column Key -> Explicit Map -> Lowercase Column Key
@@ -115,21 +118,23 @@ const DataTable = ({ columns, data, emptyMessage, loading, onRowClick }) => {
                     if (col === 'STATUS' && (value === undefined || value === null)) {
                       value = row.status_disp || row.status || '—';
                     }
-                    // Smart Fallbacks for Vehicle
-                    if ((col === 'VEHICLE' || col === 'VEHICLE NUMBER') && (value === undefined || value === null || value === '—')) {
-                      value = [row.vehicle, row.vehicleNo, row.number, row.vehicle_disp].find(v => v && v !== '—') || '—';
-                      if (value && typeof value === 'object' && value.number) {
-                        value = value.number;
+                    // Smart Fallbacks for Tool
+                    if ((col === 'TOOL' || col === 'TOOL NUMBER' || col === 'VEHICLE' || col === 'TOOL ID / SERIAL')) {
+                      if (value === undefined || value === null || value === '—') {
+                        value = [row.tool, row.toolId, row.toolNo, row.vehicle, row.vehicleNo, row.number, row.vehicle_disp].find(v => v && v !== '—') || '—';
+                        if (value && typeof value === 'object' && value.number) {
+                          value = value.number;
+                        }
                       }
                     }
                     if (col === 'LOCATION' && (value === undefined || value === '—' || value === null)) {
                       value = row.location || row.site || '—';
                     }
                     // Smart Fallbacks for Date
-                    if (col === 'DATE') {
+                    if (col === 'DATE' || col === 'DUE DATE') {
                       let rawDate = value;
                       if (rawDate === undefined || rawDate === null) {
-                        rawDate = row.date_disp || row.date;
+                        rawDate = row.date_disp || row.date || row.renewalDate;
                       }
                       
                       if (typeof rawDate === 'string' && rawDate.match(/^\d{4}-\d{2}-\d{2}T/)) {
@@ -143,8 +148,8 @@ const DataTable = ({ columns, data, emptyMessage, loading, onRowClick }) => {
                         value = rawDate || '—';
                       }
                     }
-                    if ((col === 'DRIVER' || col === 'EMPLOYEE') && (value === undefined || value === '—' || value === null)) {
-                      value = row.driverName || row.employee || row.name || '—';
+                    if ((col === 'OPERATOR' || col === 'DRIVER' || col === 'EMPLOYEE') && (value === undefined || value === '—' || value === null)) {
+                      value = row.operatorName || row.driverName || row.employee || row.name || '—';
                     }
                     if (col === 'DAILY RATE' && (value === undefined || value === null || value === '—')) {
                       const dr = row.dailyRate || row.rawData?.dailyRate;

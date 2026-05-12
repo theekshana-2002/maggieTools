@@ -34,13 +34,13 @@ export const generatePDFReport = ({ title, columns, data, filename }) => {
     doc.setFontSize(22);
     doc.setTextColor(37, 99, 235); // Professional Blue
     doc.setFont('helvetica', 'bold');
-    doc.text('RAXWO Rent A Car', textStartX, 20);
+    doc.text('RAXWO Tool Rentals', textStartX, 20);
 
     // Subtitle / Slogan
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.setFont('helvetica', 'italic');
-    doc.text('Premium Car Rental & Fleet Management', textStartX, 26);
+    doc.text('Professional Tool Rental & Management', textStartX, 26);
     
     // Company Contact aligned to Right
     doc.setFontSize(9);
@@ -95,7 +95,7 @@ export const generatePDFReport = ({ title, columns, data, filename }) => {
         const pageHeight = doc.internal.pageSize.height;
         doc.setFontSize(8);
         doc.setTextColor(150);
-        doc.text('RAXWO Rent A Car System - Confidential Report', 14, pageHeight - 10);
+        doc.text('RAXWO Tool Rental System - Confidential Report', 14, pageHeight - 10);
         doc.text(`Page | ${pageCount}`, pageWidth - 14, pageHeight - 10, { align: 'right' });
       }
     });

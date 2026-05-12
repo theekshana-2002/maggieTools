@@ -3,15 +3,15 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import HireForm from './HireForm';
 import RecordDetails from './RecordDetails';
-import { hireAPI, vehicleAPI } from '../services/api';
+import { hireAPI, toolAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, PlusCircle, RefreshCw } from 'lucide-react';
+import { Download, Search, PlusCircle, RefreshCw, Package } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
-import VehicleFilter from './VehicleFilter';
+import ToolFilter from './ToolFilter';
 
 const HireBook = () => {
-  const userRole = localStorage.getItem('kt_user_role');
+  const userRole = localStorage.getItem('raxwo_user_role');
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
 
@@ -20,26 +20,25 @@ const HireBook = () => {
   const [selectedRecord, setSelectedRecord] = React.useState(null);
   
   const [hireRecords, setHireRecords] = React.useState([]);
-  const [vehicles, setVehicles] = React.useState([]);
-  const [selectedVehicle, setSelectedVehicle] = React.useState(null);
+  const [tools, setTools] = React.useState([]);
+  const [selectedTool, setSelectedTool] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [editingItem, setEditingItem] = React.useState(null);
   const [success, setSuccess] = React.useState(null);
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  // Simplified Table Columns
-  const tableColumns = ['DATE', 'BILL#', 'COMPANY', 'VEHICLE', 'CITY', 'TOTAL', 'STATUS', 'ACTION'];
+  const tableColumns = ['DATE', 'BILL#', 'CUSTOMER', 'TOOL', 'CITY', 'TOTAL', 'STATUS', 'ACTION'];
   
   React.useEffect(() => {
     fetchRecords();
-    fetchVehicles();
+    fetchTools();
   }, []);
 
-  const fetchVehicles = async () => {
+  const fetchTools = async () => {
     try {
-      const res = await vehicleAPI.get();
-      setVehicles(Array.isArray(res.data) ? res.data : []);
+      const res = await toolAPI.get();
+      setTools(Array.isArray(res.data) ? res.data : []);
     } catch (err) { console.error(err); }
   };
 
@@ -50,22 +49,16 @@ const HireBook = () => {
       const rawData = Array.isArray(response.data) ? response.data : [];
       const formatted = rawData.map(item => ({
         ...item,
-        rawData:    item, // Store original for Editing
+        rawData:    item,
         date:       new Date(item.date).toLocaleDateString(),
         billNumber: item.billNumber || '—',
         timeSheetNumber: item.timeSheetNumber || '—',
         client:     item.client || '—',
-        vehicle:    item.vehicle || '—',
-        address:    item.address || (item.location ? '—' : '—'), 
+        tool:       item.toolId || '—',
+        address:    item.address || '—', 
         city:       item.city    || item.location || '—',
-        driverName: item.driverName || '—',
-        helperName: item.helperName || '—',
-        startTime:  item.startTime  || '—',
-        endTime:    item.endTime    || '—',
         workingHours: item.workingHours ? `${item.workingHours}h` : '—',
         minimumHours: item.minimumHours ? `${item.minimumHours}h` : '—',
-        dieselCost: `LKR ${(item.dieselCost || 0).toLocaleString()}`,
-        commission: `LKR ${(item.commission || 0).toLocaleString()}`,
         billAmount_val: item.billAmount || 0,
         totalAmount_val: item.totalAmount || 0,
         billAmount: `LKR ${(item.billAmount || 0).toLocaleString()}`,
@@ -73,19 +66,19 @@ const HireBook = () => {
         details:    item.details || '—',
         status_text: item.status || 'Pending',
         status_disp: (
-          <span className={`status-badge ${item.status === 'Completed' ? 'status-active' : 'status-pending'}`}>
+          <span className={`status-badge ${item.status === 'Completed' || item.status === 'Returned' ? 'status-active' : 'status-pending'}`}>
             {item.status || 'Pending'}
           </span>
         ),
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
             {canManage && (
-              <button className="edit-btn" onClick={() => handleEdit(item)} title="Edit" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button className="edit-btn" onClick={() => handleEdit(item)} title="Edit">
                 Edit
               </button>
             )}
             {canManage && (
-              <button className="duplicate-btn" onClick={() => handleDuplicate(item)} title="Add More" style={{ padding: '4px 8px' }}>
+              <button className="duplicate-btn" onClick={() => handleDuplicate(item)} title="Add More">
                 <PlusCircle size={14} /> Add More
               </button>
             )}
@@ -100,8 +93,8 @@ const HireBook = () => {
       setHireRecords(formatted);
       setError(null);
     } catch (err) {
-      console.error('Fetch Hires Error:', err);
-      setError('Connection issue: could not load hire records.');
+      console.error('Fetch Rentals Error:', err);
+      setError('Connection issue: could not load rental records.');
     } finally {
       setLoading(false);
     }
@@ -109,17 +102,16 @@ const HireBook = () => {
 
   const filteredRecords = React.useMemo(() => {
     return hireRecords.filter(r => {
-      const matchVehicle = !selectedVehicle || r.vehicle === selectedVehicle;
+      const matchTool = !selectedTool || r.tool === selectedTool;
       const matchSearch = !searchQuery || 
         r.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.billNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.timeSheetNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.driverName?.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchVehicle && matchSearch;
+        r.timeSheetNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchTool && matchSearch;
     });
-  }, [hireRecords, selectedVehicle, searchQuery]);
+  }, [hireRecords, selectedTool, searchQuery]);
 
   const stats = React.useMemo(() => {
     const totalJobs    = filteredRecords.length;
@@ -132,17 +124,17 @@ const HireBook = () => {
     try {
       if (editingItem && editingItem._id) {
         await hireAPI.update(editingItem._id, data);
-        setSuccess('Hire record updated!');
+        setSuccess('Rental record updated!');
       } else {
         await hireAPI.create(data);
-        setSuccess('New hire job(s) added!');
+        setSuccess('New rental entry added!');
       }
       fetchRecords();
       setIsModalOpen(false);
       setEditingItem(null);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Error saving hire details.');
+      setError(err.response?.data?.message || 'Error saving rental details.');
       setTimeout(() => setError(null), 5000);
     }
   };
@@ -155,14 +147,13 @@ const HireBook = () => {
 
   const handleDuplicate = (item) => {
     const target = item.rawData || item;
-    // Remove database internal fields to treat it as a new entry
     const { _id, createdAt, updatedAt, __v, ...rest } = target;
     setEditingItem(rest);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete this hire record?')) {
+    if (window.confirm('Delete this rental record?')) {
       try {
         await hireAPI.delete(id);
         setSuccess('Record deleted.');
@@ -181,34 +172,27 @@ const HireBook = () => {
   };
 
   const handleExportPDF = () => {
-    // PDF Report ALWAYS contains full 15+ detail columns as requested
-    const exportColumns = ['DATE', 'BILL#', 'TS#', 'COMPANY', 'VEHICLE', 'ADDRESS', 'CITY', 'DRIVER', 'HELPER', 'START', 'END', 'HOURS', 'MIN HRS', 'BILL AMT', 'D COST', 'COMM', 'TOTAL', 'STATUS'];
+    const exportColumns = ['DATE', 'BILL#', 'TS#', 'CUSTOMER', 'TOOL', 'ADDRESS', 'CITY', 'HOURS', 'MIN HRS', 'BILL AMT', 'TOTAL', 'STATUS'];
     const exportData = filteredRecords.map(r => [
       r.date || '—',
       r.billNumber || '—',
       r.timeSheetNumber || '—',
       r.client || '—',
-      r.vehicle || '—',
+      r.tool || '—',
       r.address || '—',
       r.city || '—',
-      r.driverName || '—',
-      r.helperName || '—',
-      r.startTime || '—',
-      r.endTime || '—',
       r.workingHours || '—',
       r.minimumHours || '—',
       r.billAmount || '—',
-      r.dieselCost || '—',
-      r.commission || '—',
       r.totalAmount_disp || '—',
       r.status_text || '—'
     ]);
     
     generatePDFReport({
-      title: 'Full Hire Book Report',
+      title: 'Tool Rental History Report',
       columns: exportColumns,
       data: exportData,
-      filename: `HireReport_Full_${new Date().toISOString().split('T')[0]}.pdf`
+      filename: `RentalReport_${new Date().toISOString().split('T')[0]}.pdf`
     });
   };
 
@@ -216,7 +200,7 @@ const HireBook = () => {
     <div className="book-container">
       <div className="book-summary">
         <div className="summary-item">
-          <label>TOTAL JOBS</label>
+          <label>TOTAL RENTALS</label>
           <h3>{stats.totalJobs}</h3>
         </div>
         <div className="summary-item">
@@ -229,10 +213,10 @@ const HireBook = () => {
         </div>
       </div>
 
-      <VehicleFilter 
-        vehicles={vehicles} 
-        selectedVehicle={selectedVehicle} 
-        onSelect={setSelectedVehicle} 
+      <ToolFilter 
+        tools={tools} 
+        selectedTool={selectedTool} 
+        onSelect={setSelectedTool} 
       />
 
       <div className="book-filters">
@@ -240,7 +224,7 @@ const HireBook = () => {
           <Search className="search-icon" size={20} style={{ minWidth: '20px' }} />
           <input 
             type="text" 
-            placeholder="Search client, bill, city, address..." 
+            placeholder="Search customer, bill, city, address..." 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
@@ -250,11 +234,11 @@ const HireBook = () => {
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
           <button className="secondary-btn" onClick={handleExportPDF}>
-            <Download size={18} /> <span>Full Report</span>
+            <Download size={18} /> <span>PDF Report</span>
           </button>
           {canManage && (
             <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
-              <PlusCircle size={18} /> <span>Add Job</span>
+              <PlusCircle size={18} /> <span>Add Rental</span>
             </button>
           )}
         </div>
@@ -268,27 +252,25 @@ const HireBook = () => {
         data={filteredRecords} 
         loading={loading}
         onRowClick={handleRowClick}
-        emptyMessage={loading ? "Connecting to service..." : "No hire records found."} 
+        emptyMessage={loading ? "Connecting..." : "No rental records found."} 
       />
 
-      {/* Detail View Modal */}
       <Modal 
         isOpen={viewModalOpen} 
         onClose={() => setViewModalOpen(false)} 
-        title="Hire Job Details"
+        title="Rental Details"
         wide
       >
         <RecordDetails data={selectedRecord} type="hire" />
-        <div className="modal-footer" style={{ padding: '15px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', background: '#F8FAFC' }}>
+        <div className="modal-footer" style={{ padding: '15px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', background: 'var(--bg-main)' }}>
             <button className="secondary-btn" onClick={() => setViewModalOpen(false)}>Close</button>
         </div>
       </Modal>
 
-      {/* Edit/Add Modal */}
       <Modal 
         isOpen={isModalOpen} 
         onClose={() => { setIsModalOpen(false); setEditingItem(null); }} 
-        title={editingItem && editingItem._id ? 'Edit Hire Job' : 'Add Hire Job'}
+        title={editingItem && editingItem._id ? 'Edit Rental' : 'Add Rental Record'}
         wide
       >
         <HireForm 

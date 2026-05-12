@@ -33,8 +33,8 @@ app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Database Connection
 const dbUri = process.env.MONGODB_URI;
@@ -51,13 +51,14 @@ if (!dbUri) {
 }
 
 // Routes
-app.use('/api/diesel', require('./routes/diesel'));
+app.use('/api/accessories', require('./routes/accessories'));
+app.use('/api/consumables', require('./routes/consumables'));
 app.use('/api/hires', require('./routes/hires'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/salaries', require('./routes/salaries'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/clients', require('./routes/clients'));
-app.use('/api/vehicles', require('./routes/vehicles'));
+app.use('/api/tools', require('./routes/tools'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/employees', require('./routes/employees'));
 app.use('/api/invoices', require('./routes/invoices'));
@@ -66,16 +67,17 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/advances', require('./routes/advances'));
 app.use('/api/extra-income', require('./routes/extraIncome'));
 app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/settings', require('./routes/settings'));
 
 app.get('/', (req, res) => {
-  res.send('RAXWO Rent A Car API is running...');
+  res.send('RAXWO Tool Rental System API is running...');
 });
 
 // Start server for Node hosts (Render/local), but avoid starting inside Vercel serverless runtime.
 // Start server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  console.log(`🚀 RAXWO Backend running on PORT: ${PORT}`);
+  console.log(`🚀 RAXWO Tool Rental Backend running on PORT: ${PORT}`);
   console.log(`📡 Database: ${dbName}`);
 });
 

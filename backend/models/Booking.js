@@ -1,52 +1,57 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
-  bookingId: { type: String, unique: true, sparse: true },
+  bookingId: { type: String, sparse: true },
   clientName: { type: String, required: true },
   clientPhone: { type: String },
   clientNic: { type: String },
-  driverName: { type: String },
+  customerIdFront: { type: String },
+  customerIdBack: { type: String },
+  operatorName: { type: String },
   helperName: { type: String },
-  vehicle: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', required: true },
+  tool: { type: mongoose.Schema.Types.ObjectId, ref: 'Tool' }, // Legacy support
+  items: [{
+    tool: { type: mongoose.Schema.Types.ObjectId, ref: 'Tool' },
+    toolNumber: String,
+    model: String,
+    dailyRate: Number
+  }],
   pickupDate: { type: Date, required: true },
   returnDate: { type: Date, required: true },
   pickupLocation: { type: String },
   returnLocation: { type: String },
-  drivingLicenseNo: { type: String },
   securityDeposit: { type: Number, default: 0 },
-  fuelLevel: { type: String }, // e.g. "Full", "Half", "Empty"
-  
-  // KM Tracking
-  startKm: { type: Number, default: 0 },
-  endKm: { type: Number, default: 0 },
+  conditionOnPickup: { type: String }, // e.g. "Good", "Needs Cleaning"
   
   // Pricing
   dailyRate: { type: Number, default: 0 },
   totalDays: { type: Number, default: 1 },
-  kmLimit: { type: Number, default: 0 },
-  extraKmRate: { type: Number, default: 0 },
   
   baseAmount: { type: Number, default: 0 },
-  hasDriver: { type: Boolean, default: false },
-  driverFee: { type: Number, default: 0 },
-  extraKmCharges: { type: Number, default: 0 },
-  customerIdFront: { type: String }, // URL or Base64
-  customerIdBack: { type: String },  // URL or Base64
   discount: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 },
   advancePayment: { type: Number, default: 0 },
   balanceAmount: { type: Number, default: 0 },
+  actualReturnDate: { type: Date },
+  extraCharges: { type: Number, default: 0 },
+  totalAfterExtra: { type: Number },
   
   status: { 
     type: String, 
-    enum: ['Confirmed', 'Active', 'Completed', 'Cancelled'], 
+    enum: ['Confirmed', 'Active', 'Completed', 'Cancelled', 'Returned'], 
     default: 'Confirmed' 
   },
   bookingType: {
     type: String,
-    enum: ['General', 'Wedding'],
+    enum: ['General', 'Project', 'Site'],
     default: 'General'
   },
+  accessories: [{
+    accessory: { type: mongoose.Schema.Types.ObjectId, ref: 'Accessory' },
+    name: String,
+    quantity: { type: Number, default: 1 },
+    price: { type: Number, default: 0 }
+  }],
   notes: { type: String },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });

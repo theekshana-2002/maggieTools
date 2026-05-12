@@ -74,7 +74,7 @@ const SalaryGeneratorModal = ({ onClose, onComplete }) => {
       // 1. Filter jobs
       const jobs = hireData.filter(h => {
         const d = new Date(h.date);
-        const isMatch = (h.driverName?.trim() === emp.name.trim() || h.helperName?.trim() === emp.name.trim()) && 
+        const isMatch = (h.operatorName?.trim() === emp.name.trim()) && 
                         d.getMonth() === targetMonth && d.getFullYear() === targetYear;
         return isMatch;
       });
@@ -90,35 +90,8 @@ const SalaryGeneratorModal = ({ onClose, onComplete }) => {
       let totalHours = 0;
       const shifts = [];
 
-      if (emp.role === 'Helper') {
-        const days = {};
-        jobs.forEach(j => {
-          const dStr = new Date(j.date).toLocaleDateString();
-          if (!days[dStr]) days[dStr] = { morning: false, evening: false, hires: [] };
-          
-          const startHour = parseInt((j.startTime || '00:00').split(':')[0]);
-          const endHour = parseInt((j.endTime || '23:59').split(':')[0]);
-          
-          if (startHour < 13) days[dStr].morning = true;
-          if (endHour >= 13 || startHour >= 13) days[dStr].evening = true;
-          days[dStr].hires.push(j);
-        });
-
-        Object.keys(days).forEach(date => {
-          if (days[date].morning) {
-            hourlyEarnings += 3000;
-            shifts.push({ date, shift: 'Morning', amount: 3000 });
-          }
-          if (days[date].evening) {
-            hourlyEarnings += 3000;
-            shifts.push({ date, shift: 'Evening', amount: 3000 });
-          }
-        });
-        totalHours = jobs.length; // For helpers, show jobs count
-      } else {
-        totalHours = jobs.reduce((sum, j) => sum + (parseFloat(j.workingHours) || 0), 0);
-        hourlyEarnings = totalHours * (emp.hourlyRate || 0);
-      }
+      totalHours = jobs.reduce((sum, j) => sum + (parseFloat(j.workingHours) || 0), 0);
+      hourlyEarnings = totalHours * (emp.hourlyRate || 0);
 
       const uniqueHireDates = new Set(jobs.map(h => new Date(h.date).toDateString())).size;
       const effectiveWorkDays = Math.max(workDays, uniqueHireDates);
@@ -150,7 +123,7 @@ const SalaryGeneratorModal = ({ onClose, onComplete }) => {
         workingDays: workDays,
         netPay,
         exists,
-        details: jobs.map(j => ({ date: j.date, hours: j.workingHours, vehicle: j.vehicle })),
+        details: jobs.map(j => ({ date: j.date, hours: j.workingHours, tool: j.toolId })),
         shifts
       };
     });
@@ -209,10 +182,10 @@ const SalaryGeneratorModal = ({ onClose, onComplete }) => {
       {loading && <div style={{ textAlign: 'center', padding: '20px' }}><RefreshCw className="spinner" /> Loading base data...</div>}
 
       {results.length > 0 && (
-        <div style={{ marginTop: '20px', maxHeight: '400px', overflowY: 'auto', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+        <div style={{ marginTop: '20px', maxHeight: '400px', overflowY: 'auto', border: '1px solid var(--border)', borderRadius: '8px' }}>
           <table className="data-table" style={{ fontSize: '0.85rem' }}>
             <thead>
-              <tr style={{ background: '#F8FAFC' }}>
+              <tr style={{ background: 'var(--bg-main)' }}>
                 <th style={{ padding: '10px' }}>Employee</th>
                 <th style={{ padding: '10px' }}>Hours</th>
                 <th style={{ padding: '10px' }}>Days</th>
@@ -229,13 +202,13 @@ const SalaryGeneratorModal = ({ onClose, onComplete }) => {
                   <td style={{ padding: '10px', fontWeight: 'bold' }}>LKR {r.netPay.toLocaleString()}</td>
                   <td style={{ padding: '10px' }}>
                     {r.exists ? (
-                      <span style={{ color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <CheckCircle size={14} /> Exists
                       </span>
                     ) : r.netPay > 0 ? (
-                      <span style={{ color: '#10B981', fontWeight: 'bold' }}>Ready</span>
+                      <span style={{ color: 'var(--success)', fontWeight: 'bold' }}>Ready</span>
                     ) : (
-                      <span style={{ color: '#94A3B8' }}>No Earnings</span>
+                      <span style={{ color: 'var(--text-dim)' }}>No Earnings</span>
                     )}
                   </td>
                 </tr>

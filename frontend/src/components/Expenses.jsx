@@ -1,20 +1,20 @@
 import React from 'react';
 import DataTable from './DataTable';
 import Modal from './Modal';
-import { vehicleAPI, expenseAPI } from '../services/api';
+import { toolAPI, expenseAPI } from '../services/api';
 import { Download, Search, RefreshCw, PlusCircle, TrendingDown } from 'lucide-react';
-import VehicleFilter from './VehicleFilter';
+import ToolFilter from './ToolFilter';
 import Autocomplete from './Autocomplete';
 import '../styles/forms.css';
 import '../styles/books.css';
 
-const ExpenseForm = ({ onSubmit, onCancel, initialData, vehicles = [] }) => {
-  const [formData, setFormData] = React.useState(initialData || { date: new Date().toISOString().split('T')[0], description: '', amount: '', category: '', vehicleNumber: '', note: '' });
+const ExpenseForm = ({ onSubmit, onCancel, initialData, tools = [] }) => {
+  const [formData, setFormData] = React.useState(initialData || { date: new Date().toISOString().split('T')[0], description: '', amount: '', category: '', toolNo: '', note: '' });
 
   React.useEffect(() => {
     if (initialData) {
       const formattedDate = initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-      setFormData({ ...initialData, date: formattedDate, vehicleNumber: initialData.vehicleNumber || initialData.vehicle || '' });
+      setFormData({ ...initialData, date: formattedDate, toolNo: initialData.toolNo || initialData.vehicleNumber || initialData.vehicle || '' });
     }
   }, [initialData]);
 
@@ -40,7 +40,7 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData, vehicles = [] }) => {
           </div>
           <div className="form-group" style={{ marginTop: '16px' }}>
             <label>Description *</label>
-            <input type="text" required placeholder="e.g. Office rent, Repairs" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+            <input type="text" required placeholder="e.g. Electricity bill, Repair cost" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
           </div>
           <div className="form-grid-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
@@ -52,23 +52,22 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData, vehicles = [] }) => {
               >
                 <option value="">Select Category</option>
                 <option value="Repair & Maintenance">Repair & Maintenance</option>
-                <option value="Fuel">Fuel</option>
+                <option value="Fuel / Energy">Fuel / Energy</option>
                 <option value="Office Rent">Office Rent</option>
                 <option value="Utility (Water/Elec)">Utility (Water/Elec)</option>
                 <option value="Staff Welfare">Staff Welfare</option>
                 <option value="Marketing">Marketing</option>
-                <option value="Insurance / License">Insurance / License</option>
                 <option value="Other">Other</option>
               </select>
             </div>
             <div className="form-group">
-              <label>Link to Vehicle (Optional)</label>
+              <label>Link to Tool (Optional)</label>
               <Autocomplete
-                name="vehicleNumber"
-                value={formData.vehicleNumber}
+                name="toolNo"
+                value={formData.toolNo}
                 onChange={handleChange}
-                options={vehicles.map(v => v.number)}
-                placeholder="Select car plate number"
+                options={tools.map(v => v.number)}
+                placeholder="Select tool ID"
               />
             </div>
           </div>
@@ -99,23 +98,23 @@ const Expenses = () => {
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [records, setRecords] = React.useState([]);
-  const [vehicles, setVehicles] = React.useState([]);
-  const [selectedVehicle, setSelectedVehicle] = React.useState(null);
+  const [tools, setTools] = React.useState([]);
+  const [selectedTool, setSelectedTool] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [editingRecord, setEditingRecord] = React.useState(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [successMsg, setSuccessMsg] = React.useState('');
 
   const columns = canManage 
-    ? ['DATE', 'VEHICLE', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)', 'ACTION']
-    : ['DATE', 'VEHICLE', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)'];
+    ? ['DATE', 'TOOL', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)', 'ACTION']
+    : ['DATE', 'TOOL', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)'];
 
-  React.useEffect(() => { fetchRecords(); fetchVehicles(); }, []);
+  React.useEffect(() => { fetchRecords(); fetchTools(); }, []);
 
-  const fetchVehicles = async () => {
+  const fetchTools = async () => {
     try {
-      const res = await vehicleAPI.get();
-      setVehicles(Array.isArray(res.data) ? res.data : []);
+      const res = await toolAPI.get();
+      setTools(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
   };
 
@@ -147,15 +146,15 @@ const Expenses = () => {
 
   const filteredRecords = React.useMemo(() => {
     return records.filter(r => {
-      const v = r.vehicleNumber || r.vehicle;
-      const matchV = !selectedVehicle || v === selectedVehicle;
+      const v = r.toolNo || r.vehicleNumber || r.vehicle;
+      const matchV = !selectedTool || v === selectedTool;
       const matchS = !searchQuery || 
         (r.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (v || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (r.category || '').toLowerCase().includes(searchQuery.toLowerCase());
       return matchV && matchS;
     });
-  }, [records, searchQuery, selectedVehicle]);
+  }, [records, searchQuery, selectedTool]);
 
   const totalAmount = React.useMemo(() => {
     return filteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
@@ -206,7 +205,7 @@ const Expenses = () => {
         </div>
       </div>
 
-      <VehicleFilter vehicles={vehicles} selectedVehicle={selectedVehicle} onSelect={setSelectedVehicle} />
+      <ToolFilter tools={tools} selectedTool={selectedTool} onSelect={setSelectedTool} />
 
 
       <div className="book-filters">
@@ -238,7 +237,7 @@ const Expenses = () => {
         data={filteredRecords.map(r => ({
           ...r,
           DATE: r.date_disp,
-          vehicle: r.vehicleNumber || r.vehicle,
+          TOOL: r.toolNo || r.vehicleNumber || r.vehicle,
           DESCRIPTION: r.description,
           CATEGORY: r.category || '—',
           'AMOUNT (LKR)': r.amount_disp,
@@ -257,7 +256,7 @@ const Expenses = () => {
           onSubmit={handleAdd} 
           onCancel={() => { setIsModalOpen(false); setEditingRecord(null); }} 
           initialData={editingRecord}
-          vehicles={vehicles}
+          tools={tools}
         />
       </Modal>
     </div>

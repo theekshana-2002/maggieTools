@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { clientAPI, vehicleAPI } from '../services/api';
+import { clientAPI, toolAPI } from '../services/api';
 import Autocomplete from './Autocomplete';
 import '../styles/forms.css';
 
@@ -10,18 +10,17 @@ const defaultForm = () => ({
   quotationNo: '',
   date: new Date().toISOString().split('T')[0],
   validityDays: 30,
-  vehicleType: '',
-  vehicleNo: '',
+  toolCategory: '', // Internal field name kept for schema compatibility (tool category)
+  toolNo: '',   // Internal field name kept for schema compatibility (tool ID)
   refundableDeposit: 0,
   mandatoryCharge: 0,
   transportCharge: 0,
   extraHourRate: 0,
   estimatedTotal: 0,
   termsAndConditions: '',
-  status: 'Draft',   // ← matches schema enum
+  status: 'Draft',
 });
 
-/* Auto-calc: mandatory + transport + extraHourRate */
 const calcTotal = (d) =>
   +(
     Number(d.mandatoryCharge || 0) +
@@ -33,10 +32,9 @@ const calcTotal = (d) =>
 const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData,   setFormData]   = useState(defaultForm());
   const [clients,    setClients]    = useState([]);
-  const [vehicles,   setVehicles]   = useState([]);
+  const [tools,   setTools]   = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  /* Load dropdowns & pre-fill when editing */
   useEffect(() => {
     fetchLinkedData();
     if (initialData) {
@@ -54,32 +52,29 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
 
   const fetchLinkedData = async () => {
     try {
-      const [cRes, vRes] = await Promise.all([
+      const [cRes, tRes] = await Promise.all([
         clientAPI.get(),
-        vehicleAPI.get(),
+        toolAPI.get(),
       ]);
       setClients(Array.isArray(cRes.data) ? cRes.data : []);
-      setVehicles(Array.isArray(vRes.data) ? vRes.data : []);
+      setTools(Array.isArray(tRes.data) ? tRes.data : []);
     } catch (err) {
       console.error('Failed to fetch linked data', err);
     }
   };
 
-  /* Generic field change — recalcs total for numeric fields */
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
     
-    // Auto-fill address if selecting existing client
     if (name === 'clientName') {
       const clientObj = clients.find(c => c.name === value);
       if (clientObj) updated.clientAddress = clientObj.address || '';
     }
 
-    // Auto-fill type if selecting existing vehicle
-    if (name === 'vehicleNo') {
-      const vehicleObj = vehicles.find(v => v.number === value);
-      if (vehicleObj) updated.vehicleType = vehicleObj.type || '';
+    if (name === 'toolNo') { // tool ID
+      const toolObj = tools.find(t => t.number === value);
+      if (toolObj) updated.toolCategory = toolObj.category || '';
     }
 
     updated.estimatedTotal = calcTotal(updated);
@@ -90,13 +85,12 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
     e.preventDefault();
     setSubmitting(true);
     
-    // Auto-create missing records
     try {
       if (formData.clientName && !clients.find(c => c.name.toLowerCase() === formData.clientName.toLowerCase())) {
         await clientAPI.create({ name: formData.clientName, status: 'Active' });
       }
-      if (formData.vehicleNo && !vehicles.find(v => v.number.toLowerCase() === formData.vehicleNo.toLowerCase())) {
-        await vehicleAPI.create({ number: formData.vehicleNo, status: 'Active' });
+      if (formData.toolNo && !tools.find(t => t.number.toLowerCase() === formData.toolNo.toLowerCase())) {
+        await toolAPI.create({ number: formData.toolNo, status: 'Active' });
       }
     } catch (err) { console.error('Auto-creation failed', err); }
 
@@ -113,19 +107,18 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
     <form onSubmit={handleSubmit} className="hire-form">
       <div className="hire-form-scroll">
 
-        {/* ── Section 1: Quotation Details & Client ── */}
         <div className="form-section">
-          <p className="form-section-title">Quotation Details &amp; Client</p>
+          <p className="form-section-title">Quotation Details &amp; Customer</p>
           <div className="form-grid">
 
             <div className="form-group">
-              <label>Client Name *</label>
+              <label>Customer Name *</label>
               <Autocomplete 
                 name="clientName" 
                 value={formData.clientName} 
                 onChange={handleChange} 
                 options={clients.map(c => c.name)}
-                placeholder="Type client name"
+                placeholder="Type customer name"
                 required
               />
             </div>
@@ -135,7 +128,7 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
               <input
                 type="text" name="quotationNo"
                 value={formData.quotationNo} onChange={handleChange}
-                placeholder="Auto-generated if blank"
+                placeholder="Optional"
               />
             </div>
 
@@ -156,50 +149,42 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
           </div>
 
           <div className="form-group">
-            <label>Client Address</label>
+            <label>Customer Address</label>
             <textarea
               name="clientAddress" value={formData.clientAddress}
               onChange={handleChange} rows="2"
-              placeholder="Official address of the client..."
+              placeholder="Official address..."
             />
           </div>
         </div>
 
-        {/* ── Section 2: Vehicle Specifications ── */}
         <div className="form-section">
-          <p className="form-section-title">Vehicle Specifications Required</p>
+          <p className="form-section-title">Tool Specifications Required</p>
           <div className="form-grid">
 
             <div className="form-group">
-              <label>Vehicle / Fleet No</label>
+              <label>Tool ID / Serial</label>
               <Autocomplete 
-                name="vehicleNo" 
-                value={formData.vehicleNo} 
+                name="toolNo" 
+                value={formData.toolNo} 
                 onChange={handleChange} 
-                options={vehicles.map(v => v.number)}
-                placeholder="Vehicle No"
+                options={tools.map(t => t.number)}
+                placeholder="Tool ID"
               />
             </div>
 
             <div className="form-group">
-              <label>Vehicle Type</label>
-              <select name="vehicleType" value={formData.vehicleType} onChange={handleChange}>
-                <option value="">Select Type</option>
-                <option value="Car">Car</option>
-                <option value="SUV">SUV</option>
-                <option value="Van">Van</option>
-                <option value="Luxury Car">Luxury Car</option>
-                <option value="Luxury SUV">Luxury SUV</option>
-                <option value="Wedding Car">Wedding Car</option>
-                <option value="Cab">Cab</option>
-                <option value="Bus">Bus</option>
+              <label>Tool Category</label>
+              <select name="toolCategory" value={formData.toolCategory} onChange={handleChange}>
+                <option value="">Select Category</option>
+                <option value="Power Tools">Power Tools</option>
+                <option value="Hand Tools">Hand Tools</option>
+                <option value="Heavy Machinery">Heavy Machinery</option>
+                <option value="Electrical Appliances">Electrical Appliances</option>
+                <option value="Gardening">Gardening</option>
+                <option value="Construction">Construction</option>
                 <option value="Other">Other</option>
               </select>
-              {formData.vehicleNo && formData.vehicleType && (
-                <span style={{ fontSize: '11px', color: '#2563EB', marginTop: '4px', display: 'block' }}>
-                  ✓ Auto-filled from vehicle record
-                </span>
-              )}
             </div>
 
             <div className="form-group">
@@ -214,13 +199,12 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
           </div>
         </div>
 
-        {/* ── Section 3: Pricing ── */}
         <div className="form-section">
           <p className="form-section-title">Pricing &amp; Financial Offer (LKR)</p>
           <div className="form-grid">
 
             <div className="form-group">
-              <label>Min / Mandatory Charge</label>
+              <label>Min Rental Charge</label>
               <input
                 type="number" name="mandatoryCharge"
                 value={formData.mandatoryCharge} onChange={handleChange}
@@ -238,7 +222,7 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
             </div>
 
             <div className="form-group">
-              <label>Extra KM Rate</label>
+              <label>Extra Usage Rate</label>
               <input
                 type="number" name="extraHourRate"
                 value={formData.extraHourRate} onChange={handleChange}
@@ -248,29 +232,27 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
 
           </div>
 
-          {/* Live breakdown hint */}
           {grandTotal > 0 && (
             <div style={{
               margin: '12px 0 0',
               padding: '8px 12px',
-              background: '#EFF6FF',
+              background: 'var(--accent-soft)',
               borderRadius: '8px',
               fontSize: '13px',
-              color: '#1D4ED8',
+              color: 'var(--accent)',
               display: 'flex',
               justifyContent: 'space-between',
             }}>
               <span>
-                Mandatory {Number(formData.mandatoryCharge || 0).toLocaleString()} +
+                Rental {Number(formData.mandatoryCharge || 0).toLocaleString()} +
                 Transport {Number(formData.transportCharge || 0).toLocaleString()} +
-                Extra KM {Number(formData.extraHourRate || 0).toLocaleString()}
+                Extra {Number(formData.extraHourRate || 0).toLocaleString()}
               </span>
               <strong>LKR {grandTotal.toLocaleString()}</strong>
             </div>
           )}
         </div>
 
-        {/* ── Section 4: Terms ── */}
         <div className="form-section">
           <p className="form-section-title">Terms &amp; Conditions</p>
           <div className="form-group" style={{ marginBottom: '16px' }}>
@@ -278,7 +260,7 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
             <textarea
               name="termsAndConditions" value={formData.termsAndConditions}
               onChange={handleChange} rows="4"
-              placeholder="Mention working hours, fuel terms, etc..."
+              placeholder="Mention working hours, usage limits, etc..."
             />
           </div>
           <div className="form-group">
@@ -293,15 +275,14 @@ const QuotationForm = ({ onSubmit, onCancel, initialData }) => {
           </div>
         </div>
 
-      </div>{/* end hire-form-scroll */}
+      </div>
 
-      {/* ── Footer ── */}
       <div className="hire-form-footer">
         <div className="total-display" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Estimated Total
           </span>
-          <strong style={{ fontSize: '22px', color: '#2563EB' }}>
+          <strong style={{ fontSize: '22px', color: 'var(--accent)' }}>
             LKR {grandTotal.toLocaleString()}
           </strong>
         </div>

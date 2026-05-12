@@ -1,109 +1,108 @@
 const express = require('express');
 const router = express.Router();
-const Vehicle = require('../models/Vehicle');
+const Tool = require('../models/Tool');
 const Expense = require('../models/Expense');
 const { authMiddleware, authorizeRoles } = require('../middleware/authMiddleware');
 
-// Renewal logic for compliance documents
+// Renewal logic for maintenance/warranty
 router.patch('/:id/renew', authMiddleware, authorizeRoles('Admin', 'Manager'), async (req, res) => {
   try {
     const { type, newExpirationDate, cost } = req.body;
-    const vehicle = await Vehicle.findById(req.params.id);
-    if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+    const tool = await Tool.findById(req.params.id);
+    if (!tool) return res.status(404).json({ message: 'Tool not found' });
 
     // Update the relevant date based on type
-    if (type === 'insurance') {
-      vehicle.insuranceExpirationDate = newExpirationDate;
-    } else if (type === 'license') {
-      vehicle.licenseExpirationDate = newExpirationDate;
-    } else if (type === 'safety') {
-      vehicle.safetyExpirationDate = newExpirationDate;
+    if (type === 'warranty') {
+      tool.warrantyExpirationDate = newExpirationDate;
+    } else if (type === 'service') {
+      tool.nextServiceDate = newExpirationDate;
+      tool.lastServiceDate = new Date();
     } else {
       return res.status(400).json({ message: 'Invalid renewal type' });
     }
 
-    await vehicle.save();
+    await tool.save();
 
     // Create an expense record if cost is provided
     if (cost > 0) {
       const expense = new Expense({
         date: new Date(),
-        description: `${type.charAt(0).toUpperCase() + type.slice(1)} Renewal - ${vehicle.number}`,
+        description: `${type.charAt(0).toUpperCase() + type.slice(1)} Renewal/Service - ${tool.number}`,
         amount: cost,
         category: 'Maintenance',
-        vehicleId: vehicle._id,
-        vehicleNumber: vehicle.number,
+        toolId: tool._id,
+        toolNumber: tool.number,
         note: `Auto-generated from renewal of ${type}`
       });
       await expense.save();
     }
 
-    res.json({ message: 'Renewal successful', vehicle });
+    res.json({ message: 'Renewal successful', tool });
   } catch (err) {
     console.error('Renewal error:', err);
     res.status(400).json({ message: err.message });
   }
 });
 
-// Get all vehicles with dynamic availability check
+// Get all tools with dynamic availability check
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const vehicles = await Vehicle.find().sort({ number: 1 });
+    const tools = await Tool.find().sort({ number: 1 });
     const Booking = require('../models/Booking');
     const now = new Date();
 
-    const updatedVehicles = await Promise.all(vehicles.map(async (v) => {
+    const updatedTools = await Promise.all(tools.map(async (t) => {
       const activeBooking = await Booking.findOne({
-        vehicle: v._id,
+        tool: t._id,
         status: { $in: ['Confirmed', 'Active'] },
         pickupDate: { $lte: now },
         returnDate: { $gte: now }
       });
 
-      const vehicleObj = v.toObject();
+      const toolObj = t.toObject();
       if (activeBooking) {
-        vehicleObj.status = 'Booked';
-        vehicleObj.currentBooking = activeBooking;
+        toolObj.status = 'Booked';
+        toolObj.currentBooking = activeBooking;
       }
-      return vehicleObj;
+      return toolObj;
     }));
 
-    res.json(updatedVehicles);
+    res.json(updatedTools);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// Add new vehicle
+// Add new tool
 router.post('/', authMiddleware, async (req, res) => {
-  const vehicle = new Vehicle(req.body);
+  const tool = new Tool(req.body);
   try {
-    const newVehicle = await vehicle.save();
-    res.status(201).json(newVehicle);
+    const newTool = await tool.save();
+    res.status(201).json(newTool);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-// Update vehicle
+// Update tool
 router.put('/:id', authMiddleware, authorizeRoles('Admin', 'Manager'), async (req, res) => {
   try {
-    const updatedVehicle = await Vehicle.findByIdAndUpdate(
+    const updatedTool = await Tool.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true }
     );
-    res.json(updatedVehicle);
+    res.json(updatedTool);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-// Delete vehicle
+// Delete tool
 router.delete('/:id', authMiddleware, authorizeRoles('Admin', 'Manager'), async (req, res) => {
   try {
-    await Vehicle.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Vehicle deleted' });
+    await Tool.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Tool deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -116,29 +115,29 @@ router.patch('/:id/lease-payment', authMiddleware, authorizeRoles('Admin', 'Mana
     const month = Number(req.body.month);
     const paid  = Boolean(req.body.paid);
 
-    const vehicle = await Vehicle.findById(req.params.id);
-    if (!vehicle) return res.status(404).json({ message: 'Vehicle not found' });
+    const tool = await Tool.findById(req.params.id);
+    if (!tool) return res.status(404).json({ message: 'Tool not found' });
 
     // Safely initialise the array if missing on older documents
-    if (!Array.isArray(vehicle.leasePayments)) {
-      vehicle.leasePayments = [];
+    if (!Array.isArray(tool.leasePayments)) {
+      tool.leasePayments = [];
     }
 
     // Find existing entry for this month/year (use Number coercion to be safe)
-    const idx = vehicle.leasePayments.findIndex(
+    const idx = tool.leasePayments.findIndex(
       lp => Number(lp.year) === year && Number(lp.month) === month
     );
 
     if (idx >= 0) {
-      vehicle.leasePayments[idx].paid     = paid;
-      vehicle.leasePayments[idx].paidDate = paid ? new Date() : null;
+      tool.leasePayments[idx].paid     = paid;
+      tool.leasePayments[idx].paidDate = paid ? new Date() : null;
     } else {
-      vehicle.leasePayments.push({ year, month, paid, paidDate: paid ? new Date() : null });
+      tool.leasePayments.push({ year, month, paid, paidDate: paid ? new Date() : null });
     }
 
-    vehicle.markModified('leasePayments'); // ensure Mongoose detects nested array change
-    await vehicle.save();
-    res.json(vehicle);
+    tool.markModified('leasePayments'); // ensure Mongoose detects nested array change
+    await tool.save();
+    res.json(tool);
   } catch (err) {
     console.error('Lease payment update error:', err);
     res.status(400).json({ message: err.message });

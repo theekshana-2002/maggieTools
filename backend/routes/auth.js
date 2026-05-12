@@ -2,6 +2,31 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const Employee = require('../models/Employee');
+const bcrypt = require('bcryptjs');
+
+// Register route
+router.post('/register', async (req, res) => {
+  try {
+    const { username, password, name, role } = req.body;
+    
+    // Check if user exists
+    const existing = await Employee.findOne({ username });
+    if (existing) return res.status(400).json({ message: 'Username already taken' });
+
+    const newUser = new Employee({
+      username,
+      password,
+      name,
+      role: role || 'Employee', // Default to employee
+      status: 'Active'
+    });
+
+    await newUser.save();
+    res.status(201).json({ success: true, message: 'User registered successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // Login route
 router.post('/login', async (req, res) => {

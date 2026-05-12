@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  TrendingUp, Wallet, Fuel, ArrowDown,
+  TrendingUp, Wallet, ArrowDown,
   BarChart, RefreshCw, CheckCircle, Clock, Users,
   ShieldCheck, FileText, CreditCard, Bell, ChevronRight,
-  Truck, Car, FileBarChart
+  Package, Wrench, FileBarChart
 } from 'lucide-react';
-import { bookingAPI, dieselAPI, salaryAPI, paymentAPI, invoiceAPI, vehicleAPI, expenseAPI, extraIncomeAPI } from '../services/api';
+import { bookingAPI, salaryAPI, paymentAPI, invoiceAPI, toolAPI, expenseAPI, extraIncomeAPI } from '../services/api';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
 import './Dashboard.css';
@@ -81,7 +81,7 @@ const ReminderCard = ({ r }) => {
       </div>
       <div className="reminder-info">
         <div className="reminder-header">
-          <span className="reminder-vehicle">{r.vehicle}</span>
+          <span className="reminder-tool">{r.tool}</span>
           <span className="reminder-badge" style={badgeStyle}>{badgeText}</span>
         </div>
         <p className="reminder-type">{r.type}</p>
@@ -110,7 +110,7 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
-  const currentRole = role?.toLowerCase();
+  const currentRole = (role || '').toLowerCase();
   const isAdmin = currentRole === 'admin' || currentRole === 'manager';
   const isEmployee = currentRole === 'employee';
   const isStaff = isAdmin || isEmployee;
@@ -123,8 +123,8 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
     return () => document.head.removeChild(styleTag);
   }, []);
 
-  const [data, setData] = useState({ bookings: [], diesel: [], salaries: [], payments: [], invoices: [], vehicles: [], expenses: [], extraIncome: [] });
-  const [insights, setInsights] = useState({ topVehicles: [], topCustomers: [] });
+  const [data, setData] = useState({ bookings: [], salaries: [], payments: [], invoices: [], tools: [], expenses: [], extraIncome: [] });
+  const [insights, setInsights] = useState({ topTools: [], topCustomers: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
@@ -145,19 +145,18 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
   const fetchAll = async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
-      const [b, d, s, p, inv, v, ex, ei, insRes] = await Promise.all([
-        bookingAPI.get(), dieselAPI.get(), salaryAPI.get(),
-        paymentAPI.get(), invoiceAPI.get(), vehicleAPI.get(),
+      const [b, s, p, inv, t, ex, ei, insRes] = await Promise.all([
+        bookingAPI.get(), salaryAPI.get(),
+        paymentAPI.get(), invoiceAPI.get(), toolAPI.get(),
         expenseAPI.get(), extraIncomeAPI.get(),
         bookingAPI.getInsights()
       ]);
       setData({
         bookings: Array.isArray(b.data)   ? b.data   : [],
-        diesel:   Array.isArray(d.data)   ? d.data   : [],
         salaries: Array.isArray(s.data)   ? s.data   : [],
         payments: Array.isArray(p.data)   ? p.data   : [],
         invoices: Array.isArray(inv.data) ? inv.data : [],
-        vehicles: Array.isArray(v.data)   ? v.data   : [],
+        tools:    Array.isArray(t.data)   ? t.data   : [],
         expenses: Array.isArray(ex.data)  ? ex.data  : [],
         extraIncome: Array.isArray(ei.data) ? ei.data : [],
       });
@@ -173,7 +172,6 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
   };
 
   useEffect(() => { 
-    console.log(`RAXWO Dashboard: Syncing for ${name} (${role})`);
     fetchAll(); 
   }, [name, role]);
 
@@ -197,8 +195,8 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
   };
 
   const groupedReminders = useMemo(() => {
-    if (!isAdmin) return { insurance: [], license: [], safety: [], leasing: [] };
-    const groups = { insurance: [], license: [], safety: [], leasing: [] };
+    if (!isAdmin) return { warranty: [], service: [], leasing: [] };
+    const groups = { warranty: [], service: [], leasing: [] };
     const today = new Date();
     
     const getDaysLeft = (date) => {
@@ -207,29 +205,25 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       return Math.ceil(diff / (1000 * 60 * 60 * 24));
     };
 
-    data.vehicles.forEach(v => {
-      if (isExpiringSoon(v.insuranceExpirationDate)) {
-        groups.insurance.push({ vehicle: v.number, type: 'Insurance', date: v.insuranceExpirationDate, icon: ShieldCheck, daysLeft: getDaysLeft(v.insuranceExpirationDate) });
+    data.tools.forEach(t => {
+      if (isExpiringSoon(t.warrantyExpirationDate)) {
+        groups.warranty.push({ tool: t.number, type: 'Warranty', date: t.warrantyExpirationDate, icon: ShieldCheck, daysLeft: getDaysLeft(t.warrantyExpirationDate) });
       }
-      if (isExpiringSoon(v.licenseExpirationDate)) {
-        groups.license.push({ vehicle: v.number, type: 'License', date: v.licenseExpirationDate, icon: FileText, daysLeft: getDaysLeft(v.licenseExpirationDate) });
+      if (isExpiringSoon(t.nextServiceDate)) {
+        groups.service.push({ tool: t.number, type: 'Next Service', date: t.nextServiceDate, icon: Wrench, daysLeft: getDaysLeft(t.nextServiceDate) });
       }
-      if (isExpiringSoon(v.safetyExpirationDate)) {
-        groups.safety.push({ vehicle: v.number, type: 'Safety', date: v.safetyExpirationDate, icon: CheckCircle, daysLeft: getDaysLeft(v.safetyExpirationDate) });
-      }
-      if (v.hasLeasing && v.leaseDueDate) {
-        const nextDue = new Date(today.getFullYear(), today.getMonth(), v.leaseDueDate);
+      if (t.hasLeasing && t.leaseDueDate) {
+        const nextDue = new Date(today.getFullYear(), today.getMonth(), t.leaseDueDate);
         if (isExpiringSoon(nextDue)) {
-           groups.leasing.push({ vehicle: v.number, type: 'Lease Due', date: nextDue, icon: CreditCard, amount: v.monthlyPremium, daysLeft: getDaysLeft(nextDue) });
+           groups.leasing.push({ tool: t.number, type: 'Lease Due', date: nextDue, icon: CreditCard, amount: t.monthlyPremium, daysLeft: getDaysLeft(nextDue) });
         }
       }
     });
 
-    // Add Booking End Reminders
     data.bookings.forEach(b => {
       if (b.status === 'Active' && isExpiringSoon(b.returnDate, 2)) {
         groups.leasing.push({ 
-          vehicle: b.vehicle?.number || 'Unknown', 
+          tool: b.tool?.number || 'Unknown Tool', 
           type: 'Return Due Soon', 
           date: b.returnDate, 
           icon: Clock, 
@@ -239,7 +233,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
     });
 
     return groups;
-  }, [data.vehicles, data.bookings, isAdmin]);
+  }, [data.tools, data.bookings, isAdmin]);
 
   const hasAnyReminders = useMemo(() => Object.values(groupedReminders).some(g => g.length > 0), [groupedReminders]);
 
@@ -248,23 +242,21 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       const fBookings = filterByPeriod(data.bookings, 'pickupDate');
       const fExtra = filterByPeriod(data.extraIncome, 'date');
       const fExpenses = filterByPeriod(data.expenses, 'date');
-      const fDiesel = filterByPeriod(data.diesel, 'date');
       const fSalaries = filterByPeriod(data.salaries, 'createdAt');
-
       const revenue = fBookings.reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0) + fExtra.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-      const cost = fSalaries.reduce((s, r) => s + (parseFloat(r.netPay) || 0), 0) + fDiesel.reduce((s, r) => s + (parseFloat(r.total) || 0), 0) + fExpenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+      const cost = fSalaries.reduce((s, r) => s + (parseFloat(r.netPay) || 0), 0) + fExpenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
       const profit = revenue - cost;
       const pending = fBookings.reduce((s, r) => s + (parseFloat(r.balanceAmount) || 0), 0);
 
       const baseStats = [
-        { id: 1, title: 'Total Bookings', value: fBookings.length, subtext: 'Company wide', icon: Car, color: 'var(--accent)' },
-        { id: 2, title: 'Active Rides', value: fBookings.filter(b => b.status === 'Active').length, subtext: 'In progress', icon: Clock, color: 'var(--warning)' },
+        { id: 1, title: 'Total Bookings', value: fBookings.length, subtext: 'Tool rentals', icon: Package, color: 'var(--accent)' },
+        { id: 2, title: 'Tools in Use', value: fBookings.filter(b => b.status === 'Active').length, subtext: 'On-site', icon: Clock, color: 'var(--warning)' },
       ];
 
       if (isAdmin) {
         return [
-          { id: 1, title: 'Total Revenue', value: fmt(revenue), subtext: `From ${fBookings.length} bookings`, icon: TrendingUp, color: 'var(--accent)', tab: 'reports' },
-          { id: 2, title: 'Operational Cost', value: fmt(cost), subtext: 'Fuel, Salary, Expenses', icon: ArrowDown, color: 'var(--danger)', tab: 'expenses' },
+          { id: 1, title: 'Total Revenue', value: fmt(revenue), subtext: `From ${fBookings.length} rentals`, icon: TrendingUp, color: 'var(--accent)', tab: 'reports' },
+          { id: 2, title: 'Operational Cost', value: fmt(cost), subtext: 'Staff, Maint, Expenses', icon: ArrowDown, color: 'var(--danger)', tab: 'expenses' },
           { id: 3, title: 'Net Profit', value: fmt(profit), subtext: 'Estimated earnings', icon: BarChart, color: profit >= 0 ? 'var(--success)' : 'var(--danger)', tab: 'reports' },
           { id: 4, title: 'Pending Dues', value: fmt(pending), subtext: 'To be collected', icon: Clock, color: 'var(--warning)', tab: 'bookings' },
         ];
@@ -273,28 +265,19 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       return baseStats;
     }
 
-    // Client View
     const myBookings = data.bookings.filter(b => {
-      const n = name?.trim().toLowerCase();
-      return b.clientName?.trim().toLowerCase() === n || 
-             b.driverName?.trim().toLowerCase() === n || 
-             b.helperName?.trim().toLowerCase() === n;
+      const n = (name || '').trim().toLowerCase();
+      return b.clientName?.trim().toLowerCase() === n;
     });
     return [
-      { id: 1, title: 'My Total Bookings', value: myBookings.length, subtext: 'Lifetime total', icon: TrendingUp, color: 'var(--accent)' },
-      { id: 2, title: 'Active Rides', value: myBookings.filter(b => b.status === 'Active').length, subtext: 'In progress', icon: Clock, color: 'var(--warning)' },
-      { id: 3, title: 'Completed', value: myBookings.filter(b => b.status === 'Completed').length, subtext: 'Returned safely', icon: CheckCircle, color: 'var(--success)' },
+      { id: 1, title: 'My Total Rentals', value: myBookings.length, subtext: 'Lifetime total', icon: TrendingUp, color: 'var(--accent)' },
+      { id: 2, title: 'Active Rentals', value: myBookings.filter(b => b.status === 'Active').length, subtext: 'Currently with me', icon: Clock, color: 'var(--warning)' },
+      { id: 3, title: 'Returned Tools', value: myBookings.filter(b => b.status === 'Returned' || b.status === 'Completed').length, subtext: 'Successfully closed', icon: CheckCircle, color: 'var(--success)' },
     ];
   }, [data, isAdmin, isStaff, role, name, selectedMonth, selectedYear]);
 
   const recentActivity = useMemo(() => {
-    // Admins and Employees see all bookings, Clients only see their own
-    const list = isStaff ? data.bookings : data.bookings.filter(b => {
-      const n = name?.trim().toLowerCase();
-      return b.clientName?.trim().toLowerCase() === n || 
-             b.driverName?.trim().toLowerCase() === n || 
-             b.helperName?.trim().toLowerCase() === n;
-    });
+    const list = isStaff ? data.bookings : data.bookings.filter(b => (b.clientName || '').trim().toLowerCase() === (name || '').trim().toLowerCase());
     return [...list].sort((a, b) => {
       const dateA = new Date(b.pickupDate || b.createdAt || 0);
       const dateB = new Date(a.pickupDate || a.createdAt || 0);
@@ -304,10 +287,9 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
 
   return (
     <div className="dashboard-container">
-      {/* ── Welcome Header ── */}
       <div className="dashboard-header">
         <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Overview Dashboard</p>
+          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Operations Dashboard</p>
           <h1>Hello, {displayName}</h1>
         </div>
         <div className="header-controls">
@@ -320,20 +302,19 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
           </select>
           <button onClick={() => fetchAll(false)} className="refresh-btn">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
-            Refresh
+            Sync
           </button>
         </div>
       </div>
 
-      {/* ── Reminders ── */}
       {isAdmin && hasAnyReminders && (
         <div className="critical-alerts-section">
           <div className="critical-alerts-header">
             <h3 className="critical-alerts-title">
                 <Bell size={20} className="pulse-icon" />
-                Critical Attention Required
+                Maintenance & Warranty Alerts
             </h3>
-            <span className="pending-actions-badge">Pending Actions</span>
+            <span className="pending-actions-badge">Action Required</span>
           </div>
           <div className="reminders-grid">
             {Object.values(groupedReminders).flat().slice(0, 4).map((r, i) => <ReminderCard key={i} r={r} />)}
@@ -341,17 +322,16 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         </div>
       )}
 
-      {/* ── Quick Actions ── */}
       {isAdmin && (
         <div className="quick-actions-row" style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
             <button className="refresh-btn" onClick={() => setActiveTab('bookings')} style={{ background: 'var(--accent)', color: 'white', border: 'none' }}>
-                <Car size={18} /> New Booking
+                <Package size={18} /> New Rental
             </button>
-            <button className="refresh-btn" onClick={() => setActiveTab('vehicle-reg')} style={{ background: 'var(--success)', color: 'white', border: 'none' }}>
-                <Truck size={18} /> Add Vehicle
+            <button className="refresh-btn" onClick={() => setActiveTab('tool-reg')} style={{ background: 'var(--success)', color: 'white', border: 'none' }}>
+                <Wrench size={18} /> Register Tool
             </button>
             <button className="refresh-btn btn-report-inverted" onClick={() => setActiveTab('reports')}>
-                <FileBarChart size={18} /> View Reports
+                <FileBarChart size={18} /> Financials
             </button>
         </div>
       )}
@@ -363,28 +343,26 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         </div>
       )}
       
-      {/* ── Core Stats ── */}
       <div className="stats-grid">
         {stats.map(s => <StatCard key={s.id} {...s} onClick={s.tab ? () => setActiveTab(s.tab) : null} />)}
       </div>
 
-      {/* ── Business Insights ── */}
       {isAdmin && (
         <div className="insights-row">
             <div className="insight-card">
                 <div className="section-header" style={{ marginBottom: '20px' }}>
                     <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Car size={20} style={{ color: 'var(--accent)' }} />
-                        Top Customer Choice
+                        <Package size={20} style={{ color: 'var(--accent)' }} />
+                        Most Rented Tools
                     </h3>
                 </div>
                 <div className="insight-list">
-                    {insights.topVehicles.length > 0 ? insights.topVehicles.map((v, i) => (
+                    {insights.topTools?.length > 0 ? insights.topTools.map((v, i) => (
                         <div key={i} className="insight-item">
                             <div className="insight-rank">{i + 1}</div>
                             <div className="insight-info">
                                 <span className="insight-name">{v.name}</span>
-                                <span className="insight-sub">{v.count} Hires · Most Popular</span>
+                                <span className="insight-sub">{v.count} Rentals · High Demand</span>
                             </div>
                             <div className="insight-value">
                                 <span className="insight-main-val">{fmt(v.revenue)}</span>
@@ -398,7 +376,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
                 <div className="section-header" style={{ marginBottom: '20px' }}>
                     <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <Users size={20} style={{ color: 'var(--success)' }} />
-                        Best Customers
+                        Top Customers
                     </h3>
                 </div>
                 <div className="insight-list">
@@ -407,7 +385,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
                             <div className="insight-rank" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}>{i + 1}</div>
                             <div className="insight-info">
                                 <span className="insight-name">{c.name}</span>
-                                <span className="insight-sub">{c.count} Bookings · Latest: {c.latestVehicle}</span>
+                                <span className="insight-sub">{c.count} Rentals · Recent: {c.latestTool}</span>
                             </div>
                             <div className="insight-value">
                                 <span className="insight-main-val" style={{ color: 'var(--success)' }}>{fmt(c.revenue)}</span>
@@ -419,19 +397,18 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         </div>
       )}
 
-      {/* ── Recent Activity ── */}
       <div className="recent-activity">
         <div className="section-header">
-          <h3>Recent Bookings Activity</h3>
-          <button className="period-select" style={{ padding: '6px 12px', fontSize: '0.75rem' }}>View All</button>
+          <h3>Recent Rental Activity</h3>
+          <button className="period-select" style={{ padding: '6px 12px', fontSize: '0.75rem' }} onClick={() => setActiveTab('bookings')}>View All</button>
         </div>
         {recentActivity.length > 0 ? (
           <div className="activity-list">
             {recentActivity.map((b, i) => (
               <div key={i} className="activity-item" onClick={() => handleOpenDetail(b, 'booking')}>
-                <div className={`activity-indicator ${b.status === 'Completed' ? 'green' : 'blue'}`} />
+                <div className={`activity-indicator ${b.status === 'Returned' || b.status === 'Completed' ? 'green' : 'blue'}`} />
                 <div className="activity-details">
-                  <p>{b.clientName} · {b.vehicle?.number || 'No Vehicle'}</p>
+                  <p>{b.clientName} · {b.tool?.number || 'No Tool'}</p>
                   <span>{new Date(b.pickupDate).toLocaleDateString()} — {new Date(b.returnDate).toLocaleDateString()}</span>
                 </div>
                 <div className="activity-value">
@@ -444,9 +421,9 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         ) : (
           <div style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-dim)', background: 'var(--bg-muted)', borderRadius: '20px', margin: '20px' }}>
             <Clock size={48} style={{ marginBottom: '16px', opacity: 0.1 }} />
-            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>No Assigned Bookings</h4>
+            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>No Activity Found</h4>
             <p style={{ fontSize: '0.875rem' }}>
-              {isAdmin ? 'No records found for the selected period.' : `No bookings are currently assigned to ${displayName}.`}
+              No records found for the selected period.
             </p>
           </div>
         )}

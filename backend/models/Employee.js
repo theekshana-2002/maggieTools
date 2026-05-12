@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const EmployeeSchema = new mongoose.Schema({
   name:       { type: String, required: true },
   nic:        { type: String },
-  role:       { type: String, enum: ['Driver', 'Helper', 'Mechanic', 'Admin', 'Manager', 'Other'], default: 'Driver' },
+  role:       { type: String, enum: ['Operator', 'Helper', 'Mechanic', 'Admin', 'Manager', 'Other'], default: 'Operator' },
   contact:    { type: String },
   joinedDate: { type: Date, default: Date.now },
   status:     { type: String, enum: ['Active', 'Inactive'], default: 'Active' },

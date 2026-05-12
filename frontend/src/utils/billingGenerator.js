@@ -2,9 +2,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoUrl from '../logo.png';
 import { amountToWords } from './numberToWords';
+import api from '../services/api';
 
 const COMPANY_DETAILS = {
-  name: 'RAXWO RENT A CAR',
+  name: 'RAXWO TOOL RENTALS',
   address: 'No. 241, Rajamaha Vihara Rd, Mirihana, Kotte.',
   phones: ['+94 775 085 815', '+94 723 627 888', '+94 766 779 603'],
   email: 'info@raxwo.com',
@@ -116,7 +117,6 @@ const drawFooter = (doc) => {
   doc.text('VERIFICATION', pageWidth - 25, footerStart + 18, { align: 'center' });
 };
 
-
 const safeDate = (d) => {
     try {
         if (!d) return '--/--/----';
@@ -125,7 +125,18 @@ const safeDate = (d) => {
     } catch { return '--/--/----'; }
 };
 
+const getDynamicSettings = async () => {
+  try {
+    const res = await api.get('settings');
+    return res.data;
+  } catch (e) { console.warn('Settings fetch failed, using defaults'); }
+  return COMPANY_DETAILS;
+};
+
 export const generateInvoicePDF = async (invoice) => {
+  const settings = await getDynamicSettings();
+  const activeLogo = settings.logo || logoUrl;
+  
   console.log('RAXWO Debug: Starting PDF generation for:', invoice.invoiceNo);
   try {
     const doc = new jsPDF();
@@ -133,18 +144,57 @@ export const generateInvoicePDF = async (invoice) => {
 
     // Add Logo
     try {
-      const img = new Image();
-      img.src = logoUrl;
-      await new Promise((resolve) => { 
-        img.onload = resolve; 
-        img.onerror = resolve; 
-      });
-      doc.addImage(img, 'PNG', 15, 20, 35, 35);
+      doc.addImage(activeLogo, 'PNG', 15, 20, 35, 35);
     } catch (e) {
-      console.warn("Logo skipped");
+      console.warn("Logo skipped or format invalid");
     }
 
-    drawHeader(doc, 'Car Rental Invoice');
+    const drawDynamicHeader = (doc, title) => {
+      drawSidePattern(doc);
+      doc.setFillColor(241, 245, 249);
+      doc.rect(45, 60, pageWidth - 60, 10, 'F');
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...THEME.primary);
+      doc.text(title.toUpperCase(), (pageWidth + 45) / 2, 67, { align: 'center', charSpace: 1.5 });
+    };
+
+    const drawDynamicFooter = (doc) => {
+      const pageHeight = doc.internal.pageSize.height;
+      const footerStart = pageHeight - 45;
+      doc.setDrawColor(100);
+      doc.setLineWidth(0.3);
+      doc.line(18, footerStart, pageWidth - 15, footerStart);
+      const textY = footerStart + 12;
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CONTACT US', 22, textY - 4);
+      doc.setFont('helvetica', 'normal');
+      (settings.phones || []).forEach((p, i) => {
+        doc.text(p, 22, textY + (i * 4));
+      });
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('EMAIL ADDRESS', 75, textY - 4);
+      doc.setFont('helvetica', 'normal');
+      doc.text(settings.email || '', 75, textY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('VISIT US', 125, textY - 4);
+      doc.setFont('helvetica', 'normal');
+      const addr = doc.splitTextToSize(settings.address || '', 45);
+      doc.text(addr, 125, textY);
+
+      doc.setDrawColor(15, 78, 148);
+      doc.setLineWidth(0.5);
+      doc.rect(pageWidth - 35, footerStart + 5, 20, 20);
+      doc.setFontSize(5);
+      doc.text('SCAN FOR', pageWidth - 25, footerStart + 15, { align: 'center' });
+      doc.text('VERIFICATION', pageWidth - 25, footerStart + 18, { align: 'center' });
+    };
+
+    drawDynamicHeader(doc, 'Tool Rental Invoice');
 
     // Meta Info
     doc.setFontSize(10);
@@ -165,65 +215,69 @@ export const generateInvoicePDF = async (invoice) => {
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     if (invoice.site) { /* site removed per user request */ }
-    doc.text(`Vehicle: ${invoice.vehicleNo || 'N/A'}`, pageWidth - 95, 105);
+    doc.text(`Tool: ${invoice.toolNo || 'N/A'}`, pageWidth - 95, 105);
 
     // Table
     const tableData = [
-      ['Service Description', invoice.jobDescription || 'Professional Car Rental Services'],
+      ['Service Description', invoice.jobDescription || 'Professional Tool Rental Services'],
       ['Total Units', `${invoice.totalUnits || 0} ${invoice.unitType || 'Days'}`],
       ['Rate per Unit', `LKR ${(invoice.ratePerUnit || 0).toLocaleString()}`],
-      ['Transport Charge', `LKR ${(invoice.transportCharge || 0).toLocaleString()}`],
-      ['Other Charges', `LKR ${(invoice.otherCharges || 0).toLocaleString()}`]
+      ...(invoice.accessories || []).map(acc => [
+        `Accessory: ${acc.name} (x${acc.quantity})`, 
+        `LKR ${(acc.price * acc.quantity).toLocaleString()}`
+      ])
+    ];
+
+    // Combined Table (Items + Summary)
+    const serviceTotal = (invoice.totalUnits || 0) * (invoice.ratePerUnit || 0);
+    const accTotal = (invoice.accessories || []).reduce((sum, a) => sum + (a.price * a.quantity), 0);
+    
+    const summaryRows = [
+      ['SUBTOTAL SERVICE', `LKR ${serviceTotal.toLocaleString()}`],
+      ...(accTotal > 0 ? [['PARTS & ACCESSORIES', `LKR ${accTotal.toLocaleString()}`]] : []),
+      ['GRAND TOTAL', `LKR ${invoice.totalAmount?.toLocaleString()}`],
+      ['ADVANCE PAYMENT', `LKR ${invoice.advancePayment?.toLocaleString() || '0'}`],
+      ['BALANCE DUE', `LKR ${invoice.balanceAmount?.toLocaleString() || (invoice.totalAmount - (invoice.advancePayment || 0)).toLocaleString()}`]
     ];
 
     autoTable(doc, {
       startY: 120,
       head: [['BILLING ITEM', 'DESCRIPTION / VALUE']],
-      body: tableData,
+      body: [...tableData, ...summaryRows],
       theme: 'grid',
       headStyles: { fillColor: THEME.primary, fontSize: 10 },
-      columnStyles: { 0: { fontStyle: 'bold', width: 60 } }
+      columnStyles: { 
+        0: { fontStyle: 'bold', width: 60 },
+        1: { halign: 'right' }
+      },
+      didParseCell: (data) => {
+        // Style summary rows differently
+        const isSummary = data.row.index >= tableData.length;
+        if (isSummary) {
+          data.cell.styles.fillColor = [248, 250, 252];
+          data.cell.styles.fontStyle = 'bold';
+          
+          // Extra highlight for Balance Due (Last Row)
+          if (data.row.index === (tableData.length + summaryRows.length - 1)) {
+            data.cell.styles.textColor = THEME.secondary;
+            data.cell.styles.fontSize = 12;
+          }
+        }
+      },
+      margin: { bottom: 60 } // Ensure enough space for footer
     });
 
-    let currentY = safeGetY(doc, 160);
-
-    // Financial Summary Table
-    const summaryData = [
-      ['Subtotal Service', `LKR ${((invoice.totalUnits || 0) * (invoice.ratePerUnit || 0)).toLocaleString()}`],
-      ['Transport Charges', `LKR ${invoice.transportCharge?.toLocaleString() || '0'}`],
-      ['Other Charges', `LKR ${invoice.otherCharges?.toLocaleString() || '0'}`],
-      ['GRAND TOTAL', `LKR ${invoice.totalAmount?.toLocaleString()}`]
-    ];
-
-    autoTable(doc, {
-      startY: currentY + 10,
-      body: summaryData,
-      theme: 'plain',
-      styles: { halign: 'right', fontSize: 10 },
-      columnStyles: { 0: { fontStyle: 'bold' }, 1: { fontStyle: 'bold', fontSize: 12, textColor: THEME.primary } }
-    });
-
-    currentY = safeGetY(doc, currentY + 50);
+    let currentY = safeGetY(doc, 220);
 
     // Amount in Words
-    const wordsY = currentY + 15;
+    const wordsY = currentY + 12;
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('AMOUNT IN WORDS:', 15, wordsY);
     doc.setFont('helvetica', 'normal');
     doc.text(amountToWords(invoice.totalAmount || 0), 15, wordsY + 6);
 
-    // Bank Details
-    doc.setFillColor(...THEME.light);
-    doc.rect(15, wordsY + 15, pageWidth - 30, 25, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.text('PAYMENT INSTRUCTIONS:', 20, wordsY + 22);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text('Account Name: RAXWO Rent A Car', 20, wordsY + 28);
-    doc.text('Account No: 1234-5678-9012 (Bank of Ceylon - Mirihana)', 20, wordsY + 33);
-
-    drawFooter(doc);
+    drawDynamicFooter(doc);
     doc.save(`Invoice_${invoice.invoiceNo || 'New'}.pdf`);
   } catch (error) {
     console.error('PDF generation error:', error);
@@ -270,12 +324,12 @@ export const generateQuotationPDF = async (quote) => {
     // Specs Table
     autoTable(doc, {
       startY: 115,
-      head: [['VEHICLE SPECIFICATIONS', 'CAPACITY / LIMITS']],
+      head: [['TOOL SPECIFICATIONS', 'CAPACITY / LIMITS']],
       body: [
-        ['Vehicle Type', quote.vehicleType || 'Any'],
-        ['Specific Vehicle', quote.vehicleNo || 'Fleet Selection'],
+        ['Tool Category', quote.toolCategory || 'Any'],
+        ['Specific Tool', quote.toolNo || 'Selection'],
         ['Refundable Deposit', `LKR ${(quote.refundableDeposit || 0).toLocaleString()}`],
-        ['KM Limitation', 'As per agreement']
+        ['Usage Limit', 'As per agreement']
       ],
       theme: 'striped',
       headStyles: { fillColor: THEME.primary }
@@ -290,7 +344,7 @@ export const generateQuotationPDF = async (quote) => {
       body: [
         ['Mandatory / Base Charge', `LKR ${(quote.mandatoryCharge || 0).toLocaleString()}`],
         ['Transport & Mobilization', `LKR ${(quote.transportCharge || 0).toLocaleString()}`],
-        ['Extra KM Rate', `LKR ${(quote.extraHourRate || 0).toLocaleString()}`],
+        ['Extra Hour Rate', `LKR ${(quote.extraHourRate || 0).toLocaleString()}`],
         ['ESTIMATED TOTAL (MIN)', `LKR ${(quote.estimatedTotal || 0).toLocaleString()}`]
       ],
       theme: 'grid',

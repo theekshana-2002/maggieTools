@@ -4,12 +4,12 @@ const HireSchema = new mongoose.Schema({
   // Basic Info
   date:             { type: Date, default: Date.now },
   client:           { type: String, required: true },
-  vehicle:          { type: String, required: true },
+  toolId:           { type: String, required: true },
   address:          { type: String },
   city:             { type: String },
   
   // Personnel
-  driverName:       { type: String },
+  operatorName:       { type: String },
   helperName:       { type: String },
   
   // Time Information
@@ -24,7 +24,7 @@ const HireSchema = new mongoose.Schema({
   extraHours:       { type: Number, default: 0 },
   extraHourFee:     { type: Number, default: 0 },
   transportFee:     { type: Number, default: 0 },
-  dieselCost:       { type: Number, default: 0 },
+  consumableCost:       { type: Number, default: 0 },
   billAmount:       { type: Number, default: 0 },
   commission:       { type: Number, default: 0 },
   
@@ -39,7 +39,7 @@ const HireSchema = new mongoose.Schema({
   // External Vehicle Info
   isExternal:       { type: Boolean, default: false },
   externalCost:     { type: Number, default: 0 },
-  vehicleType:      { type: String },
+  toolCategory:      { type: String },
 
   status: { type: String, enum: ['Pending', 'Completed', 'Paid'], default: 'Pending' }
 }, { timestamps: true });

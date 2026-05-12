@@ -3,12 +3,12 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import PaymentForm from './PaymentForm';
 import RecordDetails from './RecordDetails';
-import { paymentAPI, vehicleAPI } from '../services/api';
+import { paymentAPI, toolAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
 import { Download, Search, PlusCircle, RefreshCw } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
-import VehicleFilter from './VehicleFilter';
+import ToolFilter from './ToolFilter';
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 const fmt = (n) => `LKR ${Number(n || 0).toLocaleString()}`;
@@ -27,24 +27,22 @@ const PaymentBook = () => {
   const [editingItem,   setEditingItem]   = React.useState(null);
 
   const [rawRecords,    setRawRecords]    = React.useState([]);   // ← pure DB data
-  const [vehicles,      setVehicles]      = React.useState([]);
-  const [selectedVehicle, setSelectedVehicle] = React.useState(null);
+  const [tools,      setTools]      = React.useState([]);
+  const [selectedTool, setSelectedTool] = React.useState(null);
   const [searchQuery,   setSearchQuery]   = React.useState('');
   const [loading,       setLoading]       = React.useState(true);
   const [error,         setError]         = React.useState(null);
   const [success,       setSuccess]       = React.useState(null);
 
   /* Table columns */
-  const tableColumns = [
-    'DATE', 'CLIENT', 'VEHICLE', 'HIRE AMT', 'BALANCE', 'STATUS', 'ACTION'
-  ];
+  const tableColumns = ['DATE', 'CLIENT', 'TOOL', 'HIRE AMT', 'BALANCE', 'STATUS', 'ACTION'];
 
-  React.useEffect(() => { fetchRecords(); fetchVehicles(); }, []);
-
-  const fetchVehicles = async () => {
+  React.useEffect(() => { fetchRecords(); fetchTools(); }, []);
+  
+  const fetchTools = async () => {
     try {
-      const res = await vehicleAPI.get();
-      setVehicles(Array.isArray(res.data) ? res.data : []);
+      const res = await toolAPI.get();
+      setTools(Array.isArray(res.data) ? res.data : []);
     } catch (e) { console.error(e); }
   };
 
@@ -72,7 +70,7 @@ const PaymentBook = () => {
     /* ── display fields ── */
     date:        item.date ? new Date(item.date).toLocaleDateString() : '—',
     clientName:  safe(item.client),
-    vehicleNo:   safe(item.vehicle),
+    vehicleNo:   safe(item.tool || item.vehicle),
     address:     item.address || '—',
     city:        item.city    || item.location || '—',
     days:        item.days    || 1,
@@ -80,7 +78,6 @@ const PaymentBook = () => {
     endKm:       item.endKm   || 0,
     extraKmCharges: item.extraKmCharges || 0,
     hireAmount:  fmt(item.hireAmount),
-    commission:  fmt(item.commission),
     dayPayment:  fmt(item.dayPayment),
     takenAmount: fmt(item.takenAmount),
     balance_num: item.balance || 0,
@@ -104,7 +101,7 @@ const PaymentBook = () => {
     return rawRecords
       .map(buildRow)
       .filter(r => {
-        const matchV = !selectedVehicle || r.vehicle === selectedVehicle;
+        const matchV = !selectedTool || r.vehicleNo === selectedTool;
         const q      = searchQuery.toLowerCase();
         const matchS = !q ||
           (r.clientName || '').toLowerCase().includes(q) ||
@@ -113,7 +110,7 @@ const PaymentBook = () => {
           (r.address || '').toLowerCase().includes(q);
         return matchV && matchS;
       });
-  }, [rawRecords, selectedVehicle, searchQuery, canManage]);
+  }, [rawRecords, selectedTool, searchQuery, canManage]);
 
   /* Summary stats */
   const stats = React.useMemo(() => ({
@@ -168,11 +165,11 @@ const PaymentBook = () => {
 
   /* ── PDF Export ─────────────────────────────────────────────── */
   const handleExportPDF = () => {
-    const cols = ['DATE','CLIENT','VEHICLE','DAYS','START KM','END KM','EXTRA KM','HIRE AMT','COMMISSION','ADVANCE','TAKEN','BALANCE','STATUS'];
+    const cols = ['DATE','CLIENT','VEHICLE','DAYS','START KM','END KM','EXTRA KM','HIRE AMT','ADVANCE','TAKEN','BALANCE','STATUS'];
     const data = displayRows.map(r => [
       r.date, r.clientName, r.vehicleNo,
       r.days, r.startKm, r.endKm, r.extraKmCharges,
-      r.hireAmount, r.commission, r.dayPayment, r.takenAmount,
+      r.hireAmount, r.dayPayment, r.takenAmount,
       r.balance, r.status_text,
     ]);
     generatePDFReport({
@@ -190,7 +187,7 @@ const PaymentBook = () => {
       {/* Summary Strip */}
       <div className="book-summary">
         <div className="summary-item">
-          <label>TOTAL HIRES VALUE</label>
+          <label>TOTAL RENTAL VALUE</label>
           <h3 style={{ color: '#2563EB' }}>LKR {stats.totalHires.toLocaleString()}</h3>
         </div>
         <div className="summary-item">
@@ -203,7 +200,7 @@ const PaymentBook = () => {
         </div>
       </div>
 
-      <VehicleFilter vehicles={vehicles} selectedVehicle={selectedVehicle} onSelect={setSelectedVehicle} />
+      <ToolFilter tools={tools} selectedTool={selectedTool} onSelect={setSelectedTool} />
 
       {/* Filters & Actions */}
       <div className="book-filters">
@@ -245,7 +242,7 @@ const PaymentBook = () => {
       {/* Detail View Modal */}
       <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="Payment Record Details" wide>
         <RecordDetails data={selectedRecord} type="payment" />
-        <div className="modal-footer" style={{ padding: '15px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', background: '#F8FAFC' }}>
+        <div className="modal-footer" style={{ padding: '15px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', background: 'var(--bg-main)' }}>
           <button className="secondary-btn" onClick={() => setViewModalOpen(false)}>Close</button>
         </div>
       </Modal>

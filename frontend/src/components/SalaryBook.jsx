@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable';
 import Modal from './Modal';
 import SalaryForm from './SalaryForm';
-import { salaryAPI, vehicleAPI, employeeAPI, bookingAPI, attendanceAPI, advanceAPI } from '../services/api';
+import { salaryAPI, toolAPI, employeeAPI, bookingAPI, attendanceAPI, advanceAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
 import { Download, Search, RefreshCw, Calendar, Users, Wallet, CreditCard, ChevronRight, TrendingUp, ShieldCheck, Clock, AlertCircle, PlusCircle } from 'lucide-react';
 import '../styles/forms.css';
@@ -16,7 +16,7 @@ const SalaryBook = () => {
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
 
-  const [activeTab, setActiveTab] = useState('Driver');
+  const [activeTab, setActiveTab] = useState('Technician');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -28,7 +28,7 @@ const SalaryBook = () => {
   const [attendance, setAttendance] = useState([]);
   const [dbSalaries, setDbSalaries] = useState([]);
   const [advances, setAdvances] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
+  const [tools, setTools] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -43,14 +43,14 @@ const SalaryBook = () => {
   const fetchBaseData = async () => {
     setLoading(true);
     try {
-      const [eRes, hRes, aRes, sRes, vRes, advRes] = await Promise.all([
-        employeeAPI.get(), bookingAPI.get(), attendanceAPI.get(), salaryAPI.get(), vehicleAPI.get(), advanceAPI.get()
+      const [eRes, hRes, aRes, sRes, tRes, advRes] = await Promise.all([
+        employeeAPI.get(), bookingAPI.get(), attendanceAPI.get(), salaryAPI.get(), toolAPI.get(), advanceAPI.get()
       ]);
       setEmployees((eRes.data || []).filter(e => e.status === 'Active'));
       setHires(hRes.data || []);
       setAttendance(aRes.data || []);
       setDbSalaries(sRes.data || []);
-      setVehicles(vRes.data || []);
+      setTools(tRes.data || []);
       setAdvances(advRes.data || []);
       setError(null);
     } catch (err) {
@@ -72,7 +72,7 @@ const SalaryBook = () => {
     return filteredEmployees.map(emp => {
       const monthHires = hires.filter(h => {
         const d = new Date(h.pickupDate || h.date);
-        return (d.getMonth() === tMonthIdx && d.getFullYear() === tYear) && (h.driverName?.trim() === emp.name.trim() || h.helperName?.trim() === emp.name.trim());
+        return (d.getMonth() === tMonthIdx && d.getFullYear() === tYear) && (h.staffName?.trim() === emp.name.trim() || h.driverName?.trim() === emp.name.trim() || h.helperName?.trim() === emp.name.trim());
       });
 
       const empAtt = attendance.filter(a => {
@@ -85,7 +85,7 @@ const SalaryBook = () => {
       let dailyAllowance = 0;
       let totalHours = 0;
 
-      if (activeTab === 'Driver') {
+      if (activeTab === 'Technician' || activeTab === 'Operator' || activeTab === 'Staff') {
         totalHours = monthHires.reduce((sum, j) => sum + (parseFloat(j.workingHours) || 0), 0);
         hourlyEarnings = totalHours * (emp.hourlyRate || 0);
         dailyAllowance = Math.max(empAtt, new Set(monthHires.map(h => new Date(h.date).toDateString())).size) * 500;
@@ -100,9 +100,9 @@ const SalaryBook = () => {
         month: targetMonth,
         EMPLOYEE: <strong style={{ color: 'var(--text-main)' }}>{emp.name}</strong>,
         BASIC: <span style={{ fontWeight: 600 }}>LKR {basic.toLocaleString()}</span>,
-        HOURLY: activeTab === 'Driver' ? <span style={{ color: 'var(--accent)' }}>LKR {hourlyEarnings.toLocaleString()}</span> : '—',
-        ALLOWANCE: activeTab === 'Driver' ? <span style={{ color: 'var(--success)' }}>LKR {dailyAllowance.toLocaleString()}</span> : '—',
-        HOURS: activeTab === 'Driver' ? <span className="status-badge status-confirmed">{totalHours}h</span> : '—',
+        HOURLY: (activeTab === 'Technician' || activeTab === 'Operator' || activeTab === 'Staff') ? <span style={{ color: 'var(--accent)' }}>LKR {hourlyEarnings.toLocaleString()}</span> : '—',
+        ALLOWANCE: (activeTab === 'Technician' || activeTab === 'Operator' || activeTab === 'Staff') ? <span style={{ color: 'var(--success)' }}>LKR {dailyAllowance.toLocaleString()}</span> : '—',
+        HOURS: (activeTab === 'Technician' || activeTab === 'Operator' || activeTab === 'Staff') ? <span className="status-badge status-confirmed">{totalHours}h</span> : '—',
         'NET PAY': <strong style={{ color: 'var(--text-main)', fontSize: '1rem' }}>LKR {netPay.toLocaleString()}</strong>,
         netPay_val: netPay,
         ACTION: canManage ? (
@@ -130,7 +130,6 @@ const SalaryBook = () => {
 
   return (
     <div className="book-container">
-      {/* ── Header ── */}
       <div className="dashboard-header">
         <div>
           <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Payroll & Wages</p>
@@ -164,7 +163,6 @@ const SalaryBook = () => {
         </div>
       )}
 
-      {/* ── Summary ── */}
       <div className="book-summary">
         <div className="summary-item">
           <label>Projected Payroll</label>
@@ -183,9 +181,8 @@ const SalaryBook = () => {
         </div>
       </div>
 
-      {/* ── Tabs ── */}
       <div className="tab-switcher">
-        {['Driver', 'Manager', 'Mechanic', 'Admin', 'Other'].map(tab => (
+        {['Technician', 'Operator', 'Helper', 'Manager', 'Mechanic', 'Admin', 'Other'].map(tab => (
           <button key={tab} className={activeTab === tab ? 'active-tab' : ''} onClick={() => setActiveTab(tab)}>{tab.toUpperCase()}S</button>
         ))}
         <button className={activeTab === 'Advances' ? 'active-tab' : ''} onClick={() => setActiveTab('Advances')}>ADVANCES</button>
@@ -220,7 +217,6 @@ const SalaryBook = () => {
         </div>
       )}
 
-      {/* Modals */}
       <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="Payroll Transaction Details">
         <RecordDetails data={selectedRecord} type="salary" />
       </Modal>

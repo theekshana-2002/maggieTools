@@ -27,3 +27,8 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Archives & Scratch
+*.rar
+*.zip
+scratch/

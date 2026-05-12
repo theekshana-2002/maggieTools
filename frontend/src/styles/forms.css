@@ -279,6 +279,7 @@
   .hire-form-footer {
     flex-direction: column;
     padding: 20px;
+    gap: 16px;
   }
   .modal-actions {
     width: 100%;
@@ -286,4 +287,158 @@
   .modal-actions button {
     flex: 1;
   }
+}
+
+/* ── Booking Form Layout ── */
+.booking-form-wrapper {
+  display: flex;
+  gap: 20px;
+  background: var(--bg-main);
+  height: 100%;
+  overflow: hidden;
+}
+
+.tool-item-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr auto;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 16px;
+  background: var(--bg-side);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 640px) {
+  .tool-item-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.accessory-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-main);
+  padding: 12px 16px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .accessory-item-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.accessory-info {
+  flex: 1;
+}
+
+.accessory-price {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.accessory-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .accessory-actions {
+    justify-content: space-between;
+    border-top: 1px solid var(--border-soft);
+    padding-top: 8px;
+  }
+}
+
+.accessory-subtotal {
+  width: 100px;
+  text-align: right;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.remove-acc-btn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-input {
+  width: 60px !important;
+  height: 36px !important;
+  text-align: center;
+  padding: 0 !important;
+}
+
+/* ── History Panel ── */
+.history-panel {
+  width: 320px;
+  background: var(--bg-side);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.4s ease;
+}
+
+.history-panel-header {
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.history-panel-title {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.history-panel-title svg {
+  color: var(--accent);
+}
+
+.lookup-loading {
+  border-color: var(--accent) !important;
+}
+
+/* ── Quick Add Badges ── */
+.quick-acc-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.quick-add-badge {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-soft);
+  background: var(--bg-main);
+  color: var(--text-main);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-add-badge:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
 }

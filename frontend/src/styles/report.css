@@ -110,29 +110,43 @@
 
 @media (max-width: 640px) {
   #report-document {
-    padding: 24px 16px;
+    padding: 20px 12px;
     border-radius: 0;
     border-left: none;
     border-right: none;
+    box-shadow: none;
   }
 
   .report-header {
     flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: 16px;
   }
 
+  .report-header-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
   .report-contact-info {
-    text-align: left;
+    text-align: center;
   }
 
   .report-meta-section {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
+    text-align: center;
     gap: 12px;
   }
 
   .report-meta-details {
-    text-align: left;
+    text-align: center;
+  }
+
+  .report-doc-title {
+    text-align: center;
   }
 }
 
@@ -271,10 +285,19 @@
 }
 
 /* ── Breakdown table ── */
+.report-section-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
+  margin-bottom: 10px;
+}
+
 .breakdown-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.82rem;
+  min-width: 600px;
 }
 
 .breakdown-table th {
@@ -367,9 +390,141 @@
   color: var(--text-main);
 }
 
-/* ── Loading ── */
+/* ── Loading & Spinner ── */
 .report-loading {
   padding: 80px 0;
   text-align: center;
-  color: var(--text-300);
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: report-spin 0.8s linear infinite;
+}
+
+@keyframes report-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Download Specific Classes (Forces desktop layout during capture) ── */
+.is-downloading {
+  width: 1100px !important;
+  background: #ffffff !important;
+  padding: 40px !important;
+}
+
+.is-downloading #report-document {
+  max-width: 1000px !important;
+  width: 1000px !important;
+  margin: 0 auto !important;
+  padding: 40px !important;
+  box-shadow: none !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+}
+
+.is-downloading .report-section-table-wrapper {
+  overflow: visible !important;
+}
+
+.is-downloading .breakdown-table {
+  min-width: auto !important;
+}
+
+.is-downloading .report-kpi-grid {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+
+.is-downloading .report-header {
+  flex-direction: row !important;
+  text-align: left !important;
+  align-items: flex-start !important;
+}
+
+.is-downloading .report-header-left {
+  flex-direction: row !important;
+  align-items: flex-start !important;
+}
+
+.is-downloading .report-contact-info {
+  text-align: right !important;
+}
+
+@media (max-width: 640px) {
+  .report-footer {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 8px !important;
+  }
+}
+
+.report-footer {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  font-weight: 500;
+  gap: 12px;
+}
+
+/* ── Premium Download Button ── */
+.download-btn-premium {
+  height: 42px;
+  padding: 0 24px;
+  background: linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 15px var(--accent-glow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.download-btn-premium:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px var(--accent-glow);
+  filter: brightness(1.1);
+}
+
+.download-btn-premium:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: var(--text-dim);
+}
+
+@media (max-width: 768px) {
+  .download-btn-premium {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
+}
+
+.is-downloading .report-meta-section {
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  text-align: left !important;
+}
+
+.is-downloading .report-meta-details {
+  text-align: right !important;
 }

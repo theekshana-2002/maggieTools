@@ -62,6 +62,11 @@ api.interceptors.request.use((config) => {
 const getFallback = (key) => JSON.parse(localStorage.getItem(key) || '[]');
 const setFallback = (key, data) => localStorage.setItem(key, JSON.stringify(data));
 
+// Global notification for data changes
+const notifyUpdate = () => {
+  window.dispatchEvent(new Event('raxwo_data_updated'));
+};
+
 const wrapAPI = (endpoint, storageKey) => {
   // Ensure endpoint doesn't start with slash to work with baseURL/
   const cleanPath = endpoint.startsWith('/') ? endpoint.substring(1) : endpoint;
@@ -85,6 +90,7 @@ const wrapAPI = (endpoint, storageKey) => {
         const res = await api.post(cleanPath, data);
         const current = getFallback(storageKey);
         setFallback(storageKey, [...current, res.data]);
+        notifyUpdate();
         return res;
       } catch (err) {
         if (!err.response) {
@@ -102,6 +108,7 @@ const wrapAPI = (endpoint, storageKey) => {
         const res = await api.put(`${cleanPath}/${id}`, data);
         const current = getFallback(storageKey);
         setFallback(storageKey, current.map(item => item._id === id ? res.data : item));
+        notifyUpdate();
         return res;
       } catch (err) {
         if (!err.response) {
@@ -120,6 +127,7 @@ const wrapAPI = (endpoint, storageKey) => {
         const current = getFallback(storageKey);
         const filtered = current.filter(item => item._id !== id);
         setFallback(storageKey, filtered);
+        notifyUpdate();
         return res;
       } catch (err) {
         if (!err.response) {

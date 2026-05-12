@@ -12,7 +12,7 @@ const MONTHS = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-const FinancialReport = () => {
+const FinancialReport = ({ appSettings }) => {
   const [data, setData] = useState({ hires: [], salaries: [], payments: [], extraIncome: [], expenses: [], tools: [] });
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -51,16 +51,22 @@ const FinancialReport = () => {
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(() => fetchAll(true), 15000);
-    const handleFocus = () => fetchAll(true);
-    const handleLease = () => fetchAll(true);
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('kt_lease_updated', handleLease);
+    
+    // Polling as a fallback (every 10 seconds)
+    const interval = setInterval(() => fetchAll(true), 10000);
+    
+    // Real-time update listeners
+    const handleRefresh = () => fetchAll(true);
+    
+    window.addEventListener('focus', handleRefresh);
+    window.addEventListener('raxwo_data_updated', handleRefresh);
+    window.addEventListener('raxwo_lease_updated', handleRefresh);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('kt_lease_updated', handleLease);
+      window.removeEventListener('focus', handleRefresh);
+      window.removeEventListener('raxwo_data_updated', handleRefresh);
+      window.removeEventListener('raxwo_lease_updated', handleRefresh);
     };
   }, []);
 
@@ -131,22 +137,37 @@ const FinancialReport = () => {
     : `${selectedMonth} ${selectedYear}`;
 
   const handleDownload = async () => {
+    if (downloading) return;
     setDownloading(true);
     try {
-      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+      const [jspdfMod, html2canvasMod] = await Promise.all([
         import('jspdf'),
         import('html2canvas')
       ]);
+      
+      const jsPDF = jspdfMod.default || jspdfMod.jsPDF || jspdfMod;
+      const html2canvas = html2canvasMod.default || html2canvasMod;
 
       const element = reportRef.current;
+      if (!element) return;
+
+      // Add class to body to ensure CSS selectors like .is-downloading #report-document work
+      document.body.classList.add('is-downloading');
+      
+      // Small delay to allow the layout to recalculate
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false
+        logging: false,
+        windowWidth: 1200,
       });
 
-      const imgData = canvas.toDataURL('image/png');
+      document.body.classList.remove('is-downloading');
+
+      const imgData = canvas.toDataURL('image/png', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -155,19 +176,22 @@ const FinancialReport = () => {
       let heightLeft = pdfHeight;
       let position = 0;
 
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      // Add pages
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
       heightLeft -= pageHeight;
 
       while (heightLeft > 0) {
         position = heightLeft - pdfHeight;
         pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
         heightLeft -= pageHeight;
       }
 
       const filename = `Financial_Report_${selectedMonth === 'All' ? selectedYear : `${selectedMonth}_${selectedYear}`}.pdf`;
       pdf.save(filename);
     } catch (err) {
+      console.error('PDF Generation Error:', err);
+      document.body.classList.remove('is-downloading');
       alert('Could not generate PDF. Please try again.\n' + err.message);
     } finally {
       setDownloading(false);
@@ -205,9 +229,9 @@ const FinancialReport = () => {
           {refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
 
-        <button className="download-btn" onClick={handleDownload} disabled={downloading}>
-          <Download size={16} />
-          {downloading ? 'Generating PDF...' : 'Download PDF'}
+        <button className="download-btn-premium" onClick={handleDownload} disabled={downloading}>
+          <Download size={18} />
+          <span>{downloading ? 'Preparing PDF...' : 'Download Full Report'}</span>
         </button>
       </div>
 
@@ -215,16 +239,16 @@ const FinancialReport = () => {
 
         <div className="report-header">
           <div className="report-header-left">
-            <img src={logoUrl} alt="Logo" className="report-logo" />
+            <img src={appSettings?.logo || logoUrl} alt="Logo" className="report-logo" />
             <div className="report-title">
-              <h2>RAXWO Tool Rentals</h2>
-              <p>Premium Tool Rental &amp; Equipment Management</p>
+              <h2>{appSettings?.companyName || 'RAXWO Tool Rentals'}</h2>
+              <p>{appSettings?.tagline || 'Premium Tool Rental & Equipment Management'}</p>
             </div>
           </div>
           <div className="report-contact-info">
-            <p>123 Main Street, Colombo</p>
-            <p>Phone: +94 77 123 4567</p>
-            <p>Email: info@raxwo.com</p>
+            <p>{appSettings?.address || '123 Main Street, Colombo'}</p>
+            <p>Phone: {appSettings?.phone || '+94 77 123 4567'}</p>
+            <p>Email: {appSettings?.email || 'info@raxwo.com'}</p>
           </div>
         </div>
 
@@ -275,68 +299,70 @@ const FinancialReport = () => {
 
         <div className="report-section">
           <div className="report-section-title">Income &amp; Expense Breakdown</div>
-          <table className="breakdown-table">
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Type</th>
-                <th>Count</th>
-                <th>Amount (LKR)</th>
-                <th>% of Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><span className="cat-badge cat-revenue">Rental Revenue</span></td>
-                <td>Income</td>
-                <td>{stats.fHires.length}</td>
-                <td className="amount-cell amount-pos">+ {stats.totalHire.toLocaleString()}</td>
-                <td>{stats.totalIncome > 0 ? ((stats.totalHire / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
-              </tr>
-              <tr>
-                <td><span className="cat-badge cat-revenue">Extra Income</span></td>
-                <td>Income</td>
-                <td>{stats.fExtraIncome.length}</td>
-                <td className="amount-cell amount-pos">+ {stats.totalExtraIncome.toLocaleString()}</td>
-                <td>{stats.totalIncome > 0 ? ((stats.totalExtraIncome / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
-              </tr>
-              <tr>
-                <td><span className="cat-badge cat-revenue">Payments Received</span></td>
-                <td>Info</td>
-                <td>{stats.fPayments.length}</td>
-                <td className="amount-cell amount-pos">+ {stats.totalPayments.toLocaleString()}</td>
-                <td>—</td>
-              </tr>
-              <tr>
-                <td><span className="cat-badge cat-expense">Staff Wages</span></td>
-                <td>Expense</td>
-                <td>{stats.fSalaries.length}</td>
-                <td className="amount-cell amount-neg">− {stats.totalSalary.toLocaleString()}</td>
-                <td>{stats.totalIncome > 0 ? ((stats.totalSalary / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
-              </tr>
-              <tr>
-                <td><span className="cat-badge cat-expense">Leasing Payments</span></td>
-                <td>Expense</td>
-                <td>{data.tools.filter(t => t.hasLeasing).length} units</td>
-                <td className="amount-cell amount-neg">− {stats.totalLeasing.toLocaleString()}</td>
-                <td>{stats.totalIncome > 0 ? ((stats.totalLeasing / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
-              </tr>
-              <tr>
-                <td><span className="cat-badge cat-expense">Other Expenses</span></td>
-                <td>Expense</td>
-                <td>{stats.fExpenses.length}</td>
-                <td className="amount-cell amount-neg">− {stats.totalOtherExp.toLocaleString()}</td>
-                <td>{stats.totalIncome > 0 ? ((stats.totalOtherExp / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
-              </tr>
-              <tr className="total-row">
-                <td colSpan={3}><strong>Net Profit / Loss</strong></td>
-                <td className={`amount-cell ${stats.netProfit >= 0 ? 'amount-pos' : 'amount-neg'}`}>
-                  <strong>LKR {stats.netProfit.toLocaleString()}</strong>
-                </td>
-                <td>{stats.totalIncome > 0 ? ((stats.netProfit / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="report-section-table-wrapper">
+            <table className="breakdown-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Type</th>
+                  <th>Count</th>
+                  <th>Amount (LKR)</th>
+                  <th>% of Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span className="cat-badge cat-revenue">Rental Revenue</span></td>
+                  <td>Income</td>
+                  <td>{stats.fHires.length}</td>
+                  <td className="amount-cell amount-pos">+ {stats.totalHire.toLocaleString()}</td>
+                  <td>{stats.totalIncome > 0 ? ((stats.totalHire / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
+                </tr>
+                <tr>
+                  <td><span className="cat-badge cat-revenue">Extra Income</span></td>
+                  <td>Income</td>
+                  <td>{stats.fExtraIncome.length}</td>
+                  <td className="amount-cell amount-pos">+ {stats.totalExtraIncome.toLocaleString()}</td>
+                  <td>{stats.totalIncome > 0 ? ((stats.totalExtraIncome / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
+                </tr>
+                <tr>
+                  <td><span className="cat-badge cat-revenue">Payments Received</span></td>
+                  <td>Info</td>
+                  <td>{stats.fPayments.length}</td>
+                  <td className="amount-cell amount-pos">+ {stats.totalPayments.toLocaleString()}</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td><span className="cat-badge cat-expense">Staff Wages</span></td>
+                  <td>Expense</td>
+                  <td>{stats.fSalaries.length}</td>
+                  <td className="amount-cell amount-neg">− {stats.totalSalary.toLocaleString()}</td>
+                  <td>{stats.totalIncome > 0 ? ((stats.totalSalary / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
+                </tr>
+                <tr>
+                  <td><span className="cat-badge cat-expense">Leasing Payments</span></td>
+                  <td>Expense</td>
+                  <td>{data.tools.filter(t => t.hasLeasing).length} units</td>
+                  <td className="amount-cell amount-neg">− {stats.totalLeasing.toLocaleString()}</td>
+                  <td>{stats.totalIncome > 0 ? ((stats.totalLeasing / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
+                </tr>
+                <tr>
+                  <td><span className="cat-badge cat-expense">Other Expenses</span></td>
+                  <td>Expense</td>
+                  <td>{stats.fExpenses.length}</td>
+                  <td className="amount-cell amount-neg">− {stats.totalOtherExp.toLocaleString()}</td>
+                  <td>{stats.totalIncome > 0 ? ((stats.totalOtherExp / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
+                </tr>
+                <tr className="total-row">
+                  <td colSpan={3}><strong>Net Profit / Loss</strong></td>
+                  <td className={`amount-cell ${stats.netProfit >= 0 ? 'amount-pos' : 'amount-neg'}`}>
+                    <strong>LKR {stats.netProfit.toLocaleString()}</strong>
+                  </td>
+                  <td>{stats.totalIncome > 0 ? ((stats.netProfit / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {stats.fHires.length > 0 && (
@@ -347,7 +373,7 @@ const FinancialReport = () => {
                 <div key={i} className="txn-item">
                   <div className="txn-dot" style={{ background: '#2563EB' }}></div>
                   <div className="txn-info">
-                    <p>{h.client || 'Customer'} — {h.vehicle || 'Tool ID'}</p>
+                    <p>{h.client || 'Customer'} — {h.tool || h.vehicle || 'Tool ID'}</p>
                     <span>{h.city || '—'} · {h.date ? new Date(h.date).toLocaleDateString() : '—'}</span>
                   </div>
                   <div className="txn-amount" style={{ color: '#2563EB' }}>
@@ -380,7 +406,7 @@ const FinancialReport = () => {
         )}
 
         <div className="report-footer">
-          <span>RAXWO Tool Rentals Management System · Confidential</span>
+          <span>{appSettings?.companyName || 'RAXWO Tool Rentals'} Management System · Confidential</span>
           <span>Generated on {new Date().toLocaleString()}</span>
         </div>
       </div>

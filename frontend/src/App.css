@@ -244,9 +244,27 @@
 }
 
 @media (max-width: 640px) {
-  .main-header { padding: 0 16px; }
-  .content-area { padding: 24px 16px; }
-  .header-left h2 { font-size: 1.125rem; }
+  .main-header { 
+    padding: 0 16px; 
+    height: auto;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .header-left {
+    justify-content: space-between;
+  }
+  .header-right {
+    justify-content: space-between;
+    width: 100%;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+  .content-area { padding: 16px 12px; }
+  .header-left h2 { font-size: 1.1rem; }
+  .user-nav-info { border: none; padding-right: 0; }
 }
 
 @keyframes fadeIn {

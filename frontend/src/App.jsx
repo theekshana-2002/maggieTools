@@ -141,7 +141,7 @@ const App = () => {
       case 'tools':     return <Tools />;
       case 'compliance': return <ComplianceBook />;
       case 'employees': return <Employees />;
-      case 'reports':   return <FinancialReport />;
+      case 'reports':   return <FinancialReport appSettings={appSettings} />;
       case 'invoices':   return <InvoiceBook />;
       case 'quotations': return <QuotationBook />;
       case 'attendance': return <AttendanceBook />;

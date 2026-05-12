@@ -313,8 +313,8 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   };
 
   return (
-    <div className="booking-form-wrapper" style={{ display: 'flex', gap: '20px', background: 'var(--bg-main)', height: '100%', overflow: 'hidden' }}>
-      <form onSubmit={handleSubmit} className="hire-form" style={{ flex: 1, minWidth: 0 }}>
+    <div className="booking-form-wrapper">
+      <form onSubmit={handleSubmit} className="hire-form">
         <div className="hire-form-scroll">
 
           <div className="form-section">
@@ -471,16 +471,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
             </div>
 
             {formData.items.map((item, index) => (
-              <div key={index} className="tool-item-row" style={{
-                display: 'grid',
-                gridTemplateColumns: '1.5fr 1fr 1fr auto',
-                gap: '12px',
-                marginBottom: '12px',
-                padding: '12px',
-                background: 'var(--bg-side)',
-                borderRadius: '10px',
-                border: '1px solid var(--border)'
-              }}>
+              <div key={index} className="tool-item-row">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Tool Info</label>
                   <div style={{ padding: '10px', background: 'var(--bg-main)', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600 }}>
@@ -582,23 +573,23 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
             )}
 
             {formData.bookingAccessories.map((acc, index) => (
-              <div key={index} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-main)', padding: '10px', borderRadius: '8px', marginBottom: '8px', border: '1px solid var(--border)' }}>
-                <div style={{ flex: 1 }}>
+              <div key={index} className="accessory-item-row">
+                <div className="accessory-info">
                   <strong>{acc.name}</strong>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>LKR {acc.price} / unit</div>
+                  <div className="accessory-price">LKR {acc.price} / unit</div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="accessory-actions">
                   <input
                     type="number"
                     value={acc.quantity}
                     onChange={e => handleAccQtyChange(index, Number(e.target.value))}
-                    style={{ width: '60px', textAlign: 'center' }}
+                    className="qty-input"
                     min="1"
                   />
-                  <div style={{ width: '100px', textAlign: 'right', fontWeight: 600 }}>
+                  <div className="accessory-subtotal">
                     LKR {(acc.price * acc.quantity).toLocaleString()}
                   </div>
-                  <button type="button" onClick={() => removeAccessory(index)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => removeAccessory(index)} className="remove-acc-btn">
                     <TrendingUp style={{ transform: 'rotate(45deg)' }} size={16} />
                   </button>
                 </div>
@@ -703,17 +694,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
       </form>
 
       {(customerHistory || fetchingHistory) && (
-        <div className="history-panel" style={{
-          width: '320px',
-          background: 'var(--bg-side)',
-          borderLeft: '1px solid var(--border)',
-          display: 'flex',
-          flexDirection: 'column',
-          animation: 'slideInRight 0.4s ease'
-        }}>
-          <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <RefreshCw size={18} className={fetchingHistory ? 'spinner' : ''} style={{ color: 'var(--accent)' }} />
+        <div className="history-panel">
+          <div className="history-panel-header">
+            <h3 className="history-panel-title">
+              <RefreshCw size={18} className={fetchingHistory ? 'spinner' : ''} />
               Customer History
             </h3>
           </div>

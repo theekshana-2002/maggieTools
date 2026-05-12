@@ -313,8 +313,8 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   };
 
   return (
-    <div className="booking-form-wrapper">
-      <form onSubmit={handleSubmit} className="hire-form">
+    <div className="booking-form-wrapper form-flex form-bg-side form-height-full form-overflow-hidden">
+      <form onSubmit={handleSubmit} className="hire-form form-flex-1">
         <div className="hire-form-scroll">
 
           <div className="form-section">
@@ -694,9 +694,9 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
       </form>
 
       {(customerHistory || fetchingHistory) && (
-        <div className="history-panel">
+        <div className="history-panel form-history-panel">
           <div className="history-panel-header">
-            <h3 className="history-panel-title">
+            <h3 className="history-panel-title form-flex form-align-center form-gap-sm">
               <RefreshCw size={18} className={fetchingHistory ? 'spinner' : ''} />
               Customer History
             </h3>

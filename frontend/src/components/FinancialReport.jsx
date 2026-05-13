@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Download, TrendingUp, TrendingDown, Wallet, FileText, RefreshCw, Package } from 'lucide-react';
-import { hireAPI, salaryAPI, paymentAPI, extraIncomeAPI, expenseAPI, toolAPI } from '../services/api';
+import { hireAPI, bookingAPI, salaryAPI, paymentAPI, extraIncomeAPI, expenseAPI, toolAPI } from '../services/api';
 import logoUrl from '../logo.png';
 import '../styles/report.css';
 
@@ -133,6 +133,8 @@ const FinancialReport = ({ appSettings }) => {
     const netProfit     = totalIncome - totalExpense;
     
     // Actual Cash in Hand: Actual Payments Received + Extra Income - Expenses
+    const cashBalance   = (totalPayments + totalExtraIncome) - totalExpense;
+    
     // Group payments by payment method for the breakdown
     const paymentsByMethod = fPayments.reduce((acc, r) => {
       const method = r.paymentMethod || 'Cash';
@@ -352,7 +354,7 @@ const FinancialReport = ({ appSettings }) => {
                   <td>—</td>
                 </tr>
                 {Object.entries(stats.paymentsByMethod).map(([method, amount], idx) => (
-                  amount > 0 && (
+                  amount > 0 ? (
                     <tr key={`pm-${idx}`} style={{ backgroundColor: 'var(--bg-main)', fontSize: '0.9rem' }}>
                       <td style={{ paddingLeft: '30px' }}>↳ {method}</td>
                       <td>Info</td>
@@ -360,7 +362,7 @@ const FinancialReport = ({ appSettings }) => {
                       <td className="amount-cell amount-pos">+ {amount.toLocaleString()}</td>
                       <td>{stats.totalPayments > 0 ? ((amount / stats.totalPayments) * 100).toFixed(1) + '%' : '—'}</td>
                     </tr>
-                  )
+                  ) : null
                 ))}
                 <tr>
                   <td><span className="cat-badge cat-expense">Staff Wages</span></td>

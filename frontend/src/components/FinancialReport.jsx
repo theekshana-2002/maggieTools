@@ -13,7 +13,7 @@ const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
 const FinancialReport = ({ appSettings }) => {
-  const [data, setData] = useState({ hires: [], salaries: [], payments: [], extraIncome: [], expenses: [], tools: [] });
+  const [data, setData] = useState({ hires: [], bookings: [], salaries: [], payments: [], extraIncome: [], expenses: [], tools: [] });
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState('All');
@@ -25,8 +25,9 @@ const FinancialReport = ({ appSettings }) => {
     if (!isSilent) setLoading(true);
     else setRefreshing(true);
     try {
-      const [h, s, p, ei, ex, t] = await Promise.all([
+      const [h, b, s, p, ei, ex, t] = await Promise.all([
         hireAPI.get(),
+        bookingAPI.get(),
         salaryAPI.get(),
         paymentAPI.get(),
         extraIncomeAPI.get(),
@@ -35,6 +36,7 @@ const FinancialReport = ({ appSettings }) => {
       ]);
       setData({
         hires: h.data || [],
+        bookings: b.data || [],
         salaries: s.data || [],
         payments: p.data || [],
         extraIncome: ei.data || [],
@@ -89,14 +91,20 @@ const FinancialReport = ({ appSettings }) => {
 
   const stats = useMemo(() => {
     const fHires       = filterByPeriod(data.hires, 'date');
+    const fBookings    = filterByPeriod(data.bookings, 'date');
     const fSalaries    = filterSalaries(data.salaries);
     const fPayments    = filterByPeriod(data.payments, 'date');
     const fExtraIncome = filterByPeriod(data.extraIncome, 'date');
     const fExpenses    = filterByPeriod(data.expenses, 'date');
 
-    const totalHire        = fPayments.reduce((s, r) => s + (parseFloat(r.hireAmount) || 0), 0);
+    // Tally Rental Revenue correctly from primary records (Hires + Bookings)
+    // fHires uses .totalAmount or .billAmount, fBookings uses .amount or .totalAmount
+    const totalHireRevenue = fHires.reduce((s, r) => s + (parseFloat(r.totalAmount || r.billAmount) || 0), 0);
+    const totalBookingRevenue = fBookings.reduce((s, r) => s + (parseFloat(r.totalAmount || r.amount) || 0), 0);
+    const totalRentalRevenue = totalHireRevenue + totalBookingRevenue;
+
     const totalSalary      = fSalaries.reduce((s, r) => s + (parseFloat(r.netPay) || 0), 0);
-    const totalPayments    = fPayments.reduce((s, r) => s + (parseFloat(r.takenAmount) || 0), 0);
+    const totalPayments    = fPayments.reduce((s, r) => s + (parseFloat(r.takenAmount || r.paidAmount) || 0), 0);
     const totalExtraIncome = fExtraIncome.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const totalOtherExp    = fExpenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
@@ -120,15 +128,26 @@ const FinancialReport = ({ appSettings }) => {
       }, 0);
 
 
-    const totalIncome   = totalHire + totalExtraIncome;
+    const totalIncome   = totalRentalRevenue + totalExtraIncome;
     const totalExpense  = totalSalary + totalOtherExp + totalLeasing;
     const netProfit     = totalIncome - totalExpense;
-    const cashBalance   = (totalPayments + totalExtraIncome) - totalExpense;
+    
+    // Actual Cash in Hand: Actual Payments Received + Extra Income - Expenses
+    // Group payments by payment method for the breakdown
+    const paymentsByMethod = fPayments.reduce((acc, r) => {
+      const method = r.paymentMethod || 'Cash';
+      const amount = parseFloat(r.takenAmount || r.paidAmount) || 0;
+      if (!acc[method]) acc[method] = 0;
+      acc[method] += amount;
+      return acc;
+    }, {});
 
     return {
-      fHires, fSalaries, fPayments, fExtraIncome, fExpenses,
-      totalHire, totalSalary, totalPayments, totalExtraIncome, totalOtherExp, totalLeasing,
-      totalIncome, totalExpense, netProfit, cashBalance
+      fHires, fBookings, fSalaries, fPayments, fExtraIncome, fExpenses,
+      totalRentalRevenue, totalHireRevenue, totalBookingRevenue,
+      totalSalary, totalPayments, totalExtraIncome, totalOtherExp, totalLeasing,
+      totalIncome, totalExpense, netProfit, cashBalance,
+      paymentsByMethod
     };
   }, [data, selectedMonth, selectedYear]);
 
@@ -276,8 +295,8 @@ const FinancialReport = ({ appSettings }) => {
           </div>
           <div className="kpi-card" style={{ '--kpi-color': '#F59E0B' }}>
             <div className="kpi-label">Rental Revenue</div>
-            <div className="kpi-value">LKR {stats.totalHire.toLocaleString()}</div>
-            <div className="kpi-sub">{stats.fHires.length} bookings completed</div>
+            <div className="kpi-value">LKR {stats.totalRentalRevenue.toLocaleString()}</div>
+            <div className="kpi-sub">{stats.fHires.length + stats.fBookings.length} total rental entries</div>
           </div>
           <div className="kpi-card" style={{ '--kpi-color': '#10B981' }}>
             <div className="kpi-label">Payments Received</div>
@@ -314,9 +333,9 @@ const FinancialReport = ({ appSettings }) => {
                 <tr>
                   <td><span className="cat-badge cat-revenue">Rental Revenue</span></td>
                   <td>Income</td>
-                  <td>{stats.fHires.length}</td>
-                  <td className="amount-cell amount-pos">+ {stats.totalHire.toLocaleString()}</td>
-                  <td>{stats.totalIncome > 0 ? ((stats.totalHire / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
+                  <td>{stats.fHires.length + stats.fBookings.length}</td>
+                  <td className="amount-cell amount-pos">+ {stats.totalRentalRevenue.toLocaleString()}</td>
+                  <td>{stats.totalIncome > 0 ? ((stats.totalRentalRevenue / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
                 </tr>
                 <tr>
                   <td><span className="cat-badge cat-revenue">Extra Income</span></td>
@@ -326,12 +345,23 @@ const FinancialReport = ({ appSettings }) => {
                   <td>{stats.totalIncome > 0 ? ((stats.totalExtraIncome / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
                 </tr>
                 <tr>
-                  <td><span className="cat-badge cat-revenue">Payments Received</span></td>
+                  <td><span className="cat-badge cat-revenue" style={{background: '#8B5CF6', color: '#fff'}}>Payments Received</span></td>
                   <td>Info</td>
                   <td>{stats.fPayments.length}</td>
                   <td className="amount-cell amount-pos">+ {stats.totalPayments.toLocaleString()}</td>
                   <td>—</td>
                 </tr>
+                {Object.entries(stats.paymentsByMethod).map(([method, amount], idx) => (
+                  amount > 0 && (
+                    <tr key={`pm-${idx}`} style={{ backgroundColor: 'var(--bg-main)', fontSize: '0.9rem' }}>
+                      <td style={{ paddingLeft: '30px' }}>↳ {method}</td>
+                      <td>Info</td>
+                      <td>—</td>
+                      <td className="amount-cell amount-pos">+ {amount.toLocaleString()}</td>
+                      <td>{stats.totalPayments > 0 ? ((amount / stats.totalPayments) * 100).toFixed(1) + '%' : '—'}</td>
+                    </tr>
+                  )
+                ))}
                 <tr>
                   <td><span className="cat-badge cat-expense">Staff Wages</span></td>
                   <td>Expense</td>

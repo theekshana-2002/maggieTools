@@ -188,6 +188,9 @@
   .form-section {
     padding: 16px !important;
     border-radius: 16px !important;
+    width: 100% !important;
+    margin-bottom: 16px !important;
+    overflow: hidden; /* Ensure nothing sticks out */
   }
 
   /* Stack Tool Item Rows in Booking Form */

@@ -45,9 +45,20 @@
   --shadow-lg: 0 20px 40px rgba(0, 0, 0, 0.1);
 }
 
-/* ── Layout Overrides ── */
-.sidebar-collapsed {
-  --sidebar-w: 80px;
+/* ── Global Reset ── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 [data-theme='dark'] {

@@ -72,9 +72,11 @@ router.post('/', authMiddleware, async (req, res) => {
           hoursInBill: savedHire.workingHours,
           commission: savedHire.commission,
           hireAmount: savedHire.totalAmount,
-          paidAmount: 0,
-          balance: savedHire.totalAmount,
-          status: 'Pending',
+          takenAmount: savedHire.advancePayment || 0,
+          paidAmount: savedHire.advancePayment || 0,
+          balance: savedHire.totalAmount - (savedHire.advancePayment || 0),
+          status: savedHire.advancePayment >= savedHire.totalAmount && savedHire.totalAmount > 0 ? 'Paid' : (savedHire.advancePayment > 0 ? 'Partial' : 'Pending'),
+          paymentMethod: savedHire.paymentMethod || 'Cash',
           hireId: savedHire._id,
           createdAt: new Date(),
           updatedAt: new Date()
@@ -170,12 +172,14 @@ router.put('/:id', authMiddleware, authorizeRoles('Admin', 'Manager'), async (re
               hoursInBill: updated.workingHours,
               commission: updated.commission,
               hireAmount: updated.totalAmount,
+              takenAmount: updated.advancePayment || 0,
+              paidAmount: updated.advancePayment || 0,
+              balance: updated.totalAmount - (updated.advancePayment || 0),
+              status: updated.advancePayment >= updated.totalAmount && updated.totalAmount > 0 ? 'Paid' : (updated.advancePayment > 0 ? 'Partial' : 'Pending'),
+              paymentMethod: updated.paymentMethod || 'Cash',
               updatedAt: new Date()
             },
             $setOnInsert: {
-              paidAmount: 0,
-              balance: updated.totalAmount,
-              status: 'Pending',
               createdAt: new Date()
             }
           },

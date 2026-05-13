@@ -26,7 +26,9 @@ const defaultJob = (prevJob = {}) => ({
   billNumber:      '',
   totalAmount:     0,
   details:         '',
-  status:          'Pending'
+  status:          'Pending',
+  advancePayment:  0,
+  paymentMethod:   'Cash'
 });
 
 const HireForm = ({ onSubmit, onCancel, initialData }) => {
@@ -420,13 +422,29 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
                 </div>
               )}
 
+              <div className="form-grid-2" style={{ marginTop: '12px' }}>
+                <div className="form-group">
+                  <label>Advance Payment</label>
+                  <input type="number" name="advancePayment" value={job.advancePayment} onChange={(e) => handleJobChange(index, e)} min="0" />
+                </div>
+                <div className="form-group">
+                  <label>Payment Method</label>
+                  <select name="paymentMethod" value={job.paymentMethod} onChange={(e) => handleJobChange(index, e)}>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Card">Card</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="form-group" style={{ marginTop: '12px' }}>
                 <label>Details / Remarks</label>
                 <textarea name="details" value={job.details} onChange={(e) => handleJobChange(index, e)} rows="2" placeholder="Notes for this rental..." />
               </div>
               
               <div className="form-margin-top-sm form-text-right form-weight-bold form-text-blue">
-                Subtotal: LKR {Number(job.totalAmount).toLocaleString()}
+                Subtotal: LKR {Number(job.totalAmount).toLocaleString()} | Balance: LKR {(Number(job.totalAmount) - Number(job.advancePayment || 0)).toLocaleString()}
               </div>
             </div>
           ))}

@@ -4,8 +4,8 @@ import Modal from './Modal';
 import BookingForm from './BookingForm';
 import RecordDetails from './RecordDetails';
 import { bookingAPI } from '../services/api';
-import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2 } from 'lucide-react';
+import { generatePDFReport, generateInvoicePDF } from '../utils/reportGenerator';
+import { Download, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 
@@ -28,6 +28,14 @@ const BookingBook = () => {
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
   const [returnRecord, setReturnRecord] = useState(null);
+
+  const handlePrint = (booking) => {
+    generateInvoicePDF(booking, 'invoice');
+  };
+
+  const handlePrintQuote = (booking) => {
+    generateInvoicePDF(booking, 'quotation');
+  };
 
   const tableColumns = ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION'];
   
@@ -220,8 +228,22 @@ const BookingBook = () => {
 
   const handleExportPDF = () => {
     const exportColumns = ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'STATUS'];
-    const exportData = filteredRecords.map(r => [r.id, r.clientName, r.tool ? `${r.tool.number} (${r.tool.model})` : '—', r.pickup, r.return, r.days, r.total_disp, r.status]);
-    generatePDFReport({ title: 'RAXWO - Tool Reservations Report', columns: exportColumns, data: exportData, filename: `RAXWO_Reservations_${new Date().toISOString().split('T')[0]}.pdf` });
+    const exportData = filteredRecords.map(r => [
+      r.displayId, 
+      r.clientName, 
+      r.displayTool, 
+      r.displayPickup, 
+      r.displayReturn, 
+      r.totalDays, 
+      `LKR ${r.displayTotal}`, 
+      r.displayStatus
+    ]);
+    generatePDFReport({ 
+      title: 'RAXWO - Tool Reservations Report', 
+      columns: exportColumns, 
+      data: exportData, 
+      filename: `RAXWO_Reservations_${new Date().toISOString().split('T')[0]}.pdf` 
+    });
   };
 
   return (
@@ -260,15 +282,15 @@ const BookingBook = () => {
                 </button>
               ))}
            </div>
-           <button className="theme-toggle-btn" onClick={fetchBookings} title="Refresh">
-              <RefreshCw size={18} className={loading ? 'spinner' : ''} />
+           <button className="utility-icon-btn" onClick={fetchBookings} title="Refresh">
+              <RefreshCw size={20} className={loading ? 'spinner' : ''} />
            </button>
-           <button className="theme-toggle-btn" onClick={handleExportPDF} title="Export PDF">
-              <Download size={18} />
+           <button className="utility-icon-btn" onClick={handleExportPDF} title="Export PDF">
+              <Download size={20} />
            </button>
            {canManage && (
-              <button className="refresh-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
-                <PlusCircle size={18} /> New Tool Booking
+              <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
+                <PlusCircle size={20} /> New Tool Booking
               </button>
            )}
         </div>
@@ -289,7 +311,7 @@ const BookingBook = () => {
             RETURN: r.displayReturn,
             DAYS: <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{r.totalDays || 1} Days</span>,
             TOTAL: <strong style={{ color: 'var(--accent)' }}>LKR {r.displayTotal}</strong>,
-            BALANCE: <strong style={{ color: (r.balanceAmount || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {(r.balanceAmount || 0).toLocaleString()}</strong>,
+            BALANCE: <strong style={{ color: (r.balanceAmount || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {Math.max(0, r.balanceAmount || 0).toLocaleString()}</strong>,
             STATUS: (
               <span 
                 className={`status-badge status-${(r.displayStatus || 'Confirmed').toLowerCase()}`} 
@@ -302,6 +324,16 @@ const BookingBook = () => {
             ),
             ACTION: (
               <div className="table-actions" onClick={e => e.stopPropagation()}>
+                {canManage && (
+                  <>
+                    <button className="print-btn" onClick={() => handlePrint(r.rawData)} title="Print Bill">
+                      <Printer size={18} />
+                    </button>
+                    <button className="print-btn" style={{ background: '#64748b', color: '#fff', borderColor: '#64748b' }} onClick={() => handlePrintQuote(r.rawData)} title="Print Quotation">
+                      <FileText size={18} />
+                    </button>
+                  </>
+                )}
                 {canManage && r.displayStatus === 'Active' && (
                   <button 
                     className="edit-btn" 

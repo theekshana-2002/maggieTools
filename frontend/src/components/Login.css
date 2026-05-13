@@ -85,6 +85,12 @@
   background: var(--bg-main);
 }
 
+@media (max-width: 640px) {
+  .auth-form-side {
+    padding: 24px 16px;
+  }
+}
+
 .auth-card {
   width: 100%;
   max-width: 440px;
@@ -135,6 +141,18 @@
   color: var(--text-main);
   letter-spacing: -0.01em;
   margin-bottom: 12px;
+}
+
+@media (max-width: 480px) {
+  .auth-header h2 {
+    font-size: 1.75rem;
+  }
+  .auth-header p {
+    font-size: 0.9375rem;
+  }
+  .auth-back-btn {
+    margin-bottom: 32px;
+  }
 }
 
 .auth-header p {

@@ -224,8 +224,8 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
     <form onSubmit={handleSubmit} className="hire-form">
       <div className="hire-form-scroll">
         
-        <div className="form-section common-fields" style={{ background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '12px', padding: '20px', marginBottom: '24px' }}>
-          <p className="form-section-title" style={{ color: 'var(--text-main)', fontWeight: '700' }}>Rental Information</p>
+        <div className="form-section common-fields form-bg-main form-border-light form-rounded-lg form-padding-md form-margin-bottom-md">
+          <p className="form-section-title form-text-dark form-weight-bold">Rental Information</p>
           <div className="form-grid-2">
             <div className="form-group">
               <label>Rental Date *</label>
@@ -247,16 +247,16 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
 
         <div className="jobs-container">
           {jobs.map((job, index) => (
-            <div key={index} className="form-section job-entry" style={{ border: '1px solid var(--border)', padding: '16px', borderRadius: '12px', marginBottom: '16px', position: 'relative', background: 'var(--bg-side)', boxShadow: 'var(--shadow-sm)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px dashed var(--border)', paddingBottom: '10px' }}>
-                <p className="form-section-title" style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>RENTAL ITEM #{index + 1}</p>
+            <div key={index} className="form-section job-entry form-padding-md form-rounded-lg form-margin-bottom-sm form-relative form-bg-side" style={{ border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+              <div className="form-flex-between form-margin-bottom-sm form-dashed-border form-padding-bottom-sm">
+                <p className="form-section-title" style={{ margin: 0 }}>RENTAL ITEM #{index + 1}</p>
                 {!initialData && (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button type="button" className="secondary-btn" onClick={() => duplicateJob(index)} title="Duplicate" style={{ padding: '6px 10px', height: '32px' }}>
-                      <Copy size={14} /> <span style={{fontSize: '11px', fontWeight: '600'}}>Copy</span>
+                  <div className="form-flex form-gap-sm">
+                    <button type="button" className="secondary-btn form-btn-sm" onClick={() => duplicateJob(index)} title="Duplicate">
+                      <Copy size={14} /> <span className="form-text-xs">Copy</span>
                     </button>
                     {jobs.length > 1 && (
-                      <button type="button" className="delete-btn" onClick={() => removeJob(index)} title="Remove" style={{ padding: '6px 10px', height: '32px' }}>
+                      <button type="button" className="delete-btn form-btn-sm" onClick={() => removeJob(index)} title="Remove">
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -267,8 +267,8 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
               <div className="form-grid">
                 <div className="form-group" style={{ flex: '1.2' }}>
                   <label>Tool ID / Serial *</label>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
+                  <div className="form-flex form-gap-sm form-align-center">
+                    <div className="form-flex-1">
                       <Autocomplete 
                         name="tool" 
                         value={job.tool} 
@@ -278,7 +278,7 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
                         required
                       />
                     </div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', whiteSpace: 'nowrap', cursor: 'pointer', marginBottom: 0, marginTop: '24px' }}>
+                    <label className="form-flex form-align-center form-gap-sm form-text-xs form-nowrap" style={{ cursor: 'pointer', marginBottom: 0, marginTop: '24px' }}>
                       <input 
                         type="checkbox" 
                         name="isExternal" 
@@ -405,18 +405,18 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
               </div>
 
               {job.isExternal && (
-                <div className="form-group" style={{ marginTop: '12px', background: 'var(--warning-soft)', padding: '10px', borderRadius: '8px', border: '1px solid var(--warning-soft)' }}>
-                  <label style={{ color: 'var(--warning)', fontWeight: 'bold' }}>Sub-rent Cost (Expense) *</label>
+                <div className="form-group form-margin-top-sm form-bg-orange form-padding-md form-rounded-lg">
+                  <label className="form-text-orange">Sub-rent Cost (Expense) *</label>
                   <input 
                     type="number" 
                     name="externalCost" 
                     value={job.externalCost === 0 ? '' : job.externalCost} 
                     onChange={(e) => handleJobChange(index, e)} 
                     placeholder="Amount paid to owner"
-                    style={{ borderColor: 'var(--warning)' }}
+                    className="form-border-orange"
                     required={job.isExternal}
                   />
-                  <small style={{ color: 'var(--warning)' }}>This will be recorded as an expense.</small>
+                  <small className="form-text-orange-dim">This will be recorded as an expense.</small>
                 </div>
               )}
 
@@ -425,7 +425,7 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
                 <textarea name="details" value={job.details} onChange={(e) => handleJobChange(index, e)} rows="2" placeholder="Notes for this rental..." />
               </div>
               
-              <div style={{ marginTop: '12px', textAlign: 'right', fontWeight: '600', color: 'var(--accent)' }}>
+              <div className="form-margin-top-sm form-text-right form-weight-bold form-text-blue">
                 Subtotal: LKR {Number(job.totalAmount).toLocaleString()}
               </div>
             </div>

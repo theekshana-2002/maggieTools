@@ -44,6 +44,18 @@ const ConsumablesBook = () => {
     } catch (err) { console.error(err); }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this consumption log?')) return;
+    try {
+      await dieselAPI.delete(id);
+      setSuccess('Entry deleted successfully!');
+      fetchRecords();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Could not delete record.');
+    }
+  };
+
   const fetchRecords = async () => {
     setLoading(true);
     try {
@@ -70,6 +82,7 @@ const ConsumablesBook = () => {
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
             {canManage && <button className="edit-btn" onClick={() => { setEditingItem(item); setIsModalOpen(true); }}>Edit</button>}
+            {canManage && <button className="delete-btn" onClick={() => handleDelete(item._id)}>Delete</button>}
           </div>
         )
       }));
@@ -100,7 +113,7 @@ const ConsumablesBook = () => {
       <div className="dashboard-header">
         <div>
           <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Inventory & Operations</p>
-          <h1>Fuel & Consumables Log</h1>
+          <h1>Tool Stock & Consumables</h1>
         </div>
         <div className="header-controls">
            <div className="search-box">

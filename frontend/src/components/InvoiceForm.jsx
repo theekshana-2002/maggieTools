@@ -7,29 +7,42 @@ import '../styles/forms.css';
 const defaultForm = () => ({
   clientName: '',
   site: '',
-  toolNo: '',   // Internal field name kept for schema compatibility (tool ID)
-  toolCategory: '', // Internal field name kept for schema compatibility (tool category)
+  toolNo: '',   // Legacy
+  toolCategory: '', // Legacy
   date: new Date().toISOString().split('T')[0],
   jobDescription: '',
   unitType: 'Days',
   totalUnits: 0,
   ratePerUnit: 0,
+  items: [], // [{ toolNumber, model, category, dailyRate, totalUnits, unitType }]
+  accessories: [], // { name, quantity, price }
+  transportCharge: 0,
+  otherCharges: 0,
+  discount: 0,
+  advancePayment: 0,
   totalAmount: 0,
   status: 'Draft',
+  paymentMethod: 'Cash'
 });
 
-const calcTotal = (d) =>
-  +(Number(d.totalUnits || 0) * Number(d.ratePerUnit || 0)).toFixed(2);
-
-const calcSubtotal = (d) =>
-  +(Number(d.totalUnits || 0) * Number(d.ratePerUnit || 0)).toFixed(2);
+const calcTotal = (d) => {
+  const itemsTotal = (d.items || []).reduce((sum, it) => sum + (Number(it.dailyRate || 0) * Number(it.totalUnits || d.totalUnits || 0)), 0);
+  const accTotal = (d.accessories || []).reduce((sum, a) => sum + (Number(a.price || 0) * Number(a.quantity || 0)), 0);
+  const legacyTotal = (!d.items || d.items.length === 0) ? (Number(d.totalUnits || 0) * Number(d.ratePerUnit || 0)) : 0;
+  const transport = Number(d.transportCharge || 0) + Number(d.otherCharges || 0);
+  const total = itemsTotal + accTotal + legacyTotal + transport - Number(d.discount || 0);
+  return +total.toFixed(2);
+};
 
 /* ── Component ─────────────────────────────────────────────── */
 const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData,   setFormData]   = useState(defaultForm());
   const [clients,    setClients]    = useState([]);
-  const [tools,   setTools]   = useState([]);
+  const [tools,      setTools]      = useState([]);
+  const [accList,    setAccList]    = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [toolSearch, setToolSearch] = useState('');
+  const [accSearch,  setAccSearch]  = useState('');
 
   /* Load dropdowns & pre-fill when editing */
   useEffect(() => {
@@ -38,6 +51,9 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
       setFormData({
         ...defaultForm(),
         ...initialData,
+        items: initialData.items || [],
+        accessories: initialData.accessories || [],
+        paymentMethod: initialData.paymentMethod || 'Cash',
         date: initialData.date
           ? new Date(initialData.date).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
@@ -49,27 +65,61 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
 
   const fetchLinkedData = async () => {
     try {
-      const [cRes, tRes] = await Promise.all([
+      const [cRes, tRes, aRes] = await Promise.all([
         clientAPI.get(),
         toolAPI.get(),
+        api.get('accessories')
       ]);
       setClients(Array.isArray(cRes.data) ? cRes.data : []);
       setTools(Array.isArray(tRes.data) ? tRes.data : []);
+      setAccList(Array.isArray(aRes.data) ? aRes.data : []);
     } catch (err) {
       console.error('Failed to fetch linked data', err);
     }
   };
 
-  /* Generic field change — recalcs total automatically */
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
+    updated.totalAmount = calcTotal(updated);
+    setFormData(updated);
+  };
 
-    if (name === 'toolNo') { // tool ID
-      const toolObj = tools.find(v => v.number === value);
-      if (toolObj) updated.toolCategory = toolObj.category || '';
-    }
+  const addToolToInvoice = (toolNum) => {
+    const t = tools.find(x => x.number === toolNum || `${x.number} - ${x.model}` === toolNum);
+    if (!t) return;
+    const newItem = {
+      toolNumber: t.number,
+      model: t.model,
+      category: t.category,
+      dailyRate: t.dailyRate || 0,
+      totalUnits: formData.totalUnits || 1,
+      unitType: formData.unitType || 'Days'
+    };
+    const updated = { ...formData, items: [...(formData.items || []), newItem] };
+    updated.totalAmount = calcTotal(updated);
+    setFormData(updated);
+    setToolSearch('');
+  };
 
+  const removeToolFromInvoice = (idx) => {
+    const updated = { ...formData, items: formData.items.filter((_, i) => i !== idx) };
+    updated.totalAmount = calcTotal(updated);
+    setFormData(updated);
+  };
+
+  const addAccessoryToInvoice = (accName) => {
+    const a = accList.find(x => x.name === accName);
+    if (!a) return;
+    const newItem = { name: a.name, quantity: 1, price: a.price || 0 };
+    const updated = { ...formData, accessories: [...(formData.accessories || []), newItem] };
+    updated.totalAmount = calcTotal(updated);
+    setFormData(updated);
+    setAccSearch('');
+  };
+
+  const removeAccessoryFromInvoice = (idx) => {
+    const updated = { ...formData, accessories: formData.accessories.filter((_, i) => i !== idx) };
     updated.totalAmount = calcTotal(updated);
     setFormData(updated);
   };
@@ -77,16 +127,6 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    
-    try {
-      if (formData.clientName && !clients.find(c => c.name.toLowerCase() === formData.clientName.toLowerCase())) {
-        await clientAPI.create({ name: formData.clientName, status: 'Active' });
-      }
-      if (formData.toolNo && !tools.find(t => t.number.toLowerCase() === formData.toolNo.toLowerCase())) {
-        await toolAPI.create({ number: formData.toolNo, status: 'Active' });
-      }
-    } catch (err) { console.error('Auto-creation failed', err); }
-
     try {
       await onSubmit({ ...formData, totalAmount: calcTotal(formData) });
     } finally {
@@ -94,19 +134,16 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
     }
   };
 
-  /* Derived display values */
-  const subtotal  = calcSubtotal(formData);
   const grandTotal = calcTotal(formData);
 
   return (
     <form onSubmit={handleSubmit} className="hire-form">
       <div className="hire-form-scroll">
 
-        {/* ── Section 1: Customer & Logistics ── */}
+        {/* ── Section 1: Customer ── */}
         <div className="form-section">
-          <p className="form-section-title">Customer &amp; Logistics</p>
+          <p className="form-section-title">Customer & Logistics</p>
           <div className="form-grid">
-
             <div className="form-group">
               <label>Customer Name *</label>
               <Autocomplete 
@@ -118,112 +155,141 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
                 required
               />
             </div>
-
-            {/* Tool ID */}
             <div className="form-group">
-              <label>Tool ID / Serial</label>
-              <Autocomplete 
-                name="toolNo" 
-                value={formData.toolNo} 
-                onChange={handleChange} 
-                options={tools.map(t => t.number)}
-                placeholder="Tool ID"
-              />
+              <label>Invoice Date *</label>
+              <input type="date" name="date" value={formData.date} onChange={handleChange} required />
             </div>
-
-            {/* Tool Category */}
-            <div className="form-group">
-              <label>Tool Category</label>
-              <select name="toolCategory" value={formData.toolCategory} onChange={handleChange}>
-                <option value="">Select Category</option>
-                <option value="Power Tools">Power Tools</option>
-                <option value="Hand Tools">Hand Tools</option>
-                <option value="Heavy Machinery">Heavy Machinery</option>
-                <option value="Kitchen">Kitchen / Catering</option>
-                <option value="Gardening">Gardening</option>
-                <option value="Construction">Construction</option>
-                <option value="Other">Other</option>
-              </select>
-              {formData.toolNo && formData.toolCategory && (
-                <span style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '4px', display: 'block' }}>
-                  ✓ Auto-filled from tool record
-                </span>
-              )}
-            </div>
-
-          </div>
-
-          <div className="form-group" style={{ marginTop: '16px' }}>
-            <label>Invoice Date *</label>
-            <input type="date" name="date" value={formData.date} onChange={handleChange} required />
           </div>
         </div>
 
-        {/* ── Section 2: Job Details ── */}
+        {/* ── Section 2: Items Selection ── */}
         <div className="form-section">
-          <p className="form-section-title">Rental Service Details</p>
-          <div className="form-group">
-            <label>Description of Rental</label>
-            <textarea
-              name="jobDescription" value={formData.jobDescription}
-              onChange={handleChange} rows="2"
-              placeholder="e.g. Weekly rental for construction site..."
+          <p className="form-section-title">Tools / Items for Rent</p>
+          <div className="form-group" style={{ marginBottom: '15px' }}>
+            <label>Search & Add Tool</label>
+            <Autocomplete 
+              name="toolSearch" 
+              value={toolSearch} 
+              onChange={e => {
+                setToolSearch(e.target.value);
+                if (tools.some(t => t.number === e.target.value || `${t.number} - ${t.model}` === e.target.value)) {
+                    addToolToInvoice(e.target.value);
+                }
+              }} 
+              options={tools.map(t => `${t.number} - ${t.model}`)}
+              placeholder="Search by ID or Model..."
             />
           </div>
+
+          {formData.items && formData.items.length > 0 ? (
+            <div className="items-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {formData.items.map((it, idx) => (
+                <div key={idx} style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '2fr 1fr 1fr 1fr auto', 
+                    gap: '10px', 
+                    alignItems: 'center',
+                    background: 'var(--bg-side)',
+                    padding: '10px',
+                    borderRadius: '8px'
+                }}>
+                  <div>
+                    <strong style={{ fontSize: '13px' }}>{it.toolNumber}</strong>
+                    <p style={{ margin: 0, fontSize: '11px', color: 'var(--text-dim)' }}>{it.model}</p>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <input 
+                        type="number" 
+                        value={it.totalUnits} 
+                        onChange={e => {
+                            const newItems = [...formData.items];
+                            newItems[idx].totalUnits = Number(e.target.value);
+                            const up = { ...formData, items: newItems };
+                            up.totalAmount = calcTotal(up);
+                            setFormData(up);
+                        }} 
+                        placeholder="Units"
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <input 
+                        type="number" 
+                        value={it.dailyRate} 
+                        onChange={e => {
+                            const newItems = [...formData.items];
+                            newItems[idx].dailyRate = Number(e.target.value);
+                            const up = { ...formData, items: newItems };
+                            up.totalAmount = calcTotal(up);
+                            setFormData(up);
+                        }} 
+                        placeholder="Rate"
+                    />
+                  </div>
+                  <div style={{ fontSize: '12px', fontWeight: 'bold', textAlign: 'right' }}>
+                    LKR {(it.dailyRate * it.totalUnits).toLocaleString()}
+                  </div>
+                  <button type="button" onClick={() => removeToolFromInvoice(idx)} style={{ color: 'var(--danger)', border: 'none', background: 'none', cursor: 'pointer' }}>×</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="form-group">
+                <label>Default Rental Info (Fallback)</label>
+                <div className="form-grid">
+                    <input type="text" name="toolNo" value={formData.toolNo} onChange={handleChange} placeholder="Tool ID" />
+                    <input type="number" name="totalUnits" value={formData.totalUnits} onChange={handleChange} placeholder="Units" />
+                    <input type="number" name="ratePerUnit" value={formData.ratePerUnit} onChange={handleChange} placeholder="Rate" />
+                </div>
+            </div>
+          )}
         </div>
 
-        {/* ── Section 3: Pricing Breakdown ── */}
+        {/* ── Section 3: Accessories ── */}
         <div className="form-section">
-          <p className="form-section-title">Pricing Breakdown</p>
-          <div className="form-grid">
-
-            <div className="form-group">
-              <label>Unit Type</label>
-              <select name="unitType" value={formData.unitType} onChange={handleChange}>
-                <option value="Days">Days</option>
-                <option value="Hours">Hours</option>
-                <option value="Units">Units</option>
-                <option value="Lumpsum">Lumpsum</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Total Units</label>
-              <input
-                type="number" name="totalUnits"
-                value={formData.totalUnits} onChange={handleChange}
-                min="0" step="0.01"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Rate / Unit (LKR)</label>
-              <input
-                type="number" name="ratePerUnit"
-                value={formData.ratePerUnit} onChange={handleChange}
-                min="0"
-              />
-            </div>
-
+          <p className="form-section-title">Parts & Accessories</p>
+          <div className="form-group" style={{ marginBottom: '10px' }}>
+            <Autocomplete 
+              name="accSearch" 
+              value={accSearch} 
+              onChange={e => {
+                setAccSearch(e.target.value);
+                if (accList.some(a => a.name === e.target.value)) addAccessoryToInvoice(e.target.value);
+              }} 
+              options={accList.map(a => a.name)}
+              placeholder="Add accessory..."
+            />
           </div>
+          {formData.accessories && formData.accessories.map((acc, idx) => (
+            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 10px', background: 'var(--bg-side)', borderRadius: '6px', marginBottom: '5px' }}>
+                <span style={{ fontSize: '12px' }}>{acc.name} (x{acc.quantity})</span>
+                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>LKR {(acc.price * acc.quantity).toLocaleString()}</span>
+                <button type="button" onClick={() => removeAccessoryFromInvoice(idx)} style={{ color: 'var(--danger)', border: 'none', background: 'none' }}>×</button>
+            </div>
+          ))}
+        </div>
 
-          {/* Live subtotal hint */}
-            {subtotal > 0 && (
-              <div style={{
-                margin: '10px 0 4px',
-                padding: '8px 12px',
-                background: 'var(--accent-soft)',
-                borderRadius: '8px',
-                fontSize: '13px',
-                color: 'var(--accent)',
-                display: 'flex',
-                justifyContent: 'space-between',
-              }}>
-                <span>Units Subtotal ({formData.totalUnits} × LKR {Number(formData.ratePerUnit).toLocaleString()})</span>
-                <strong>LKR {subtotal.toLocaleString()}</strong>
-              </div>
-            )}
-          <div className="form-grid" style={{ marginTop: '12px' }}>
+        {/* ── Section 4: Charges & Discounts ── */}
+        <div className="form-section">
+          <p className="form-section-title">Other Charges & Discount</p>
+          <div className="form-grid-3">
+            <div className="form-group">
+              <label>Transport Charge</label>
+              <input type="number" name="transportCharge" value={formData.transportCharge} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Other Charges</label>
+              <input type="number" name="otherCharges" value={formData.otherCharges} onChange={handleChange} />
+            </div>
+            <div className="form-group">
+              <label>Discount (LKR)</label>
+              <input type="number" name="discount" value={formData.discount} onChange={handleChange} style={{ color: 'var(--success)', fontWeight: 'bold' }} />
+            </div>
+          </div>
+          <div className="form-grid">
+            <div className="form-group">
+              <label>Advance Payment</label>
+              <input type="number" name="advancePayment" value={formData.advancePayment} onChange={handleChange} />
+            </div>
             <div className="form-group">
               <label>Status</label>
               <select name="status" value={formData.status} onChange={handleChange}>
@@ -233,19 +299,24 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
                 <option value="Cancelled">Cancelled</option>
               </select>
             </div>
+            <div className="form-group">
+              <label>Payment Method</label>
+              <select name="paymentMethod" value={formData.paymentMethod} onChange={handleChange}>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
           </div>
         </div>
 
       </div>
 
       <div className="hire-form-footer">
-        <div className="total-display" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Grand Total
-          </span>
-          <strong style={{ fontSize: '22px', color: 'var(--accent)' }}>
-            LKR {grandTotal.toLocaleString()}
-          </strong>
+        <div className="total-display">
+          <span style={{ fontSize: '11px', color: 'var(--text-dim)', textTransform: 'uppercase' }}>Grand Total</span>
+          <strong style={{ fontSize: '22px', color: 'var(--accent)' }}>LKR {grandTotal.toLocaleString()}</strong>
         </div>
         <div className="modal-actions">
           <button type="button" className="cancel-btn" onClick={onCancel}>Cancel</button>

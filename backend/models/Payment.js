@@ -13,13 +13,20 @@ const PaymentSchema = new mongoose.Schema({
   
   // Billing Breakdown
   takenAmount:    { type: Number, default: 0 },
+  transportCharge: { type: Number, default: 0 },
+  otherCharges:    { type: Number, default: 0 },
   
   // Computed
   hireAmount:     { type: Number, default: 0 },
   paidAmount:     { type: Number, default: 0 },
   balance:        { type: Number, default: 0 },
   status:         { type: String, enum: ['Pending', 'Paid', 'Partial'], default: 'Pending' },
-  hireId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Hire' }
+  paymentMethod:  { type: String, default: 'Cash' },
+  
+  // Linking
+  hireId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Hire' },
+  bookingId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
+  invoiceId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Payment', PaymentSchema);

@@ -5,7 +5,9 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
     name: '', nic: '', role: 'Technician', contact: '',
     joinedDate: new Date().toISOString().split('T')[0],
-    status: 'Active', username: '', password: ''
+    status: 'Active', username: '', password: '',
+    basicSalary: 0, hourlyRate: 0,
+    salaryCategory: 'Monthly'
   });
 
   useEffect(() => {
@@ -14,6 +16,7 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
         ...initialData,
         username: initialData.username || '',
         password: '',
+        salaryCategory: initialData.salaryCategory || 'Monthly',
         joinedDate: initialData.joinedDate
           ? new Date(initialData.joinedDate).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0]
@@ -23,7 +26,8 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
         name: '', nic: '', role: 'Technician', contact: '',
         joinedDate: new Date().toISOString().split('T')[0],
         status: 'Active', username: '', password: '',
-        basicSalary: 0, hourlyRate: 0
+        basicSalary: 0, hourlyRate: 0,
+        salaryCategory: 'Monthly'
       });
     }
   }, [initialData]);
@@ -103,7 +107,7 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
 
         <div className="form-section">
           <p className="form-section-title">Salary Configuration</p>
-          <div className="form-grid-2">
+          <div className="form-grid-3">
             <div className="form-group">
               <label>Basic Salary (Monthly)</label>
               <input type="number" name="basicSalary" value={formData.basicSalary} onChange={handleChange} placeholder="e.g. 30000" />
@@ -111,6 +115,14 @@ const EmployeeForm = ({ onSubmit, onCancel, initialData }) => {
             <div className="form-group">
               <label>Hourly Rate (Rentals)</label>
               <input type="number" name="hourlyRate" value={formData.hourlyRate} onChange={handleChange} placeholder="e.g. 200" />
+            </div>
+            <div className="form-group">
+              <label>Salary Cycle</label>
+              <select name="salaryCategory" value={formData.salaryCategory} onChange={handleChange}>
+                <option value="Monthly">Monthly</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Day Payment">Day Payment</option>
+              </select>
             </div>
           </div>
         </div>

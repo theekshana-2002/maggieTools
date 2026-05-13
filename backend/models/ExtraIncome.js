@@ -5,6 +5,7 @@ const ExtraIncomeSchema = new mongoose.Schema({
   description: { type: String, required: true },
   amount: { type: Number, required: true },
   category: { type: String },
+  client: { type: String },
   note: { type: String }
 }, { timestamps: true });
 

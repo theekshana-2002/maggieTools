@@ -20,6 +20,7 @@ const blank = () => ({
   takenAmount:  0,
   balance:      0,
   status:       'Pending',
+  paymentMethod: 'Cash',
 });
 
 const fromDB = (d) => ({
@@ -36,6 +37,7 @@ const fromDB = (d) => ({
   dayPayment:     d?.dayPayment     ?? 0,
   takenAmount:    d?.takenAmount    ?? 0,
   balance:        d?.balance        ?? 0,
+  paymentMethod:  d?.paymentMethod  || 'Cash',
 });
 
 /* Auto-calculate hours & balance — does NOT touch status */
@@ -268,6 +270,16 @@ const PaymentForm = ({ onSubmit, onCancel, initialData }) => {
                 <option value="Pending">Pending</option>
                 <option value="Paid">Paid</option>
                 <option value="Partial">Partial</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Payment Method</label>
+              <select name="paymentMethod" value={form.paymentMethod} onChange={handleChange}>
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
               </select>
             </div>
 

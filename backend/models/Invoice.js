@@ -5,14 +5,22 @@ const InvoiceSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   clientName: { type: String, required: true },
   site: { type: String },
-  toolNo: { type: String, required: true },
+  toolNo: { type: String }, // Optional if items array is used
   toolCategory: { type: String },
   jobDescription: { type: String },
+  items: [{
+    toolNumber: String,
+    model: String,
+    category: String,
+    dailyRate: Number,
+    totalUnits: Number,
+    unitType: String
+  }],
   
   // Time tracking
   startTime: { type: String },
   endTime: { type: String },
-  totalUnits: { type: Number, default: 0 }, // Hours or Days
+  totalUnits: { type: Number, default: 0 }, // Legacy/Single item fallback
   unitType: { type: String, enum: ['Hours', 'Days', 'Lumpsum', 'KM'], default: 'Days' },
   ratePerUnit: { type: Number, default: 0 },
   
@@ -20,6 +28,7 @@ const InvoiceSchema = new mongoose.Schema({
   transportCharge: { type: Number, default: 0 },
   otherCharges: { type: Number, default: 0 },
   otherChargesDescription: { type: String },
+  discount: { type: Number, default: 0 },
   
   // Totals
   subtotal: { type: Number, default: 0 },

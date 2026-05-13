@@ -3,7 +3,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import { toolAPI, markLeasePayment } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, RefreshCw, PlusCircle, CheckCircle, XCircle, CreditCard, ChevronRight, Wrench, Info, AlertCircle, Package } from 'lucide-react';
+import { Download, Search, RefreshCw, PlusCircle, CheckCircle, XCircle, CreditCard, ChevronRight, Wrench, Info, AlertCircle, Package, Trash2 } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import RecordDetails from './RecordDetails';
@@ -96,6 +96,15 @@ const Tools = () => {
 
   useEffect(() => { fetchTools(); }, []);
 
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this tool? This will remove all its history.')) {
+      try {
+        await toolAPI.delete(id);
+        fetchTools();
+      } catch (err) { alert('Failed to delete tool.'); }
+    }
+  };
+
   const fetchTools = async () => {
     setLoading(true);
     try {
@@ -116,6 +125,11 @@ const Tools = () => {
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
             <button className="edit-btn" onClick={() => { setSelectedRecord(t); setIsModalOpen(true); }}>Edit</button>
+            {canManage && (
+              <button className="delete-btn" onClick={() => handleDelete(t._id)} style={{ color: 'var(--danger)' }}>
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
         )
       }));

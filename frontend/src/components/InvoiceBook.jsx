@@ -4,7 +4,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
 import InvoiceForm from './InvoiceForm';
-import { FileText, Plus, Download, Trash2, Search, RefreshCw, FileDown, TrendingUp, CheckCircle, Clock, CreditCard, PlusCircle } from 'lucide-react';
+import { FileText, Plus, Download, Trash2, Search, RefreshCw, FileDown, TrendingUp, CheckCircle, Clock, CreditCard, PlusCircle, Printer } from 'lucide-react';
 import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generatePDFReport } from '../utils/reportGenerator';
 import '../styles/forms.css';
@@ -61,6 +61,9 @@ const InvoiceBook = () => {
             <div className="table-actions" onClick={e => e.stopPropagation()}>
               <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateInvoicePDF(inv)}>
                  <FileDown size={14} /> PDF
+              </button>
+              <button className="edit-btn" style={{ background: '#64748b', color:'#fff', border: 'none' }} onClick={() => generateInvoicePDF(inv, 'print')}>
+                 <Printer size={14} /> PRINT
               </button>
               {canManage && (
                 <>

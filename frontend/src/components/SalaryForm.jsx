@@ -22,16 +22,23 @@ const SalaryForm = ({ onSubmit, onCancel, initialData }) => {
     advance: 0,
     workingDays: 0,
     totalHours: 0,
-    jobsCount: 0
+    jobsCount: 0,
+    status: 'Pending',
+    paymentMethod: 'Cash',
+    paymentDate: new Date().toISOString().split('T')[0]
   });
 
   useEffect(() => {
     if (initialData) {
       setFormData({
         ...initialData,
-        // Ensure new fields exist even if old records don't have them
         attendanceBonus: initialData.attendanceBonus || 0,
-        attendancePenalty: initialData.attendancePenalty || 0
+        attendancePenalty: initialData.attendancePenalty || 0,
+        status: initialData.status || 'Pending',
+        paymentMethod: initialData.paymentMethod || 'Cash',
+        paymentDate: initialData.paymentDate 
+          ? new Date(initialData.paymentDate).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0]
       });
     }
   }, [initialData]);
@@ -239,9 +246,31 @@ const SalaryForm = ({ onSubmit, onCancel, initialData }) => {
               <input type="number" name="incentive" value={formData.incentive} onChange={handleChange} />
             </div>
           </div>
-          <div className="form-group" style={{ marginTop: '16px' }}>
-            <label>Advance Deductions (-)</label>
-            <input type="number" name="advance" value={formData.advance} onChange={handleChange} />
+        </div>
+
+        <div className="form-section">
+          <p className="form-section-title">Payment Confirmation</p>
+          <div className="form-grid-3">
+            <div className="form-group">
+              <label>Payment Status</label>
+              <select name="status" value={formData.status} onChange={handleChange}>
+                <option value="Pending">Pending</option>
+                <option value="Paid">Paid / Settled</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Payment Method</label>
+              <select name="paymentMethod" value={formData.paymentMethod} onChange={handleChange}>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Payment Date</label>
+              <input type="date" name="paymentDate" value={formData.paymentDate} onChange={handleChange} />
+            </div>
           </div>
         </div>
       </div>

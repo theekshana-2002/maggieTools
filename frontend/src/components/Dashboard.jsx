@@ -51,7 +51,7 @@ const ReminderCard = ({ r }) => {
 
   let urgencyColor = '#3b82f6'; // default blue
   let iconColor = '#3b82f6';
-  
+
   if (r.daysLeft <= 0) {
     urgencyColor = '#ef4444'; // red
     iconColor = '#ef4444';
@@ -61,8 +61,8 @@ const ReminderCard = ({ r }) => {
   }
 
   let badgeStyle = {
-    background: '#eff6ff', 
-    color: '#3b82f6', 
+    background: '#eff6ff',
+    color: '#3b82f6',
   };
   let badgeText = `${r.daysLeft}d`;
 
@@ -128,7 +128,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastFetch, setLastFetch] = useState(null);
-  
+
   const [selectedMonth, setSelectedMonth] = useState(MONTHS[new Date().getMonth()]);
   const [selectedYear, setSelectedYear] = useState(String(currentYear));
 
@@ -152,12 +152,12 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         bookingAPI.getInsights()
       ]);
       setData({
-        bookings: Array.isArray(b.data)   ? b.data   : [],
-        salaries: Array.isArray(s.data)   ? s.data   : [],
-        payments: Array.isArray(p.data)   ? p.data   : [],
+        bookings: Array.isArray(b.data) ? b.data : [],
+        salaries: Array.isArray(s.data) ? s.data : [],
+        payments: Array.isArray(p.data) ? p.data : [],
         invoices: Array.isArray(inv.data) ? inv.data : [],
-        tools:    Array.isArray(t.data)   ? t.data   : [],
-        expenses: Array.isArray(ex.data)  ? ex.data  : [],
+        tools: Array.isArray(t.data) ? t.data : [],
+        expenses: Array.isArray(ex.data) ? ex.data : [],
         extraIncome: Array.isArray(ei.data) ? ei.data : [],
       });
       if (insRes.data) setInsights(insRes.data);
@@ -171,8 +171,8 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
     }
   };
 
-  useEffect(() => { 
-    fetchAll(); 
+  useEffect(() => {
+    fetchAll();
   }, [name, role]);
 
   useEffect(() => {
@@ -198,7 +198,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
     if (!isAdmin) return { warranty: [], service: [], leasing: [] };
     const groups = { warranty: [], service: [], leasing: [] };
     const today = new Date();
-    
+
     const getDaysLeft = (date) => {
       const d = new Date(date);
       const diff = d - today;
@@ -215,19 +215,19 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       if (t.hasLeasing && t.leaseDueDate) {
         const nextDue = new Date(today.getFullYear(), today.getMonth(), t.leaseDueDate);
         if (isExpiringSoon(nextDue)) {
-           groups.leasing.push({ tool: t.number, type: 'Lease Due', date: nextDue, icon: CreditCard, amount: t.monthlyPremium, daysLeft: getDaysLeft(nextDue) });
+          groups.leasing.push({ tool: t.number, type: 'Lease Due', date: nextDue, icon: CreditCard, amount: t.monthlyPremium, daysLeft: getDaysLeft(nextDue) });
         }
       }
     });
 
     data.bookings.forEach(b => {
       if (b.status === 'Active' && isExpiringSoon(b.returnDate, 2)) {
-        groups.leasing.push({ 
-          tool: b.tool?.number || 'Unknown Tool', 
-          type: 'Return Due Soon', 
-          date: b.returnDate, 
-          icon: Clock, 
-          daysLeft: getDaysLeft(b.returnDate) 
+        groups.leasing.push({
+          tool: b.tool?.number || 'Unknown Tool',
+          type: 'Return Due Soon',
+          date: b.returnDate,
+          icon: Clock,
+          daysLeft: getDaysLeft(b.returnDate)
         });
       }
     });
@@ -311,8 +311,8 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         <div className="critical-alerts-section">
           <div className="critical-alerts-header">
             <h3 className="critical-alerts-title">
-                <Bell size={20} className="pulse-icon" />
-                Maintenance & Warranty Alerts
+              <Bell size={20} className="pulse-icon" />
+              Maintenance & Warranty Alerts
             </h3>
             <span className="pending-actions-badge">Action Required</span>
           </div>
@@ -323,16 +323,19 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       )}
 
       {isAdmin && (
-        <div className="quick-actions-row" style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-            <button className="refresh-btn" onClick={() => setActiveTab('bookings')} style={{ background: 'var(--accent)', color: 'white', border: 'none' }}>
-                <Package size={18} /> New Rental
-            </button>
-            <button className="refresh-btn" onClick={() => setActiveTab('tool-reg')} style={{ background: 'var(--success)', color: 'white', border: 'none' }}>
-                <Wrench size={18} /> Register Tool
-            </button>
-            <button className="refresh-btn btn-report-inverted" onClick={() => setActiveTab('reports')}>
-                <FileBarChart size={18} /> Financials
-            </button>
+        <div className="quick-actions-grid">
+          <button className="pill-action-btn btn-blue" onClick={() => setActiveTab('bookings')}>
+            <div className="pill-icon-box"><Package size={24} /></div>
+            <div className="pill-text-box">New Rental</div>
+          </button>
+          <button className="pill-action-btn btn-emerald" onClick={() => setActiveTab('tool-reg')}>
+            <div className="pill-icon-box"><Wrench size={24} /></div>
+            <div className="pill-text-box">Register Tool</div>
+          </button>
+          <button className="pill-action-btn btn-white" onClick={() => setActiveTab('reports')}>
+            <div className="pill-icon-box"><FileBarChart size={24} /></div>
+            <div className="pill-text-box">Financials</div>
+          </button>
         </div>
       )}
 
@@ -342,58 +345,58 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
           <span>{error}</span>
         </div>
       )}
-      
+
       <div className="stats-grid">
         {stats.map(s => <StatCard key={s.id} {...s} onClick={s.tab ? () => setActiveTab(s.tab) : null} />)}
       </div>
 
       {isAdmin && (
         <div className="insights-row">
-            <div className="insight-card">
-                <div className="section-header" style={{ marginBottom: '20px' }}>
-                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Package size={20} style={{ color: 'var(--accent)' }} />
-                        Most Rented Tools
-                    </h3>
-                </div>
-                <div className="insight-list">
-                    {insights.topTools?.length > 0 ? insights.topTools.map((v, i) => (
-                        <div key={i} className="insight-item">
-                            <div className="insight-rank">{i + 1}</div>
-                            <div className="insight-info">
-                                <span className="insight-name">{v.name}</span>
-                                <span className="insight-sub">{v.count} Rentals · High Demand</span>
-                            </div>
-                            <div className="insight-value">
-                                <span className="insight-main-val">{fmt(v.revenue)}</span>
-                            </div>
-                        </div>
-                    )) : <p className="insight-sub">No data available yet</p>}
-                </div>
+          <div className="insight-card">
+            <div className="section-header" style={{ marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Package size={20} style={{ color: 'var(--accent)' }} />
+                Most Rented Tools
+              </h3>
             </div>
+            <div className="insight-list">
+              {insights.topTools?.length > 0 ? insights.topTools.map((v, i) => (
+                <div key={i} className="insight-item">
+                  <div className="insight-rank">{i + 1}</div>
+                  <div className="insight-info">
+                    <span className="insight-name">{v.name}</span>
+                    <span className="insight-sub">{v.count} Rentals · High Demand</span>
+                  </div>
+                  <div className="insight-value">
+                    <span className="insight-main-val">{fmt(v.revenue)}</span>
+                  </div>
+                </div>
+              )) : <p className="insight-sub">No data available yet</p>}
+            </div>
+          </div>
 
-            <div className="insight-card">
-                <div className="section-header" style={{ marginBottom: '20px' }}>
-                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <Users size={20} style={{ color: 'var(--success)' }} />
-                        Top Customers
-                    </h3>
-                </div>
-                <div className="insight-list">
-                    {insights.topCustomers.length > 0 ? insights.topCustomers.map((c, i) => (
-                        <div key={i} className="insight-item">
-                            <div className="insight-rank" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}>{i + 1}</div>
-                            <div className="insight-info">
-                                <span className="insight-name">{c.name}</span>
-                                <span className="insight-sub">{c.count} Rentals · Recent: {c.latestTool}</span>
-                            </div>
-                            <div className="insight-value">
-                                <span className="insight-main-val" style={{ color: 'var(--success)' }}>{fmt(c.revenue)}</span>
-                            </div>
-                        </div>
-                    )) : <p className="insight-sub">No data available yet</p>}
-                </div>
+          <div className="insight-card">
+            <div className="section-header" style={{ marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Users size={20} style={{ color: 'var(--success)' }} />
+                Top Customers
+              </h3>
             </div>
+            <div className="insight-list">
+              {insights.topCustomers.length > 0 ? insights.topCustomers.map((c, i) => (
+                <div key={i} className="insight-item">
+                  <div className="insight-rank" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}>{i + 1}</div>
+                  <div className="insight-info">
+                    <span className="insight-name">{c.name}</span>
+                    <span className="insight-sub">{c.count} Rentals · Recent: {c.latestTool}</span>
+                  </div>
+                  <div className="insight-value">
+                    <span className="insight-main-val" style={{ color: 'var(--success)' }}>{fmt(c.revenue)}</span>
+                  </div>
+                </div>
+              )) : <p className="insight-sub">No data available yet</p>}
+            </div>
+          </div>
         </div>
       )}
 

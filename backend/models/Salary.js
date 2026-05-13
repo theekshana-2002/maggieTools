@@ -11,7 +11,12 @@ const SalarySchema = new mongoose.Schema({
   advance: { type: Number, default: 0 },
   totalHours: { type: Number, default: 0 },
   jobsCount: { type: Number, default: 0 },
+  attendanceBonus: { type: Number, default: 0 },
+  attendancePenalty: { type: Number, default: 0 },
   netPay: { type: Number, required: true },
+  status: { type: String, enum: ['Pending', 'Paid'], default: 'Pending' },
+  paymentMethod: { type: String, enum: ['Cash', 'Bank Transfer', 'Cheque', 'Other'], default: 'Cash' },
+  paymentDate: { type: Date },
   details: { type: Array, default: [] } // list of job IDs or summaries
 }, { timestamps: true });
 

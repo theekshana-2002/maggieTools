@@ -34,7 +34,9 @@ const bookingSchema = new mongoose.Schema({
   balanceAmount: { type: Number, default: 0 },
   actualReturnDate: { type: Date },
   extraCharges: { type: Number, default: 0 },
+  transportCharge: { type: Number, default: 0 },
   totalAfterExtra: { type: Number },
+  paymentMethod: { type: String, default: 'Cash' },
   
   status: { 
     type: String, 

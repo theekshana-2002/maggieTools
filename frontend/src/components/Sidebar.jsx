@@ -25,30 +25,59 @@ import './Sidebar.css';
 import logo from '../logo.png';
 
 const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen, isCollapsed, onClose, onToggleCollapse, appSettings }) => {
-  const allMenuItems = [
-    { id: 'dashboard',  label: 'Main Dashboard',     icon: LayoutDashboard },
-    { id: 'stock',      label: 'Stock Inventory',    icon: Package },
-    { id: 'accessories', label: 'Parts & Accessories', icon: Box },
-    { id: 'bookings',   label: 'Rentals & Bookings', icon: FileCheck },
-    { id: 'tools',      label: 'Tool Inventory',     icon: Package },
-    { id: 'salaries',   label: 'Staff Salaries',     icon: Contact },
-    { id: 'payments',   label: 'Payment History',    icon: CreditCard },
-    { id: 'invoices',   label: 'Customer Invoices',  icon: FileText },
-    { id: 'quotations', label: 'Price Quotes',       icon: FileCheck },
-    { id: 'expenses',    label: 'Other Expenses',    icon: TrendingDown },
-    { id: 'clients',    label: 'Customer List',      icon: Users },
-    { id: 'compliance', label: 'Service & Maint.',   icon: Wrench },
-    { id: 'employees',  label: 'Our Team',           icon: UserCircle },
-    { id: 'reports',    label: 'Financial Reports',  icon: FileBarChart },
-    { id: 'settings',   label: 'Settings',           icon: SettingsIcon },
+  const menuCategories = [
+    {
+      title: 'Operations',
+      items: [
+        { id: 'dashboard',  label: 'Main Dashboard',     icon: LayoutDashboard },
+        { id: 'bookings',   label: 'Rentals & Bookings', icon: FileCheck },
+        { id: 'quotations', label: 'Price Quotes',       icon: FileCheck },
+        { id: 'invoices',   label: 'Customer Invoices',  icon: FileText },
+      ]
+    },
+    {
+      title: 'Inventory',
+      items: [
+        { id: 'tools',      label: 'Tool Inventory',     icon: Package },
+        { id: 'stock',      label: 'Tool Stock',         icon: Package },
+        { id: 'accessories', label: 'Parts & Accessories', icon: Box },
+        { id: 'compliance', label: 'Service & Maint.',   icon: Wrench },
+      ]
+    },
+    {
+      title: 'Finance',
+      items: [
+        { id: 'payments',   label: 'Payment History',    icon: CreditCard },
+        { id: 'expenses',    label: 'Other Expenses',    icon: TrendingDown },
+        { id: 'extraIncome', label: 'Extra Income',      icon: Wallet },
+        { id: 'reports',    label: 'Financial Reports',  icon: FileBarChart },
+      ]
+    },
+    {
+      title: 'Staff & CRM',
+      items: [
+        { id: 'employees',  label: 'Our Team',           icon: UserCircle },
+        { id: 'salaries',   label: 'Staff Salaries',     icon: Contact },
+        { id: 'clients',    label: 'Customer List',      icon: Users },
+      ]
+    },
+    {
+      title: 'System',
+      items: [
+        { id: 'settings',   label: 'Settings',           icon: SettingsIcon },
+      ]
+    }
   ];
 
-  const menuItems = allMenuItems.filter(item => {
-    if (role !== 'Admin' && role !== 'Manager') {
-      return ['dashboard', 'bookings', 'tools', 'compliance'].includes(item.id);
-    }
-    return true;
-  });
+  const filteredCategories = menuCategories.map(cat => ({
+    ...cat,
+    items: cat.items.filter(item => {
+      if (role !== 'Admin' && role !== 'Manager') {
+        return ['dashboard', 'bookings', 'tools', 'compliance'].includes(item.id);
+      }
+      return true;
+    })
+  })).filter(cat => cat.items.length > 0);
 
   return (
     <div className={`sidebar ${isOpen ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
@@ -97,25 +126,30 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
       )}
 
       <nav className="sidebar-nav">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-              title={isCollapsed ? item.label : ''}
-              onClick={() => {
-                setActiveTab(item.id);
-                if (window.innerWidth <= 1024) onClose();
-              }}
-            >
-              <div className="nav-icon-box">
-                <Icon size={18} />
-              </div>
-              {!isCollapsed && <span>{item.label}</span>}
-            </button>
-          );
-        })}
+        {filteredCategories.map((category, catIdx) => (
+          <div key={catIdx} className="sidebar-category">
+            {!isCollapsed && <p className="category-title">{category.title}</p>}
+            {category.items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                  title={isCollapsed ? item.label : ''}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    if (window.innerWidth <= 1024) onClose();
+                  }}
+                >
+                  <div className="nav-icon-box">
+                    <Icon size={18} />
+                  </div>
+                  {!isCollapsed && <span>{item.label}</span>}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       
       <div className="sidebar-footer">

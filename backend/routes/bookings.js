@@ -293,7 +293,7 @@ async function processBookingSideEffects(newBooking) {
       console.error('Failed to auto-sync client:', clientErr.message);
     }
 
-    // 3. Auto-create Payment record (advance)
+    // 3. Auto-sync to Payment Book
     try {
       const advAmt = parseFloat(newBooking.advancePayment) || 0;
       const totalAmt = parseFloat(newBooking.totalAmount) || 0;
@@ -307,14 +307,22 @@ async function processBookingSideEffects(newBooking) {
         days: newBooking.totalDays || 1,
         takenAmount: advAmt,
         hireAmount: totalAmt,
+        transportCharge: newBooking.transportCharge || 0,
+        otherCharges: newBooking.extraCharges || 0,
         balance: balAmt,
         status: payStatus,
-        address: newBooking.pickupLocation || 'Rental',
-        city: newBooking.pickupLocation || 'Rental'
+        paymentMethod: newBooking.paymentMethod || 'Cash',
+        address: newBooking.notes || 'Rental',
+        city: newBooking.pickupLocation || 'Rental',
+        bookingId: newBooking._id
       };
       
-      const newPayment = new Payment(paymentData);
-      await newPayment.save();
+      await Payment.findOneAndUpdate(
+        { bookingId: newBooking._id },
+        paymentData,
+        { upsert: true, new: true }
+      );
+      console.log('DEBUG: Payment record synced for booking:', newBooking.bookingId);
       // 4. Accessory Stock update now handled explicitly in routes (POST/PUT)
       // 5. Send Confirmation SMS
       if (newBooking.clientPhone) {
@@ -430,7 +438,15 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       console.error('Failed to delete linked invoice:', invErr.message);
     }
 
-    // 2. Delete the Booking record
+    // 2. Delete linked Payment
+    try {
+      await Payment.findOneAndDelete({ bookingId: bookingId });
+      console.log(`[DELETE] Deleted linked payment for booking: ${bookingId}`);
+    } catch (payErr) {
+      console.error('Failed to delete linked payment:', payErr.message);
+    }
+
+    // 3. Delete the Booking record
     await Booking.findByIdAndDelete(bookingId);
     
     res.json({ message: 'Booking and linked invoice deleted successfully' });

@@ -26,6 +26,8 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     bookingAccessories: [], // { accessoryId, name, quantity, price }
     discount: 0,
     advancePayment: 0,
+    transportCharge: 0,
+    paymentMethod: 'Cash',
     customerIdFront: '',
     customerIdBack: ''
   };
@@ -184,15 +186,16 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   useEffect(() => {
     const toolsTotal = formData.items.reduce((sum, item) => sum + (item.dailyRate * totalDays), 0);
     const accTotal = formData.bookingAccessories.reduce((sum, acc) => sum + (acc.price * acc.quantity), 0);
-    const totalAmount = (toolsTotal + accTotal) - (formData.discount || 0);
+    const transport = Number(formData.transportCharge || 0);
+    const totalAmount = (toolsTotal + accTotal + transport) - (formData.discount || 0);
     const balanceAmount = totalAmount - (formData.advancePayment || 0);
 
     setCosts({
-      baseAmount: (toolsTotal + accTotal),
+      baseAmount: (toolsTotal + accTotal + transport),
       totalAmount,
       balanceAmount
     });
-  }, [formData.items, formData.bookingAccessories, totalDays, formData.advancePayment, formData.discount]);
+  }, [formData.items, formData.bookingAccessories, totalDays, formData.advancePayment, formData.discount, formData.transportCharge]);
 
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
@@ -628,6 +631,21 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 <input type="number" value={formData.discount} onChange={e => setFormData({ ...formData, discount: Number(e.target.value) })} />
               </div>
             </div>
+            <div className="form-grid-2" style={{ marginTop: '16px' }}>
+              <div className="form-group">
+                <label>Transport Charges (LKR)</label>
+                <input type="number" value={formData.transportCharge} onChange={e => setFormData({ ...formData, transportCharge: Number(e.target.value) })} />
+              </div>
+              <div className="form-group">
+                <label>Payment Method</label>
+                <select value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Card">Card</option>
+                  <option value="Cheque">Cheque</option>
+                </select>
+              </div>
+            </div>
 
             <div className="pricing-breakdown" style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-card)', borderRadius: '10px', border: '1px dashed var(--accent-glow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -638,6 +656,12 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <span>Parts & Accessories</span>
                   <span>LKR {formData.bookingAccessories.reduce((sum, acc) => sum + (acc.price * acc.quantity), 0).toLocaleString()}</span>
+                </div>
+              )}
+              {formData.transportCharge > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span>Transport Charges</span>
+                  <span>LKR {formData.transportCharge.toLocaleString()}</span>
                 </div>
               )}
               {formData.discount > 0 && (

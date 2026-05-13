@@ -133,7 +133,7 @@ const getDynamicSettings = async () => {
   return COMPANY_DETAILS;
 };
 
-export const generateInvoicePDF = async (invoice) => {
+export const generateInvoicePDF = async (invoice, mode = 'download') => {
   const settings = await getDynamicSettings();
   const activeLogo = settings.logo || logoUrl;
   
@@ -217,24 +217,54 @@ export const generateInvoicePDF = async (invoice) => {
     if (invoice.site) { /* site removed per user request */ }
     doc.text(`Tool: ${invoice.toolNo || 'N/A'}`, pageWidth - 95, 105);
 
-    // Table
-    const tableData = [
-      ['Service Description', invoice.jobDescription || 'Professional Tool Rental Services'],
-      ['Total Units', `${invoice.totalUnits || 0} ${invoice.unitType || 'Days'}`],
-      ['Rate per Unit', `LKR ${(invoice.ratePerUnit || 0).toLocaleString()}`],
-      ...(invoice.accessories || []).map(acc => [
-        `Accessory: ${acc.name} (x${acc.quantity})`, 
-        `LKR ${(acc.price * acc.quantity).toLocaleString()}`
-      ])
-    ];
+    // Table Data Construction
+    const tableData = [];
+    
+    // 1. Add Main Tool (Legacy support if items array is empty)
+    if ((!invoice.items || invoice.items.length === 0) && invoice.toolNo) {
+      tableData.push([
+        `Tool: ${invoice.toolNo} (${invoice.toolCategory || 'N/A'})`,
+        `${invoice.totalUnits || 0} ${invoice.unitType || 'Days'} @ LKR ${(invoice.ratePerUnit || 0).toLocaleString()}`
+      ]);
+      tableData.push(['Service Description', invoice.jobDescription || 'Professional Tool Rental Services']);
+    }
 
-    // Combined Table (Items + Summary)
-    const serviceTotal = (invoice.totalUnits || 0) * (invoice.ratePerUnit || 0);
+    // 2. Add Multi-Items
+    if (invoice.items && invoice.items.length > 0) {
+      invoice.items.forEach((item, idx) => {
+        tableData.push([
+          `Tool ${idx + 1}: ${item.toolNumber} (${item.model || item.category || 'N/A'})`,
+          `${item.totalUnits || invoice.totalUnits || 0} ${item.unitType || invoice.unitType || 'Days'} @ LKR ${(item.dailyRate || item.ratePerUnit || 0).toLocaleString()}`
+        ]);
+      });
+      if (invoice.jobDescription) {
+        tableData.push(['General Description', invoice.jobDescription]);
+      }
+    }
+
+    // 3. Add Accessories
+    if (invoice.accessories && invoice.accessories.length > 0) {
+        invoice.accessories.forEach(acc => {
+            tableData.push([
+                `Accessory: ${acc.name} (x${acc.quantity})`, 
+                `LKR ${(acc.price * acc.quantity).toLocaleString()}`
+            ]);
+        });
+    }
+
+    // Summary Calculations
+    const serviceTotal = invoice.items && invoice.items.length > 0
+        ? invoice.items.reduce((sum, it) => sum + ((it.dailyRate || it.ratePerUnit || 0) * (it.totalUnits || invoice.totalUnits || 0)), 0)
+        : (invoice.totalUnits || 0) * (invoice.ratePerUnit || 0);
+        
     const accTotal = (invoice.accessories || []).reduce((sum, a) => sum + (a.price * a.quantity), 0);
+    const transportTotal = Number(invoice.transportCharge || 0) + Number(invoice.otherCharges || 0);
     
     const summaryRows = [
-      ['SUBTOTAL SERVICE', `LKR ${serviceTotal.toLocaleString()}`],
+      ['SUBTOTAL (SERVICES & TOOLS)', `LKR ${serviceTotal.toLocaleString()}`],
       ...(accTotal > 0 ? [['PARTS & ACCESSORIES', `LKR ${accTotal.toLocaleString()}`]] : []),
+      ...(transportTotal > 0 ? [['TRANSPORT & OTHER CHARGES', `LKR ${transportTotal.toLocaleString()}`]] : []),
+      ...(invoice.discount > 0 ? [['DISCOUNT GIVEN', `- LKR ${invoice.discount.toLocaleString()}`]] : []),
       ['GRAND TOTAL', `LKR ${invoice.totalAmount?.toLocaleString()}`],
       ['ADVANCE PAYMENT', `LKR ${invoice.advancePayment?.toLocaleString() || '0'}`],
       ['BALANCE DUE', `LKR ${invoice.balanceAmount?.toLocaleString() || (invoice.totalAmount - (invoice.advancePayment || 0)).toLocaleString()}`]
@@ -278,14 +308,19 @@ export const generateInvoicePDF = async (invoice) => {
     doc.text(amountToWords(invoice.totalAmount || 0), 15, wordsY + 6);
 
     drawDynamicFooter(doc);
-    doc.save(`Invoice_${invoice.invoiceNo || 'New'}.pdf`);
+    if (mode === 'print') {
+      doc.autoPrint();
+      window.open(doc.output('bloburl'), '_blank');
+    } else {
+      doc.save(`Invoice_${invoice.invoiceNo || 'New'}.pdf`);
+    }
   } catch (error) {
     console.error('PDF generation error:', error);
     alert('PDF download failed: ' + error.message);
   }
 };
 
-export const generateQuotationPDF = async (quote) => {
+export const generateQuotationPDF = async (quote, mode = 'download') => {
   try {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
@@ -364,7 +399,12 @@ export const generateQuotationPDF = async (quote) => {
     doc.text(terms, 15, termsY + 6);
 
     drawFooter(doc);
-    doc.save(`Quotation_${quote.quotationNo || 'New'}.pdf`);
+    if (mode === 'print') {
+      doc.autoPrint();
+      window.open(doc.output('bloburl'), '_blank');
+    } else {
+      doc.save(`Quotation_${quote.quotationNo || 'New'}.pdf`);
+    }
   } catch (error) {
     console.error('Quotation PDF error:', error);
     alert('PDF download failed: ' + error.message);

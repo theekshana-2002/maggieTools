@@ -104,6 +104,11 @@ const SalaryBook = () => {
         ALLOWANCE: (activeTab === 'Technician' || activeTab === 'Operator' || activeTab === 'Staff') ? <span style={{ color: 'var(--success)' }}>LKR {dailyAllowance.toLocaleString()}</span> : '—',
         HOURS: (activeTab === 'Technician' || activeTab === 'Operator' || activeTab === 'Staff') ? <span className="status-badge status-confirmed">{totalHours}h</span> : '—',
         'NET PAY': <strong style={{ color: 'var(--text-main)', fontSize: '1rem' }}>LKR {netPay.toLocaleString()}</strong>,
+        STATUS: (
+          <span className={`status-badge ${dbRecord?.status === 'Paid' ? 'status-completed' : 'status-active'}`}>
+            {dbRecord?.status || 'Pending'}
+          </span>
+        ),
         netPay_val: netPay,
         ACTION: canManage ? (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
@@ -191,7 +196,7 @@ const SalaryBook = () => {
       {activeTab !== 'Advances' ? (
         <div className="compliance-card">
            <DataTable 
-             columns={['EMPLOYEE', 'BASIC', 'HOURLY', 'ALLOWANCE', 'HOURS', 'NET PAY', 'ACTION']} 
+             columns={['EMPLOYEE', 'BASIC', 'HOURLY', 'ALLOWANCE', 'HOURS', 'NET PAY', 'STATUS', 'ACTION']} 
              data={processedSalaries} 
              loading={loading}
              onRowClick={(r) => { setSelectedRecord(r); setViewModalOpen(true); }}

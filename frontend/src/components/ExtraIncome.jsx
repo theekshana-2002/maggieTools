@@ -35,6 +35,10 @@ const ExtraIncomeForm = ({ onSubmit, onCancel, initialData }) => {
             <label>Description *</label>
             <input type="text" required placeholder="e.g. Spare parts sale" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
           </div>
+          <div className="form-group" style={{ marginTop: '16px' }}>
+            <label>Customer (Optional)</label>
+            <input type="text" placeholder="e.g. John Doe" value={formData.client || ''} onChange={e => setFormData({...formData, client: e.target.value})} />
+          </div>
           <div className="form-grid-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
               <label>Category</label>
@@ -63,7 +67,7 @@ const ExtraIncomeForm = ({ onSubmit, onCancel, initialData }) => {
 };
 
 const ExtraIncome = () => {
-  const userRole = localStorage.getItem('kt_user_role');
+  const userRole = localStorage.getItem('raxwo_user_role');
   const canManage = ['Admin', 'Manager'].includes(userRole);
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);

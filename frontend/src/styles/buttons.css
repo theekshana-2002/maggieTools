@@ -15,6 +15,20 @@ button {
   font-weight: 700;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  outline: none;
+  font-size: 0.9375rem;
+}
+
+/* CRITICAL: Fix for disappearing symbols/icons - Forced Pixel Size */
+button svg {
+  display: block !important;
+  flex-shrink: 0;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  stroke-width: 2.5px;
+  margin: 0 auto;
 }
 
 button:active {
@@ -30,7 +44,6 @@ button:active {
   background: var(--accent);
   color: #FFFFFF !important;
   box-shadow: 0 4px 14px var(--accent-soft);
-  font-size: 0.9375rem;
 }
 
 .add-btn:hover,
@@ -105,6 +118,15 @@ button:active {
   margin-top: 32px;
   padding-top: 24px;
   border-top: 1px solid var(--border);
+}
+
+@media (max-width: 640px) {
+  .add-btn, .submit-btn, .refresh-btn, .secondary-btn, .cancel-btn, .theme-toggle-btn {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 0.875rem;
+    border-radius: 12px;
+  }
 }
 
 .cancel-btn {

@@ -56,7 +56,7 @@ const App = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(localStorage.getItem('raxwo_sidebar_collapsed') === 'true');
   const [theme, setTheme] = useState(localStorage.getItem('raxwo_theme') || 'light');
   const [appSettings, setAppSettings] = useState(null);
-  
+
   const userRole = localStorage.getItem('raxwo_user_role');
   const userName = localStorage.getItem('raxwo_user_name');
 
@@ -84,9 +84,9 @@ const App = () => {
 
   const toggleSidebarCollapse = () => {
     setIsSidebarCollapsed(prev => {
-        const next = !prev;
-        localStorage.setItem('raxwo_sidebar_collapsed', String(next));
-        return next;
+      const next = !prev;
+      localStorage.setItem('raxwo_sidebar_collapsed', String(next));
+      return next;
     });
   };
 
@@ -129,26 +129,26 @@ const App = () => {
       return <Dashboard key={activeTab} role={userRole} name={userName} setActiveTab={setActiveTab} />;
     }
 
-    switch(activeTab) {
+    switch (activeTab) {
       case 'dashboard': return <Dashboard key="dashboard" role={userRole} name={userName} setActiveTab={setActiveTab} />;
-      case 'stock':     return <StockInventory />;
+      case 'stock': return <StockInventory />;
       case 'accessories': return <Accessories />;
-      case 'bookings':  return <BookingBook />;
+      case 'bookings': return <BookingBook />;
       case 'tool-reg': return <ToolRegistration onComplete={() => setActiveTab('tools')} />;
-      case 'salaries':  return <SalaryBook />;
-      case 'payments':  return <PaymentBook />;
-      case 'clients':   return <Clients />;
-      case 'tools':     return <Tools />;
+      case 'salaries': return <SalaryBook />;
+      case 'payments': return <PaymentBook />;
+      case 'clients': return <Clients />;
+      case 'tools': return <Tools />;
       case 'compliance': return <ComplianceBook />;
       case 'employees': return <Employees />;
-      case 'reports':   return <FinancialReport appSettings={appSettings} />;
-      case 'invoices':   return <InvoiceBook />;
+      case 'reports': return <FinancialReport appSettings={appSettings} />;
+      case 'invoices': return <InvoiceBook />;
       case 'quotations': return <QuotationBook />;
       case 'attendance': return <AttendanceBook />;
       case 'extraIncome': return <ExtraIncome />;
       case 'expenses': return <Expenses />;
       case 'settings': return <Settings onSettingsUpdate={fetchSettings} />;
-      default:          return <Dashboard role={userRole} name={userName} setActiveTab={setActiveTab} />;
+      default: return <Dashboard role={userRole} name={userName} setActiveTab={setActiveTab} />;
     }
   };
 
@@ -157,10 +157,10 @@ const App = () => {
       return <RoleSelection onRoleSelect={(role) => setSelectedRole(role)} appSettings={appSettings} />;
     }
     return (
-      <Login 
-        roleContext={selectedRole} 
-        onLoginSuccess={() => setIsAuthenticated(true)} 
-        onBack={() => setSelectedRole(null)} 
+      <Login
+        roleContext={selectedRole}
+        onLoginSuccess={() => setIsAuthenticated(true)}
+        onBack={() => setSelectedRole(null)}
         appSettings={appSettings}
       />
     );
@@ -172,14 +172,14 @@ const App = () => {
         <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      <Sidebar 
-        activeTab={activeTab} 
+      <Sidebar
+        activeTab={activeTab}
         setActiveTab={(tab) => {
           setActiveTab(tab);
           setIsSidebarOpen(false);
-        }} 
-        handleLogout={handleLogout} 
-        role={userRole} 
+        }}
+        handleLogout={handleLogout}
+        role={userRole}
         userName={userName}
         isOpen={isSidebarOpen}
         isCollapsed={isSidebarCollapsed}
@@ -195,14 +195,14 @@ const App = () => {
               {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
             <button className="desktop-collapse-btn" onClick={toggleSidebarCollapse} title="Toggle Sidebar">
-               <Menu size={20} />
+              <Menu size={20} />
             </button>
             <h2>{PAGE_TITLES[activeTab] || 'Dashboard'}</h2>
           </div>
-          
+
           <div className="header-right">
-            <button 
-              className="theme-toggle-btn" 
+            <button
+              className="theme-toggle-btn"
               onClick={toggleTheme}
               aria-label="Toggle Dark Mode"
               title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
@@ -219,7 +219,7 @@ const App = () => {
                 <span className="user-role-text">{userRole || 'System Access'}</span>
               </div>
             </div>
-            
+
             <button className="header-logout-btn" onClick={handleLogout} title="Sign Out">
               <LogOut size={18} />
               <span>Logout</span>

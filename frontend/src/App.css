@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  
+  min-width: 0;
 }
 
 .header-left h2 {
@@ -44,6 +44,9 @@
   color: var(--text-main);
   letter-spacing: -0.01em;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mobile-menu-btn {
@@ -57,22 +60,19 @@
   transition: all 0.3s ease;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .mobile-menu-btn svg {
   width: 24px !important;
   height: 24px !important;
-  min-width: 24px !important;
-  min-height: 24px !important;
-  display: block !important;
-  stroke: currentColor !important;
-  stroke-width: 2.5px !important;
 }
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 24px;
+  flex-shrink: 0;
 }
 
 /* ── Theme Toggle ── */
@@ -94,19 +94,6 @@
 .theme-toggle-btn svg {
   width: 20px !important;
   height: 20px !important;
-  min-width: 20px !important;
-  min-height: 20px !important;
-  display: block !important;
-  stroke: currentColor !important;
-  stroke-width: 2.8px !important;
-  transition: transform 0.3s ease;
-}
-
-.theme-toggle-btn:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--bg-main);
 }
 
 /* ── User Info ── */
@@ -168,16 +155,6 @@
   transition: all 0.3s ease;
 }
 
-.header-logout-btn svg {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px !important;
-  min-height: 18px !important;
-  display: block !important;
-  stroke: currentColor !important;
-  stroke-width: 2.2px !important;
-}
-
 .header-logout-btn:hover {
   background: var(--danger);
   color: #fff;
@@ -193,14 +170,22 @@
   margin: 0 auto;
   width: 100%;
   animation: fadeIn 0.6s ease;
+  overflow-x: hidden; /* CRITICAL */
 }
 
-/* ── Responsive ── */
+/* ── RESPONSIVE REFINEMENTS ── */
+@media (max-width: 1200px) {
+  .content-area { padding: 30px; }
+  .main-header { padding: 0 24px; }
+}
+
 @media (max-width: 1024px) {
-  .main-content { margin-left: 0; }
+  .main-content { margin-left: 0; width: 100%; }
   .mobile-menu-btn { display: flex; }
+  .desktop-collapse-btn { display: none; }
   .user-details, .header-logout-btn span { display: none; }
   .header-logout-btn { padding: 12px; }
+  .user-nav-info { border-right: none; padding-right: 0; }
   
   .sidebar-overlay {
     position: fixed;
@@ -212,62 +197,54 @@
   }
 }
 
-.sidebar-collapsed .sidebar {
-    width: 80px;
-}
-
-.sidebar-collapsed .main-content {
-    margin-left: 80px;
-}
-
-.desktop-collapse-btn {
-    display: flex;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-main);
-    padding: 8px;
-    cursor: pointer;
-    border-radius: 12px;
-    transition: all 0.3s ease;
-    align-items: center;
-    justify-content: center;
-}
-
-.desktop-collapse-btn:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    transform: scale(1.05);
-}
-
-@media (max-width: 1024px) {
-    .desktop-collapse-btn { display: none; }
-}
-
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .main-header { 
-    padding: 0 16px; 
-    height: auto;
-    padding-top: 12px;
-    padding-bottom: 12px;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    height: 64px;
+    padding: 0 12px;
+    gap: 8px;
   }
-  .header-left {
-    justify-content: space-between;
+  
+  .header-left { gap: 8px; }
+  .header-left h2 { font-size: 1rem; max-width: 130px; }
+  
+  .header-right { gap: 8px; }
+  
+  .nav-avatar, .theme-toggle-btn, .header-logout-btn, .mobile-menu-btn {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    border-radius: 10px !important;
   }
-  .header-right {
-    justify-content: space-between;
-    width: 100%;
-    border-top: 1px solid var(--border);
-    padding-top: 8px;
+
+  .nav-avatar, .theme-toggle-btn svg, .header-logout-btn svg, .mobile-menu-btn svg {
+    margin: 0 !important;
+    display: block !important;
   }
+
   .content-area { padding: 16px 12px; }
-  .header-left h2 { font-size: 1.1rem; }
-  .user-nav-info { border: none; padding-right: 0; }
+}
+
+@media (max-width: 480px) {
+  .header-left h2 { display: none; } /* Hide page title to fit logo/controls */
+  .main-header { justify-content: space-between; }
 }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  display: inline-block;
+  animation: rotate 1.5s linear infinite;
 }

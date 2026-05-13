@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Invoice = require('../models/Invoice');
 const Counter = require('../models/Counter');
+const Accessory = require('../models/Accessory');
+const Payment = require('../models/Payment');
 
 async function getNextSequence(name) {
   const counter = await Counter.findOneAndUpdate(
@@ -10,6 +12,28 @@ async function getNextSequence(name) {
     { new: true, upsert: true }
   );
   return counter.seq;
+}
+
+// Helper to sync invoice to payment book
+async function syncToPaymentBook(invoice) {
+    const paymentData = {
+        date: invoice.date,
+        client: invoice.clientName,
+        tool: invoice.items?.[0]?.toolNumber || invoice.toolNo || 'Various',
+        city: invoice.site || '',
+        hireAmount: invoice.totalAmount,
+        takenAmount: invoice.advancePayment || 0,
+        balance: invoice.totalAmount - (invoice.advancePayment || 0),
+        status: invoice.status === 'Paid' ? 'Paid' : 'Pending',
+        paymentMethod: invoice.paymentMethod || 'Cash',
+        invoiceId: invoice._id
+    };
+
+    await Payment.findOneAndUpdate(
+        { invoiceId: invoice._id },
+        paymentData,
+        { upsert: true, new: true }
+    );
 }
 
 // Get all invoices
@@ -34,6 +58,20 @@ router.post('/', async (req, res) => {
 
     const newInvoice = new Invoice(req.body);
     const saved = await newInvoice.save();
+
+    // Sync to Payment Book
+    await syncToPaymentBook(saved);
+
+    // Deduct stock for accessories
+    if (req.body.accessories && Array.isArray(req.body.accessories)) {
+        for (const item of req.body.accessories) {
+            await Accessory.findOneAndUpdate(
+                { name: item.name },
+                { $inc: { stock: -item.quantity } }
+            );
+        }
+    }
+
     res.status(201).json(saved);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -44,6 +82,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const updated = await Invoice.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (updated) await syncToPaymentBook(updated);
     res.json(updated);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -52,12 +91,13 @@ router.put('/:id', async (req, res) => {
 
 // Delete invoice
 router.delete('/:id', async (req, res) => {
-  try {
-    await Invoice.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Invoice deleted' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+    try {
+      await Invoice.findByIdAndDelete(req.params.id);
+      await Payment.findOneAndDelete({ invoiceId: req.params.id });
+      res.json({ message: 'Invoice and linked payment deleted' });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
 });
 
 module.exports = router;

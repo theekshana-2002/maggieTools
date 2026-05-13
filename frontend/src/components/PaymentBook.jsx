@@ -32,10 +32,11 @@ const PaymentBook = () => {
   const [searchQuery,   setSearchQuery]   = React.useState('');
   const [loading,       setLoading]       = React.useState(true);
   const [error,         setError]         = React.useState(null);
+  const [statusFilter, setStatusFilter] = React.useState('All');
   const [success,       setSuccess]       = React.useState(null);
 
   /* Table columns */
-  const tableColumns = ['DATE', 'CLIENT', 'TOOL', 'HIRE AMT', 'BALANCE', 'STATUS', 'ACTION'];
+  const tableColumns = ['DATE', 'CLIENT', 'TOOL', 'HIRE AMT', 'PAID', 'BALANCE', 'STATUS', 'ACTION'];
 
   React.useEffect(() => { fetchRecords(); fetchTools(); }, []);
   
@@ -77,14 +78,12 @@ const PaymentBook = () => {
     startKm:     item.startKm || 0,
     endKm:       item.endKm   || 0,
     extraKmCharges: item.extraKmCharges || 0,
-    hireAmount:  fmt(item.hireAmount),
-    dayPayment:  fmt(item.dayPayment),
-    takenAmount: fmt(item.takenAmount),
-    balance_num: item.balance || 0,
-    balance:     fmt(item.balance),
+    'HIRE AMT':  fmt(item.hireAmount),
+    PAID:        fmt(item.takenAmount),
+    BALANCE:     fmt(Math.max(0, item.balance || 0)),
     status_text: item.status || 'Pending',
     status_disp: (
-      <span className={`status-badge ${item.status === 'Paid' ? 'status-active' : 'status-pending'}`}>
+      <span className={`status-badge ${item.status === 'Paid' ? 'status-completed' : 'status-active'}`}>
         {item.status || 'Pending'}
       </span>
     ),
@@ -108,9 +107,10 @@ const PaymentBook = () => {
           (r.vehicleNo || '').toLowerCase().includes(q) ||
           (r.city || '').toLowerCase().includes(q) ||
           (r.address || '').toLowerCase().includes(q);
-        return matchV && matchS;
+        const matchStatus = statusFilter === 'All' || r.status_text === statusFilter;
+        return matchV && matchS && matchStatus;
       });
-  }, [rawRecords, selectedTool, searchQuery, canManage]);
+  }, [rawRecords, selectedTool, searchQuery, statusFilter, canManage]);
 
   /* Summary stats */
   const stats = React.useMemo(() => ({
@@ -204,6 +204,17 @@ const PaymentBook = () => {
 
       {/* Filters & Actions */}
       <div className="book-filters">
+        <div className="search-box" style={{ width: '200px', flex: 'none' }}>
+          <select 
+            value={statusFilter} 
+            onChange={e => setStatusFilter(e.target.value)}
+            style={{ border: 'none', background: 'none', width: '100%', fontWeight: '600', color: 'var(--text-main)', cursor: 'pointer' }}
+          >
+            <option value="All">All Statuses</option>
+            <option value="Paid">Paid Only</option>
+            <option value="Pending">Pending Only</option>
+          </select>
+        </div>
         <div className="search-box">
           <Search className="search-icon" size={20} />
           <input

@@ -63,6 +63,18 @@
 
 .data-table tbody tr:hover td {
   background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.data-table tbody tr {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+  transform: scale(1.002) translateX(4px);
+  box-shadow: var(--shadow-md);
+  z-index: 5;
+  position: relative;
 }
 
 .clickable-row {
@@ -71,15 +83,17 @@
 
 /* ── Status Badges ── */
 .status-badge {
-  padding: 6px 12px;
-  border-radius: 99px;
-  font-size: 0.75rem;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-size: 0.7rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.05em;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(4px);
 }
 
 /* ── Loading / Empty ── */
@@ -112,6 +126,15 @@
   
   .data-table-root {
     position: relative;
+  }
+
+  .filter-actions .add-btn, .filter-actions .refresh-btn {
+    flex: 1 !important;
+    height: 44px !important;
+    font-size: 0.8rem !important;
+    padding: 0 16px !important;
+    justify-content: center !important;
+    gap: 8px !important;
   }
 
   .data-table-root::after {

@@ -4,7 +4,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
 import QuotationForm from './QuotationForm';
-import { FileCheck, Plus, Download, Trash2, Search, RefreshCw, FileDown, PlusCircle } from 'lucide-react';
+import { FileCheck, Plus, Download, Trash2, Search, RefreshCw, FileDown, PlusCircle, Printer } from 'lucide-react';
 import { generateQuotationPDF } from '../utils/billingGenerator';
 import { generatePDFReport } from '../utils/reportGenerator';
 import '../styles/forms.css';
@@ -47,9 +47,12 @@ const QuotationBook = () => {
         ),
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateQuotationPDF(quote)} title="Download PDF">
-               <FileDown size={14} /> PDF
-            </button>
+             <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateQuotationPDF(quote)} title="Download PDF">
+                <FileDown size={14} /> PDF
+             </button>
+             <button className="edit-btn" style={{ background: '#64748b', color:'#fff', border: 'none' }} onClick={() => generateQuotationPDF(quote, 'print')} title="Print Now">
+                <Printer size={14} /> PRINT
+             </button>
             {canManage && <button className="edit-btn" onClick={() => handleEdit(quote)}>Edit</button>}
             {canManage && <button className="delete-btn" onClick={() => handleDelete(quote._id)}>Delete</button>}
           </div>

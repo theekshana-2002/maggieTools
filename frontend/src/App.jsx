@@ -16,9 +16,12 @@ import QuotationBook from './components/QuotationBook';
 import AttendanceBook from './components/AttendanceBook';
 import ExtraIncome from './components/ExtraIncome';
 import Expenses from './components/Expenses';
+import Accounts from './components/Accounts';
+import Cheques from './components/Cheques';
 import { settingsAPI } from './services/api';
 import ComplianceBook from './components/ComplianceBook';
 import Login from './components/Login';
+import AuditLog from './components/AuditLog';
 import RoleSelection from './components/RoleSelection';
 import ToolRegistration from './components/ToolRegistration';
 import HireBook from './components/HireBook';
@@ -42,9 +45,12 @@ const PAGE_TITLES = {
   attendance: 'Staff Attendance',
   extraIncome: 'Operational Income',
   expenses: 'Business Expenses',
+  accounts: 'Accounts Management',
+  cheques: 'Cheques Management',
   'tool-reg': 'Tool Registration',
   hires: 'Daily Rental Log',
   settings: 'System Configuration',
+  audit: 'System Audit Trail',
 };
 
 const App = () => {
@@ -124,7 +130,7 @@ const App = () => {
   }, [isAuthenticated]);
 
   const renderContent = () => {
-    const restrictedTabs = ['employees', 'reports', 'salaries', 'clients', 'payments', 'invoices', 'quotations', 'extraIncome', 'expenses', 'attendance', 'hires'];
+    const restrictedTabs = ['employees', 'reports', 'salaries', 'clients', 'payments', 'invoices', 'quotations', 'extraIncome', 'expenses', 'attendance', 'hires', 'accounts', 'cheques'];
     if (userRole === 'Employee' && restrictedTabs.includes(activeTab)) {
       return <Dashboard key={activeTab} role={userRole} name={userName} setActiveTab={setActiveTab} />;
     }
@@ -147,6 +153,9 @@ const App = () => {
       case 'attendance': return <AttendanceBook />;
       case 'extraIncome': return <ExtraIncome />;
       case 'expenses': return <Expenses />;
+      case 'accounts': return <Accounts />;
+      case 'cheques': return <Cheques />;
+      case 'audit': return <AuditLog />;
       case 'settings': return <Settings onSettingsUpdate={fetchSettings} />;
       default: return <Dashboard role={userRole} name={userName} setActiveTab={setActiveTab} />;
     }

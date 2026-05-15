@@ -4,7 +4,7 @@ import Modal from './Modal';
 import HireForm from './HireForm';
 import RecordDetails from './RecordDetails';
 import { hireAPI, toolAPI } from '../services/api';
-import { generatePDFReport } from '../utils/reportGenerator';
+import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import { Download, Search, PlusCircle, RefreshCw, Package } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
@@ -50,41 +50,32 @@ const HireBook = () => {
       const formatted = rawData.map(item => ({
         ...item,
         rawData:    item,
-        date:       new Date(item.date).toLocaleDateString(),
-        billNumber: item.billNumber || '—',
-        timeSheetNumber: item.timeSheetNumber || '—',
-        client:     item.client || '—',
-        tool:       item.toolId || '—',
-        address:    item.address || '—', 
-        city:       item.city    || item.location || '—',
-        workingHours: item.workingHours ? `${item.workingHours}h` : '—',
-        minimumHours: item.minimumHours ? `${item.minimumHours}h` : '—',
-        billAmount_val: item.billAmount || 0,
-        totalAmount_val: item.totalAmount || 0,
-        billAmount: `LKR ${(item.billAmount || 0).toLocaleString()}`,
-        totalAmount_disp: `LKR ${(item.totalAmount || 0).toLocaleString()}`,
-        details:    item.details || '—',
-        status_text: item.status || 'Pending',
-        status_disp: (
+        'DATE':     new Date(item.date).toLocaleDateString(),
+        'BILL#':    item.billNumber || '—',
+        'CUSTOMER': item.client || '—',
+        'TOOL':     item.toolId || '—',
+        'CITY':     item.city || item.location || '—',
+        'TOTAL':    <strong>LKR {(item.totalAmount || 0).toLocaleString()}</strong>,
+        'STATUS': (
           <span className={`status-badge ${item.status === 'Completed' || item.status === 'Returned' ? 'status-active' : 'status-pending'}`}>
             {item.status || 'Pending'}
           </span>
         ),
-        action: (
+        'ACTION': (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
             {canManage && (
-              <button className="edit-btn" onClick={() => handleEdit(item)} title="Edit">
-                Edit
+              <button className="action-icon-btn btn-details" onClick={() => handleEdit(item)} title="Edit Record">
+                <FileText />
               </button>
             )}
             {canManage && (
-              <button className="duplicate-btn" onClick={() => handleDuplicate(item)} title="Add More">
-                <PlusCircle size={14} /> Add More
+              <button className="action-icon-btn btn-print" onClick={() => handleDuplicate(item)} title="Duplicate Record">
+                <PlusCircle />
               </button>
             )}
             {canManage && (
-              <button className="delete-btn" onClick={() => handleDelete(item._id)} title="Delete">
-                Delete
+              <button className="action-icon-btn btn-delete" onClick={() => handleDelete(item._id)} title="Delete Record">
+                <Trash2 />
               </button>
             )}
           </div>
@@ -172,28 +163,7 @@ const HireBook = () => {
   };
 
   const handleExportPDF = () => {
-    const exportColumns = ['DATE', 'BILL#', 'TS#', 'CUSTOMER', 'TOOL', 'ADDRESS', 'CITY', 'HOURS', 'MIN HRS', 'BILL AMT', 'TOTAL', 'STATUS'];
-    const exportData = filteredRecords.map(r => [
-      r.date || '—',
-      r.billNumber || '—',
-      r.timeSheetNumber || '—',
-      r.client || '—',
-      r.tool || '—',
-      r.address || '—',
-      r.city || '—',
-      r.workingHours || '—',
-      r.minimumHours || '—',
-      r.billAmount || '—',
-      r.totalAmount_disp || '—',
-      r.status_text || '—'
-    ]);
-    
-    generatePDFReport({
-      title: 'Tool Rental History Report',
-      columns: exportColumns,
-      data: exportData,
-      filename: `RentalReport_${new Date().toISOString().split('T')[0]}.pdf`
-    });
+    generateGenericReportPDF('Daily Rental Report', ['DATE', 'BILL#', 'CUSTOMER', 'TOOL', 'CITY', 'TOTAL', 'STATUS'], filteredRecords);
   };
 
   return (
@@ -230,11 +200,11 @@ const HireBook = () => {
           />
         </div>
         <div className="filter-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button className="secondary-btn" onClick={fetchRecords} title="Refresh">
+          <button className="action-icon-btn btn-refresh" onClick={fetchRecords} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
-          <button className="secondary-btn" onClick={handleExportPDF}>
-            <Download size={18} /> <span>PDF Report</span>
+          <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Export PDF">
+            <Download size={18} />
           </button>
           {canManage && (
             <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>

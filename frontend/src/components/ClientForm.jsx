@@ -4,6 +4,7 @@ import '../styles/forms.css';
 const ClientForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState(initialData || {
     name: '',
+    nic: '',
     contact: '',
     status: 'Active'
   });
@@ -14,6 +15,7 @@ const ClientForm = ({ onSubmit, onCancel, initialData }) => {
     } else {
       setFormData({
         name: '',
+        nic: '',
         contact: '',
         status: 'Active'
       });
@@ -44,6 +46,16 @@ const ClientForm = ({ onSubmit, onCancel, initialData }) => {
                 onChange={handleChange} 
                 required 
                 placeholder="e.g. ABC Logistics"
+            />
+          </div>
+          <div className="form-group" style={{ marginTop: '16px' }}>
+            <label>NIC Number</label>
+            <input 
+                type="text" 
+                name="nic" 
+                value={formData.nic} 
+                onChange={handleChange} 
+                placeholder="e.g. 991234567V"
             />
           </div>
           <div className="form-group" style={{ marginTop: '16px' }}>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { toolAPI, clientAPI, employeeAPI, hireAPI } from '../services/api';
-import { Plus, Trash2, Copy } from 'lucide-react';
+import { toolAPI, clientAPI, employeeAPI, hireAPI, accountAPI, accessoryAPI } from '../services/api';
+import { Calendar, Package, MapPin, Hash, Info, User, Phone, Wallet, ShieldCheck, RefreshCw, TrendingUp, Plus, Trash2, FileText, PlusCircle } from 'lucide-react';
 import Autocomplete from './Autocomplete';
 import '../styles/books.css';
 import '../styles/forms.css';
@@ -28,30 +28,44 @@ const defaultJob = (prevJob = {}) => ({
   details:         '',
   status:          'Pending',
   advancePayment:  0,
-  paymentMethod:   'Cash'
+  paymentMethod:   'Cash',
+  accountId:       ''
 });
 
 const HireForm = ({ onSubmit, onCancel, initialData }) => {
   const [tools, setTools]       = useState([]);
   const [clients, setClients]     = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [accounts, setAccounts]   = useState([]);
   const [previousJobs, setPreviousJobs] = useState([]);
 
   // Common fields (Date and Client)
   const [commonData, setCommonData] = useState({
     date:            new Date().toISOString().split('T')[0],
     client:          '',
+    nic:             '',
   });
+  const [overdueInfo, setOverdueInfo] = useState(null);
 
   // Array of jobs
   const [jobs, setJobs] = useState([defaultJob()]);
+  const [bookingAccessories, setBookingAccessories] = useState([]);
+  const [allAccessories, setAllAccessories] = useState([]);
+  const [accSearch, setAccSearch] = useState('');
 
   useEffect(() => {
     if (initialData) {
       setCommonData({
         date: initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         client: initialData.client || '',
+        nic: initialData.nic || '',
       });
+      const clientRecord = clients.find(c => c.name === initialData.client);
+      if (clientRecord && clientRecord.outstanding > 0) {
+        setOverdueInfo(clientRecord.outstanding);
+      } else {
+        setOverdueInfo(null);
+      }
       setJobs([{
         ...defaultJob(),
         ...initialData,
@@ -59,49 +73,98 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
         address: initialData.address || '',
         city:    initialData.city    || initialData.location || '',
       }]);
+      if (initialData.accessories && Array.isArray(initialData.accessories)) {
+        setBookingAccessories(initialData.accessories.map(a => ({
+          accessoryId: a.accessory || a._id,
+          name: a.name,
+          quantity: a.quantity || 1,
+          price: a.price || 0
+        })));
+      }
     }
-  }, [initialData]);
+  }, [initialData, clients]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [toolRes, cliRes, empRes, hireRes] = await Promise.all([
-          toolAPI.get(), clientAPI.get(), employeeAPI.get(), hireAPI.get()
+        const [toolRes, cliRes, empRes, hireRes, accRes, stockAccRes] = await Promise.all([
+          toolAPI.get(), clientAPI.get(), employeeAPI.get(), hireAPI.get(), accountAPI.get(), accessoryAPI.get()
         ]);
         setTools(Array.isArray(toolRes.data) ? toolRes.data : []);
         setClients(Array.isArray(cliRes.data)  ? cliRes.data  : []);
         setEmployees(Array.isArray(empRes.data) ? empRes.data  : []);
         setPreviousJobs(Array.isArray(hireRes.data) ? hireRes.data : []);
+        setAccounts(Array.isArray(accRes.data) ? accRes.data : []);
+        setAllAccessories(Array.isArray(stockAccRes.data) ? stockAccRes.data : []);
       } catch (err) { console.error(err); }
     };
     fetchData();
   }, []);
+
+  const addAccessory = (accName) => {
+    const acc = allAccessories.find(a => a.name === accName);
+    if (!acc) return;
+    const existing = bookingAccessories.find(a => a.accessoryId === acc._id);
+    if (existing) {
+      setBookingAccessories(bookingAccessories.map(a => a.accessoryId === acc._id ? { ...a, quantity: a.quantity + 1 } : a));
+    } else {
+      setBookingAccessories([...bookingAccessories, { accessoryId: acc._id, name: acc.name, quantity: 1, price: acc.price }]);
+    }
+    setAccSearch('');
+  };
+
+  const removeAccessory = (index) => {
+    setBookingAccessories(bookingAccessories.filter((_, i) => i !== index));
+  };
+
+  const handleAccQtyChange = (index, qty) => {
+    const newAccs = [...bookingAccessories];
+    newAccs[index].quantity = Math.max(1, qty);
+    setBookingAccessories(newAccs);
+  };
 
   const handleCommonChange = (e) => {
     const { name, value } = e.target;
     setCommonData(prev => {
       const updated = { ...prev, [name]: value };
 
-      if (name === 'client' && value && !initialData) {
-        const lastJob = previousJobs
-          .filter(j => j.client === value)
-          .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-        if (lastJob) {
-          setJobs(currentJobs => currentJobs.map((job, idx) => {
-            if (idx === 0 || !job.city) {
-              return {
-                ...job,
-                address: lastJob.address || '',
-                city: lastJob.city || '',
-                minimumHours: lastJob.minimumHours || 0,
-                oneHourFee: lastJob.oneHourFee || 0,
-                extraHourFee: lastJob.extraHourFee || 0,
-                tool: lastJob.tool || job.tool || lastJob.vehicle || '',
-                staffName: lastJob.staffName || job.staffName || lastJob.driverName || '',
-              };
-            }
-            return job;
-          }));
+      if ((name === 'client' || name === 'nic') && value && !initialData) {
+        const foundClient = clients.find(c => 
+          name === 'client' ? c.name.toLowerCase() === value.toLowerCase() : (c.nic && c.nic.toLowerCase() === value.toLowerCase())
+        );
+
+        if (foundClient) {
+          if (name === 'nic') updated.client = foundClient.name;
+          if (name === 'client') updated.nic = foundClient.nic || '';
+          
+          if (foundClient.outstanding > 0) {
+            setOverdueInfo(foundClient.outstanding);
+          } else {
+            setOverdueInfo(null);
+          }
+
+          const lastJob = previousJobs
+            .filter(j => j.client === foundClient.name)
+            .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+          if (lastJob) {
+            setJobs(currentJobs => currentJobs.map((job, idx) => {
+              if (idx === 0 || !job.city) {
+                return {
+                  ...job,
+                  address: lastJob.address || '',
+                  city: lastJob.city || '',
+                  minimumHours: lastJob.minimumHours || 0,
+                  oneHourFee: lastJob.oneHourFee || 0,
+                  extraHourFee: lastJob.extraHourFee || 0,
+                  tool: lastJob.tool || job.tool || lastJob.vehicle || '',
+                  staffName: lastJob.staffName || job.staffName || lastJob.driverName || '',
+                };
+              }
+              return job;
+            }));
+          }
+        } else {
+          setOverdueInfo(null);
         }
       }
       return updated;
@@ -177,13 +240,18 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
     setJobs([...jobs, newJob]);
   };
 
+  const staffList = employees.filter(emp => emp.status === 'Active');
+
+  const totalAccessoriesAmount = bookingAccessories.reduce((sum, acc) => sum + (acc.price * acc.quantity), 0);
+  const totalBillAmount = jobs.reduce((sum, j) => sum + (parseFloat(j.totalAmount) || 0), 0) + totalAccessoriesAmount;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
       const existingClient = clients.find(c => c.name.toLowerCase() === commonData.client.toLowerCase());
       if (!existingClient && commonData.client.trim() !== '') {
-        await clientAPI.create({ name: commonData.client, status: 'Active' });
+        await clientAPI.create({ name: commonData.client, nic: commonData.nic, status: 'Active' });
       }
 
       for (const job of jobs) {
@@ -203,13 +271,23 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
       console.error('Error auto-creating records:', err);
     }
 
-    const finalData = jobs.map(job => ({
-      ...commonData,
-      ...job,
-      toolId: job.tool, 
-      toolCategory: job.toolType,
-      operatorName: job.staffName
-    }));
+    const finalData = jobs.map(job => {
+      const jData = {
+        ...commonData,
+        ...job,
+        toolId: job.tool, 
+        toolCategory: job.toolType,
+        operatorName: job.staffName,
+        accessories: bookingAccessories.map(a => ({
+          accessory: a.accessoryId,
+          name: a.name,
+          quantity: a.quantity,
+          price: a.price
+        }))
+      };
+      if (!jData.accountId) delete jData.accountId;
+      return jData;
+    });
     
     if (initialData && initialData._id) {
       onSubmit(finalData[0]);
@@ -218,20 +296,26 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
     }
   };
 
-  const staffList = employees.filter(emp => emp.status === 'Active');
-
-  const totalBillAmount = jobs.reduce((sum, j) => sum + (parseFloat(j.totalAmount) || 0), 0);
-
   return (
     <form onSubmit={handleSubmit} className="hire-form">
       <div className="hire-form-scroll">
         
         <div className="form-section common-fields form-bg-main form-border-light form-rounded-lg form-padding-md form-margin-bottom-md">
           <p className="form-section-title form-text-dark form-weight-bold">Rental Information</p>
-          <div className="form-grid-2">
+          <div className="form-grid-3">
             <div className="form-group">
               <label>Rental Date *</label>
               <input type="date" name="date" value={commonData.date} onChange={handleCommonChange} required />
+            </div>
+            <div className="form-group">
+              <label>Customer NIC</label>
+              <Autocomplete 
+                name="nic" 
+                value={commonData.nic} 
+                onChange={handleCommonChange} 
+                options={clients.filter(c => c.nic).map(c => c.nic)}
+                placeholder="Type NIC"
+              />
             </div>
             <div className="form-group">
               <label>Customer Name *</label>
@@ -245,6 +329,151 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
               />
             </div>
           </div>
+          {overdueInfo !== null && (
+            <div className="form-info-banner overdue-alert" style={{ marginTop: '15px', background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ background: '#FCA5A5', borderRadius: '50%', padding: '4px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div>
+                <strong>Customer has an Overdue Balance!</strong>
+                <p style={{ margin: 0, fontSize: '0.9em' }}>Outstanding Amount: LKR {overdueInfo.toLocaleString()}</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="form-section form-bg-side form-border-light form-rounded-lg form-padding-md form-margin-bottom-md">
+          <p className="form-section-title"><Package size={16} /> Parts & Accessories</p>
+          <div className="accessory-selector" style={{ marginBottom: '16px' }}>
+              <Autocomplete 
+                name="accSearch"
+                value={accSearch}
+                onChange={e => {
+                  const val = e.target.value;
+                  setAccSearch(val);
+                  if (allAccessories.some(a => a.name === val)) {
+                    addAccessory(val);
+                  }
+                }}
+                options={allAccessories.map(a => a.name)}
+                placeholder="Type to search parts/accessories..."
+                className="full-width-autocomplete"
+              />
+          </div>
+
+          {allAccessories.length > 0 ? (
+            <div className="quick-acc-grid" style={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              gap: '8px', 
+              marginBottom: '20px',
+              maxHeight: '140px',
+              overflowY: 'auto',
+              padding: '12px',
+              background: 'var(--bg-main)',
+              borderRadius: '12px',
+              border: '1px solid var(--border)',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
+            }}>
+              <span style={{ width: '100%', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Quick Add:</span>
+              {allAccessories.map(a => (
+                <button 
+                  key={a._id}
+                  type="button"
+                  onClick={() => addAccessory(a.name)}
+                  className="quick-add-badge"
+                  style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '10px', 
+                    border: '1px solid var(--accent-glow)', 
+                    background: 'var(--accent-soft)', 
+                    color: 'var(--accent)', 
+                    fontSize: '0.8rem', 
+                    cursor: 'pointer',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 600,
+                    boxShadow: '0 2px 4px var(--accent-glow)'
+                  }}
+                >
+                  <Plus size={14} strokeWidth={3} /> {a.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-parts-state" style={{ 
+              textAlign: 'center', 
+              padding: '24px', 
+              background: 'var(--bg-main)', 
+              borderRadius: '16px', 
+              marginBottom: '20px', 
+              border: '1px dashed var(--border)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Package size={32} style={{ opacity: 0.1, marginBottom: '4px' }} />
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>No parts or accessories available.</p>
+            </div>
+          )}
+
+          {bookingAccessories.length > 0 && (
+            <div className="selected-accessories-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {bookingAccessories.map((acc, index) => (
+                <div key={index} className="accessory-item-row" style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  background: 'var(--bg-card)',
+                  borderRadius: '14px',
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div className="accessory-info" style={{ flex: 1 }}>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{acc.name}</strong>
+                    <div className="accessory-price" style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>LKR {acc.price.toLocaleString()} / unit</div>
+                  </div>
+                  <div className="accessory-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div className="qty-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-side)', padding: '4px 8px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-dim)' }}>QTY:</span>
+                      <input
+                        type="number"
+                        value={acc.quantity}
+                        onChange={e => handleAccQtyChange(index, Number(e.target.value))}
+                        style={{ 
+                          width: '45px', 
+                          border: 'none', 
+                          background: 'none', 
+                          fontSize: '0.9rem', 
+                          fontWeight: 800, 
+                          color: 'var(--text-main)',
+                          textAlign: 'center',
+                          padding: 0
+                        }}
+                        min="1"
+                      />
+                    </div>
+                    <div className="accessory-subtotal" style={{ minWidth: '100px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent)' }}>
+                      LKR {(acc.price * acc.quantity).toLocaleString()}
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => removeAccessory(index)} 
+                      className="action-icon-btn btn-delete" 
+                      title="Remove Accessory"
+                      style={{ padding: '8px', width: '36px', height: '36px' }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="jobs-container">
@@ -254,8 +483,8 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
                 <p className="form-section-title" style={{ margin: 0 }}>RENTAL ITEM #{index + 1}</p>
                 {!initialData && (
                   <div className="form-flex form-gap-sm">
-                    <button type="button" className="secondary-btn form-btn-sm" onClick={() => duplicateJob(index)} title="Duplicate">
-                      <Copy size={14} /> <span className="form-text-xs">Copy</span>
+                    <button type="button" className="action-icon-btn btn-details" onClick={() => duplicateJob(index)} title="Duplicate Entry" style={{ width: '32px', height: '32px' }}>
+                      <PlusCircle size={16} />
                     </button>
                     {jobs.length > 1 && (
                       <button type="button" className="delete-btn form-btn-sm" onClick={() => removeJob(index)} title="Remove">
@@ -437,6 +666,16 @@ const HireForm = ({ onSubmit, onCancel, initialData }) => {
                   </select>
                 </div>
               </div>
+
+              {job.paymentMethod === 'Bank Transfer' && (
+                <div className="form-group" style={{ marginTop: '12px' }}>
+                  <label>Target Bank Account *</label>
+                  <select name="accountId" value={job.accountId} onChange={(e) => handleJobChange(index, e)} required>
+                    <option value="">Select Account</option>
+                    {accounts.map(acc => <option key={acc._id} value={acc._id}>{acc.accountName} (LKR {acc.balance.toLocaleString()})</option>)}
+                  </select>
+                </div>
+              )}
 
               <div className="form-group" style={{ marginTop: '12px' }}>
                 <label>Details / Remarks</label>

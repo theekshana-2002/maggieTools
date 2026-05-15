@@ -4,14 +4,14 @@ import Modal from './Modal';
 import EmployeeForm from './EmployeeForm';
 import { employeeAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, UserPlus, RefreshCw } from 'lucide-react';
+import { Download, Search, UserPlus, RefreshCw, FileText, Trash2 } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import RecordDetails from './RecordDetails';
 
 const Employees = () => {
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const userRole = localStorage.getItem('kt_user_role');
+  const userRole = localStorage.getItem('raxwo_user_role');
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -41,20 +41,25 @@ const Employees = () => {
       
       const formatted = raw.map(item => ({
         ...item,
-        rawData: item, // Store original for Editing
-        name: item.name || '—',
-        contact: item.contact || '—',
-        joined: item.joinedDate ? new Date(item.joinedDate).toLocaleDateString() : '—',
-        status_text: item.status || 'Active',
-        status_disp: (
+        rawData: item,
+        'NAME': item.name || '—',
+        'NIC': item.nic || '—',
+        'ROLE': item.role || '—',
+        'CONTACT': item.contact || '—',
+        'JOINED': item.joinedDate ? new Date(item.joinedDate).toLocaleDateString() : '—',
+        'STATUS': (
           <span className={`status-badge ${item.status === 'Active' ? 'status-active' : 'status-inactive'}`}>
             {item.status || 'Active'}
           </span>
         ),
-        action: canManage ? (
+        'ACTION': canManage ? (
           <div className="table-actions">
-            <button className="edit-btn" onClick={() => handleEdit(item)}>Edit</button>
-            <button className="delete-btn" onClick={() => handleDelete(item._id)}>Delete</button>
+            <button className="action-icon-btn btn-details" onClick={() => handleEdit(item)} title="Edit Employee">
+              <FileText />
+            </button>
+            <button className="action-icon-btn btn-delete" onClick={() => handleDelete(item._id)} title="Delete Employee">
+              <Trash2 />
+            </button>
           </div>
         ) : null
       }));
@@ -176,11 +181,11 @@ const Employees = () => {
             <option value="Admin">Admin</option>
             <option value="Other">Other</option>
           </select>
-          <button className="secondary-btn" onClick={handleExportPDF}>
-            <Download size={16} /> Export
+          <button className="action-icon-btn" onClick={handleExportPDF} title="Export PDF">
+            <Download size={18} />
           </button>
-          <button className="secondary-btn" onClick={fetchRecords}>
-            <RefreshCw size={16} className={loading ? 'spinner' : ''} />
+          <button className="action-icon-btn" onClick={fetchRecords} title="Refresh">
+            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
           {canManage && (
             <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>

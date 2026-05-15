@@ -4,7 +4,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
 import QuotationForm from './QuotationForm';
-import { FileCheck, Plus, Download, Trash2, Search, RefreshCw, FileDown, PlusCircle, Printer } from 'lucide-react';
+import { FileCheck, Plus, Download, Trash2, Search, RefreshCw, FileDown, PlusCircle, Printer, FileText } from 'lucide-react';
 import { generateQuotationPDF } from '../utils/billingGenerator';
 import { generatePDFReport } from '../utils/reportGenerator';
 import '../styles/forms.css';
@@ -47,14 +47,22 @@ const QuotationBook = () => {
         ),
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-             <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateQuotationPDF(quote)} title="Download PDF">
-                <FileDown size={14} /> PDF
+             <button className="action-icon-btn btn-print" onClick={() => generateQuotationPDF(quote)} title="Download PDF">
+                <FileDown />
              </button>
-             <button className="edit-btn" style={{ background: '#64748b', color:'#fff', border: 'none' }} onClick={() => generateQuotationPDF(quote, 'print')} title="Print Now">
-                <Printer size={14} /> PRINT
+             <button className="action-icon-btn btn-details" style={{ background: '#64748b', color:'#fff' }} onClick={() => generateQuotationPDF(quote, 'print')} title="Print Now">
+                <Printer />
              </button>
-            {canManage && <button className="edit-btn" onClick={() => handleEdit(quote)}>Edit</button>}
-            {canManage && <button className="delete-btn" onClick={() => handleDelete(quote._id)}>Delete</button>}
+            {canManage && (
+              <button className="action-icon-btn btn-details" onClick={() => handleEdit(quote)} title="Edit Quotation">
+                <FileText />
+              </button>
+            )}
+            {canManage && (
+              <button className="action-icon-btn btn-delete" onClick={() => handleDelete(quote._id)} title="Delete Quotation">
+                <Trash2 />
+              </button>
+            )}
           </div>
         )
       })));
@@ -142,9 +150,9 @@ const QuotationBook = () => {
              <Search className="search-icon" size={18} />
              <input type="text" placeholder="Search quotes..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
-           <button className="theme-toggle-btn" onClick={fetchQuotations} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+           <button className="action-icon-btn btn-refresh" onClick={fetchQuotations} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
            {canManage && (
-             <button className="refresh-btn" onClick={handleAddNew} style={{ height: '48px', padding: '0 24px' }}>
+             <button className="action-btn btn-primary" onClick={handleAddNew}>
                <PlusCircle size={18} /> New Quotation
              </button>
            )}
@@ -169,7 +177,15 @@ const QuotationBook = () => {
       <div className="compliance-card">
         <DataTable 
           columns={['QUOTE#', 'DATE', 'CUSTOMER', 'VALIDITY', 'EST. TOTAL', 'STATUS', 'ACTION']}
-          data={filtered}
+          data={filtered.map(q => ({
+            'QUOTE#': q.quotationNo || '—',
+            'DATE': new Date(q.date).toLocaleDateString(),
+            'CUSTOMER': q.clientName || '—',
+            'VALIDITY': q.validity_disp,
+            'EST. TOTAL': <strong>{q.total_disp}</strong>,
+            'STATUS': q.status_disp,
+            'ACTION': q.action
+          }))}
           loading={loading}
           onRowClick={handleRowClick}
           emptyMessage="No quotations found."

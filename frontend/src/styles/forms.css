@@ -7,8 +7,9 @@
   flex-direction: column;
   background: transparent;
   overflow: hidden;
-  height: 100%; /* Force fill modal body */
   max-height: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
 .hire-form-scroll {

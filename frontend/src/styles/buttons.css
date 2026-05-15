@@ -74,40 +74,84 @@ button:active {
   color: var(--accent);
 }
 
-/* ── Data Actions (Edit/Delete) ── */
-.edit-btn {
-  height: 32px;
-  padding: 0 14px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.75rem;
-  border-radius: 10px;
-}
-
-.edit-btn:hover {
-  background: var(--accent);
-  color: #fff;
-}
-
-.delete-btn {
-  height: 32px;
-  padding: 0 14px;
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 0.75rem;
-  border-radius: 10px;
-}
-
-.delete-btn:hover {
-  background: var(--danger);
-  color: #fff;
-}
-
-/* ── Table Actions Wrapper ── */
+/* ── Data Actions (Premium Glass Look) ── */
 .table-actions {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.action-icon-btn {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-card);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-icon-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  stroke-width: 2.5px;
+  transition: all 0.3s ease;
+}
+
+.action-icon-btn:hover {
+  transform: translateY(-3px) scale(1.08);
+  z-index: 2;
+}
+
+.action-icon-btn:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* Color Variants — Premium Translucent Palettes */
+.btn-print { background: rgba(37, 99, 235, 0.08) !important; color: #2563EB !important; border-color: rgba(37, 99, 235, 0.15) !important; }
+.btn-print:hover { background: #2563EB !important; color: #fff !important; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4) !important; }
+
+.btn-details { background: rgba(71, 85, 105, 0.08) !important; color: #475569 !important; border-color: rgba(71, 85, 105, 0.15) !important; }
+.btn-details:hover { background: #475569 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(71, 85, 105, 0.4) !important; }
+
+.btn-msg { background: rgba(16, 185, 129, 0.08) !important; color: #10B981 !important; border-color: rgba(16, 185, 129, 0.15) !important; }
+.btn-msg:hover { background: #10B981 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4) !important; }
+
+.btn-bell { background: rgba(245, 158, 11, 0.08) !important; color: #F59E0B !important; border-color: rgba(245, 158, 11, 0.15) !important; }
+.btn-bell:hover { background: #F59E0B !important; color: #fff !important; box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4) !important; }
+
+.btn-delete { background: rgba(239, 68, 68, 0.08) !important; color: #EF4444 !important; border-color: rgba(239, 68, 68, 0.15) !important; }
+.btn-delete:hover { background: #EF4444 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4) !important; }
+
+.btn-refresh { background: rgba(99, 102, 241, 0.08) !important; color: #6366F1 !important; border-color: rgba(99, 102, 241, 0.15) !important; }
+.btn-refresh:hover { background: #6366F1 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4) !important; }
+
+/* ── Generic Action Buttons ── */
+.action-btn {
+  height: 48px;
+  padding: 0 24px;
+  border-radius: 14px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff !important;
+  box-shadow: 0 8px 20px var(--accent-soft);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px var(--accent-glow);
 }
 
 /* ── Form Footer Actions ── */
@@ -121,7 +165,7 @@ button:active {
 }
 
 @media (max-width: 640px) {
-  .add-btn, .submit-btn, .refresh-btn, .secondary-btn, .cancel-btn, .theme-toggle-btn {
+  .add-btn, .submit-btn, .refresh-btn, .secondary-btn, .cancel-btn, .theme-toggle-btn, .action-btn {
     height: 44px;
     padding: 0 16px;
     font-size: 0.875rem;

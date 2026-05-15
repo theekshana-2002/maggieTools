@@ -1,22 +1,32 @@
 import React from 'react';
 import DataTable from './DataTable';
 import Modal from './Modal';
-import { toolAPI, expenseAPI } from '../services/api';
-import { Download, Search, RefreshCw, PlusCircle, TrendingDown } from 'lucide-react';
+import { toolAPI, expenseAPI, accountAPI } from '../services/api';
+import { Download, Search, RefreshCw, PlusCircle, TrendingDown, Filter, FileText, Trash2 } from 'lucide-react';
+import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import ToolFilter from './ToolFilter';
 import Autocomplete from './Autocomplete';
 import '../styles/forms.css';
 import '../styles/books.css';
 
-const ExpenseForm = ({ onSubmit, onCancel, initialData, tools = [] }) => {
-  const [formData, setFormData] = React.useState(initialData || { date: new Date().toISOString().split('T')[0], description: '', amount: '', category: '', toolNo: '', note: '' });
+const ExpenseForm = ({ onSubmit, onCancel, initialData, tools = [], categories = [] }) => {
+  const [formData, setFormData] = React.useState(initialData || { date: new Date().toISOString().split('T')[0], description: '', amount: '', category: '', toolNo: '', note: '', paymentMethod: 'Cash', accountId: '' });
+  const [accounts, setAccounts] = React.useState([]);
 
   React.useEffect(() => {
+    fetchAccounts();
     if (initialData) {
       const formattedDate = initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-      setFormData({ ...initialData, date: formattedDate, toolNo: initialData.toolNo || initialData.vehicleNumber || initialData.vehicle || '' });
+      setFormData({ ...initialData, date: formattedDate, toolNo: initialData.toolNo || initialData.vehicleNumber || initialData.vehicle || '', paymentMethod: initialData.paymentMethod || 'Cash', accountId: initialData.accountId || '' });
     }
   }, [initialData]);
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await accountAPI.get();
+      setAccounts(res.data || []);
+    } catch (e) { console.error(e); }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -45,31 +55,42 @@ const ExpenseForm = ({ onSubmit, onCancel, initialData, tools = [] }) => {
           <div className="form-grid-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
               <label>Category *</label>
-              <select 
-                required 
-                value={formData.category} 
-                onChange={e => setFormData({...formData, category: e.target.value})}
-              >
-                <option value="">Select Category</option>
-                <option value="Repair & Maintenance">Repair & Maintenance</option>
-                <option value="Fuel / Energy">Fuel / Energy</option>
-                <option value="Office Rent">Office Rent</option>
-                <option value="Utility (Water/Elec)">Utility (Water/Elec)</option>
-                <option value="Staff Welfare">Staff Welfare</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Link to Tool (Optional)</label>
               <Autocomplete
-                name="toolNo"
-                value={formData.toolNo}
-                onChange={handleChange}
-                options={tools.map(v => v.number)}
-                placeholder="Select tool ID"
+                name="category"
+                value={formData.category}
+                onChange={e => setFormData({...formData, category: e.target.value})}
+                options={categories.length > 0 ? categories : ['Repair & Maintenance', 'Fuel / Energy', 'Office Rent', 'Utility (Water/Elec)', 'Staff Welfare', 'Marketing', 'Other']}
+                placeholder="e.g. Repair, Utility"
+                required
               />
             </div>
+            <div className="form-group">
+              <label>Payment Method</label>
+              <select value={formData.paymentMethod} onChange={e => setFormData({...formData, paymentMethod: e.target.value})}>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+          </div>
+          {(formData.paymentMethod === 'Bank Transfer' || formData.paymentMethod === 'Cheque') && (
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label>{formData.paymentMethod === 'Cheque' ? 'Source Bank Account *' : 'Paying Bank Account *'}</label>
+              <select required value={formData.accountId} onChange={e => setFormData({...formData, accountId: e.target.value})}>
+                <option value="">Select Account</option>
+                {accounts.map(acc => <option key={acc._id} value={acc._id}>{acc.accountName} (LKR {acc.balance.toLocaleString()})</option>)}
+              </select>
+            </div>
+          )}
+          <div className="form-group" style={{ marginTop: '16px' }}>
+            <label>Link to Tool (Optional)</label>
+            <Autocomplete
+              name="toolNo"
+              value={formData.toolNo}
+              onChange={handleChange}
+              options={tools.map(v => v.number)}
+              placeholder="Select tool ID"
+            />
           </div>
           <div className="form-group" style={{ marginTop: '16px' }}>
             <label>Detailed Notes</label>
@@ -104,10 +125,11 @@ const Expenses = () => {
   const [editingRecord, setEditingRecord] = React.useState(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [successMsg, setSuccessMsg] = React.useState('');
+  const [selectedMonth, setSelectedMonth] = React.useState(new Date().toISOString().slice(0, 7));
 
   const columns = canManage 
-    ? ['DATE', 'TOOL', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)', 'ACTION']
-    : ['DATE', 'TOOL', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)'];
+    ? ['DATE', 'TOOL', 'DESCRIPTION', 'CATEGORY', 'METHOD', 'AMOUNT (LKR)', 'ACTION']
+    : ['DATE', 'TOOL', 'DESCRIPTION', 'CATEGORY', 'METHOD', 'AMOUNT (LKR)'];
 
   React.useEffect(() => { fetchRecords(); fetchTools(); }, []);
 
@@ -134,8 +156,12 @@ const Expenses = () => {
         ),
         action: canManage ? (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" onClick={() => handleEdit(r)}>Edit</button>
-            <button className="delete-btn" onClick={() => handleDelete(r._id)}>Delete</button>
+            <button className="action-icon-btn btn-details" onClick={() => handleEdit(r)} title="Edit Record">
+              <FileText />
+            </button>
+            <button className="action-icon-btn btn-delete" onClick={() => handleDelete(r._id)} title="Delete Record">
+              <Trash2 />
+            </button>
           </div>
         ) : null
       }));
@@ -147,14 +173,20 @@ const Expenses = () => {
   const filteredRecords = React.useMemo(() => {
     return records.filter(r => {
       const v = r.toolNo || r.vehicleNumber || r.vehicle;
+      const matchMonth = !selectedMonth || r.date?.startsWith(selectedMonth);
       const matchV = !selectedTool || v === selectedTool;
       const matchS = !searchQuery || 
         (r.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (v || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (r.category || '').toLowerCase().includes(searchQuery.toLowerCase());
-      return matchV && matchS;
+      return matchMonth && matchV && matchS;
     });
-  }, [records, searchQuery, selectedTool]);
+  }, [records, searchQuery, selectedTool, selectedMonth]);
+
+  const categories = React.useMemo(() => {
+    const cats = records.map(r => r.category).filter(Boolean);
+    return [...new Set(cats)];
+  }, [records]);
 
   const totalAmount = React.useMemo(() => {
     return filteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
@@ -191,6 +223,10 @@ const Expenses = () => {
       } catch (err) { console.error(err); }
     }
   };
+  
+  const handleExportPDF = () => {
+    generateGenericReportPDF('Business Expense Report', ['DATE', 'TOOL', 'DESCRIPTION', 'CATEGORY', 'METHOD', 'AMOUNT'], filteredRecords);
+  };
 
   return (
     <div className="book-container">
@@ -219,8 +255,17 @@ const Expenses = () => {
           />
         </div>
         <div className="filter-actions">
-          <button className="secondary-btn" onClick={fetchRecords} title="Refresh">
+          <input 
+            type="month" 
+            className="date-filter"
+            value={selectedMonth} 
+            onChange={e => setSelectedMonth(e.target.value)} 
+          />
+          <button className="action-icon-btn btn-refresh" onClick={fetchRecords} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
+          </button>
+          <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Download PDF">
+            <Download size={18} />
           </button>
           {canManage && (
             <button className="add-btn" style={{ background: '#EF4444' }} onClick={() => { setEditingRecord(null); setIsModalOpen(true); }}>
@@ -240,6 +285,7 @@ const Expenses = () => {
           TOOL: r.toolNo || r.vehicleNumber || r.vehicle,
           DESCRIPTION: r.description,
           CATEGORY: r.category || '—',
+          METHOD: r.paymentMethod || 'Cash',
           'AMOUNT (LKR)': r.amount_disp,
           ACTION: r.action
         }))} 
@@ -257,6 +303,7 @@ const Expenses = () => {
           onCancel={() => { setIsModalOpen(false); setEditingRecord(null); }} 
           initialData={editingRecord}
           tools={tools}
+          categories={categories}
         />
       </Modal>
     </div>

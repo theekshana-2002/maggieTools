@@ -4,6 +4,8 @@ const Invoice = require('../models/Invoice');
 const Counter = require('../models/Counter');
 const Accessory = require('../models/Accessory');
 const Payment = require('../models/Payment');
+const Account = require('../models/Account');
+const { authMiddleware } = require('../middleware/authMiddleware');
 
 async function getNextSequence(name) {
   const counter = await Counter.findOneAndUpdate(
@@ -26,6 +28,7 @@ async function syncToPaymentBook(invoice) {
         balance: invoice.totalAmount - (invoice.advancePayment || 0),
         status: invoice.status === 'Paid' ? 'Paid' : 'Pending',
         paymentMethod: invoice.paymentMethod || 'Cash',
+        accountId: invoice.accountId,
         invoiceId: invoice._id
     };
 
@@ -37,7 +40,7 @@ async function syncToPaymentBook(invoice) {
 }
 
 // Get all invoices
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const invoices = await Invoice.find().sort({ createdAt: -1 });
     res.json(invoices);
@@ -56,7 +59,11 @@ router.post('/', async (req, res) => {
       req.body.invoiceNo = `RT-INV-${year}-${seq.toString().padStart(4, '0')}`;
     }
 
-    const newInvoice = new Invoice(req.body);
+    const newInvoice = new Invoice({
+      ...req.body,
+      updatedBy: req.user.id,
+      updatedByName: req.user.name
+    });
     const saved = await newInvoice.save();
 
     // Sync to Payment Book
@@ -78,10 +85,14 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update invoice
-router.put('/:id', async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
   try {
-    const updated = await Invoice.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = {
+      ...req.body,
+      updatedBy: req.user.id,
+      updatedByName: req.user.name
+    };
+    const updated = await Invoice.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (updated) await syncToPaymentBook(updated);
     res.json(updated);
   } catch (err) {
@@ -89,8 +100,36 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Mark invoice as Paid
+router.post('/:id/pay', authMiddleware, async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+
+    const totalToPay = invoice.totalAmount - (invoice.advancePayment || 0);
+    
+    invoice.advancePayment = invoice.totalAmount;
+    invoice.balanceAmount = 0;
+    invoice.status = 'Paid';
+    invoice.updatedBy = req.user.id;
+    invoice.updatedByName = req.user.name;
+
+    const saved = await invoice.save();
+    await syncToPaymentBook(saved);
+
+    // Update bank balance if Bank Transfer
+    if (saved.paymentMethod === 'Bank Transfer' && saved.accountId && totalToPay > 0) {
+        await Account.findByIdAndUpdate(saved.accountId, { $inc: { balance: totalToPay } });
+    }
+
+    res.json(saved);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
 // Delete invoice
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
     try {
       await Invoice.findByIdAndDelete(req.params.id);
       await Payment.findOneAndDelete({ invoiceId: req.params.id });

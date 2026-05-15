@@ -48,6 +48,8 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
       title: 'Finance',
       items: [
         { id: 'payments',   label: 'Payment History',    icon: CreditCard },
+        { id: 'accounts',   label: 'Bank Accounts',      icon: Wallet },
+        { id: 'cheques',    label: 'Cheque Ledger',      icon: FileText },
         { id: 'expenses',    label: 'Other Expenses',    icon: TrendingDown },
         { id: 'extraIncome', label: 'Extra Income',      icon: Wallet },
         { id: 'reports',    label: 'Financial Reports',  icon: FileBarChart },
@@ -64,6 +66,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     {
       title: 'System',
       items: [
+        { id: 'audit',      label: 'Audit Trail',        icon: Clock },
         { id: 'settings',   label: 'Settings',           icon: SettingsIcon },
       ]
     }

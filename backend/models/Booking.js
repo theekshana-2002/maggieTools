@@ -37,6 +37,7 @@ const bookingSchema = new mongoose.Schema({
   transportCharge: { type: Number, default: 0 },
   totalAfterExtra: { type: Number },
   paymentMethod: { type: String, default: 'Cash' },
+  accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
   
   status: { 
     type: String, 
@@ -55,7 +56,8 @@ const bookingSchema = new mongoose.Schema({
     price: { type: Number, default: 0 }
   }],
   notes: { type: String },
-  createdAt: { type: Date, default: Date.now }
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedByName: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);

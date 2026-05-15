@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { toolAPI, bookingAPI, employeeAPI, clientAPI, accessoryAPI } from '../services/api';
-import { Calendar, Package, MapPin, Hash, Info, User, Phone, Wallet, ShieldCheck, RefreshCw, TrendingUp } from 'lucide-react';
+import { toolAPI, bookingAPI, employeeAPI, clientAPI, accessoryAPI, accountAPI } from '../services/api';
+import { Calendar, Package, MapPin, Hash, Info, User, Phone, Wallet, ShieldCheck, RefreshCw, TrendingUp, Plus, Trash2, FileText } from 'lucide-react';
 import Autocomplete from './Autocomplete';
 import '../styles/forms.css';
 
@@ -8,6 +8,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   const [availableTools, setAvailableTools] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [clients, setClients] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [allAccessories, setAllAccessories] = useState([]);
   const [accSearch, setAccSearch] = useState('');
   const [toolSearch, setToolSearch] = useState('');
@@ -29,7 +30,8 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     transportCharge: 0,
     paymentMethod: 'Cash',
     customerIdFront: '',
-    customerIdBack: ''
+    customerIdBack: '',
+    accountId: ''
   };
 
   const [formData, setFormData] = useState({ ...defaults, ...initialData });
@@ -79,10 +81,13 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [empRes, clientRes, accRes] = await Promise.all([employeeAPI.get(), clientAPI.get(), accessoryAPI.get()]);
+        const [empRes, clientRes, accRes, accountRes] = await Promise.all([
+          employeeAPI.get(), clientAPI.get(), accessoryAPI.get(), accountAPI.get()
+        ]);
         setEmployees(empRes.data || []);
         setClients(clientRes.data || []);
         setAllAccessories(accRes.data || []);
+        setAccounts(accountRes.data || []);
       } catch (err) { console.error(err); }
     };
     fetchData();
@@ -286,6 +291,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
       // Create one consolidated booking object
       const finalBooking = {
         ...formData,
+        tool: formData.items[0]?.tool, // Add top-level tool for backend availability check & legacy support
         totalAmount: costs.totalAmount,
         balanceAmount: costs.balanceAmount,
         totalDays: totalDays,
@@ -305,6 +311,9 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         }))
       };
 
+      // Sanitize ObjectIds to prevent BSON casting errors
+      if (!finalBooking.accountId) delete finalBooking.accountId;
+
       // Notify parent - parent will handle the API call
       if (onSubmit) {
         await onSubmit(finalBooking);
@@ -316,7 +325,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   };
 
   return (
-    <div className="booking-form-wrapper form-flex form-bg-side form-height-full form-overflow-hidden">
+    <div className="booking-form-wrapper form-flex form-bg-side">
       <form onSubmit={handleSubmit} className="hire-form form-flex-1">
         <div className="hire-form-scroll">
 
@@ -534,16 +543,17 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
               <div className="quick-acc-grid" style={{ 
                 display: 'flex', 
                 flexWrap: 'wrap', 
-                gap: '10px', 
+                gap: '8px', 
                 marginBottom: '20px',
-                maxHeight: '150px',
+                maxHeight: '140px',
                 overflowY: 'auto',
                 padding: '12px',
                 background: 'var(--bg-side)',
                 borderRadius: '12px',
-                border: '1px solid var(--border)'
+                border: '1px solid var(--border)',
+                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
               }}>
-                <span style={{ width: '100%', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Quick Add:</span>
+                <span style={{ width: '100%', fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Quick Add:</span>
                 {allAccessories.map(a => (
                   <button 
                     key={a._id}
@@ -551,53 +561,97 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                     onClick={() => addAccessory(a.name)}
                     className="quick-add-badge"
                     style={{ 
-                      padding: '6px 14px', 
-                      borderRadius: '8px', 
+                      padding: '6px 12px', 
+                      borderRadius: '10px', 
                       border: '1px solid var(--accent-glow)', 
                       background: 'var(--accent-soft)', 
                       color: 'var(--accent)', 
-                      fontSize: '0.85rem', 
+                      fontSize: '0.8rem', 
                       cursor: 'pointer',
-                      transition: 'all 0.2s',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '5px',
-                      fontWeight: 500
+                      gap: '6px',
+                      fontWeight: 600,
+                      boxShadow: '0 2px 4px var(--accent-glow)'
                     }}
                   >
-                    <span>+</span> {a.name}
+                    <Plus size={14} strokeWidth={3} /> {a.name}
                   </button>
                 ))}
               </div>
             ) : (
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '15px', background: 'var(--bg-side)', borderRadius: '12px', marginBottom: '20px', border: '1px dashed var(--border)' }}>
-                No parts/accessories found. Add them in the "Parts & Accessories" tab.
-              </p>
+              <div className="empty-parts-state" style={{ 
+                textAlign: 'center', 
+                padding: '24px', 
+                background: 'var(--bg-side)', 
+                borderRadius: '16px', 
+                marginBottom: '20px', 
+                border: '1px dashed var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Package size={32} style={{ opacity: 0.1, marginBottom: '4px' }} />
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>No parts or accessories available.</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-dim)', margin: 0 }}>Add them in the <strong>"Parts & Accessories"</strong> inventory tab.</p>
+              </div>
             )}
 
-            {formData.bookingAccessories.map((acc, index) => (
-              <div key={index} className="accessory-item-row">
-                <div className="accessory-info">
-                  <strong>{acc.name}</strong>
-                  <div className="accessory-price">LKR {acc.price} / unit</div>
-                </div>
-                <div className="accessory-actions">
-                  <input
-                    type="number"
-                    value={acc.quantity}
-                    onChange={e => handleAccQtyChange(index, Number(e.target.value))}
-                    className="qty-input"
-                    min="1"
-                  />
-                  <div className="accessory-subtotal">
-                    LKR {(acc.price * acc.quantity).toLocaleString()}
+            {formData.bookingAccessories.length > 0 && (
+              <div className="selected-accessories-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {formData.bookingAccessories.map((acc, index) => (
+                  <div key={index} className="accessory-item-row" style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    background: 'var(--bg-card)',
+                    borderRadius: '14px',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}>
+                    <div className="accessory-info" style={{ flex: 1 }}>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{acc.name}</strong>
+                      <div className="accessory-price" style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>LKR {acc.price.toLocaleString()} / unit</div>
+                    </div>
+                    <div className="accessory-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div className="qty-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-side)', padding: '4px 8px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-dim)' }}>QTY:</span>
+                        <input
+                          type="number"
+                          value={acc.quantity}
+                          onChange={e => handleAccQtyChange(index, Number(e.target.value))}
+                          style={{ 
+                            width: '45px', 
+                            border: 'none', 
+                            background: 'none', 
+                            fontSize: '0.9rem', 
+                            fontWeight: 800, 
+                            color: 'var(--text-main)',
+                            textAlign: 'center',
+                            padding: 0
+                          }}
+                          min="1"
+                        />
+                      </div>
+                      <div className="accessory-subtotal" style={{ minWidth: '100px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent)' }}>
+                        LKR {(acc.price * acc.quantity).toLocaleString()}
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => removeAccessory(index)} 
+                        className="action-icon-btn btn-delete" 
+                        title="Remove Accessory"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
-                  <button type="button" onClick={() => removeAccessory(index)} className="remove-acc-btn">
-                    <TrendingUp style={{ transform: 'rotate(45deg)' }} size={16} />
-                  </button>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
 
 
@@ -636,16 +690,26 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 <label>Transport Charges (LKR)</label>
                 <input type="number" value={formData.transportCharge} onChange={e => setFormData({ ...formData, transportCharge: Number(e.target.value) })} />
               </div>
-              <div className="form-group">
-                <label>Payment Method</label>
-                <select value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}>
-                  <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="Card">Card</option>
-                  <option value="Cheque">Cheque</option>
-                </select>
+                <div className="form-group">
+                  <label>Payment Method</label>
+                  <select value={formData.paymentMethod} onChange={e => setFormData({ ...formData, paymentMethod: e.target.value })}>
+                    <option value="Cash">Cash</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Card">Card</option>
+                    <option value="Cheque">Cheque</option>
+                  </select>
+                </div>
               </div>
-            </div>
+
+              {formData.paymentMethod === 'Bank Transfer' && (
+                <div className="form-group" style={{ marginTop: '16px' }}>
+                  <label>Target Bank Account *</label>
+                  <select required value={formData.accountId} onChange={e => setFormData({ ...formData, accountId: e.target.value })}>
+                    <option value="">Select Account</option>
+                    {accounts.map(acc => <option key={acc._id} value={acc._id}>{acc.accountName} (LKR {acc.balance.toLocaleString()})</option>)}
+                  </select>
+                </div>
+              )}
 
             <div className="pricing-breakdown" style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-card)', borderRadius: '10px', border: '1px dashed var(--accent-glow)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>

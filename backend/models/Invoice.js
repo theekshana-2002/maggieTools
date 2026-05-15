@@ -44,7 +44,11 @@ const InvoiceSchema = new mongoose.Schema({
     name: String,
     quantity: Number,
     price: Number
-  }]
+  }],
+  accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
+  paymentMethod: { type: String, default: 'Cash' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedByName: { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Invoice', InvoiceSchema);

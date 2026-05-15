@@ -60,7 +60,16 @@ api.interceptors.request.use((config) => {
 
 // Fallback logic for LocalStorage
 const getFallback = (key) => JSON.parse(localStorage.getItem(key) || '[]');
-const setFallback = (key, data) => localStorage.setItem(key, JSON.stringify(data));
+const setFallback = (key, data) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (err) {
+    if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      console.warn(`LocalStorage quota exceeded for ${key}. Data will not be cached locally.`);
+      // Optionally clear old data to make room, but for now we just skip to prevent crash
+    }
+  }
+};
 
 // Global notification for data changes
 const notifyUpdate = () => {
@@ -169,12 +178,17 @@ export const renewToolDocument = async (toolId, type, newExpirationDate, cost) =
   return res;
 };
 export const employeeAPI   = wrapAPI('employees',  'raxwo_employees');
-export const invoiceAPI    = wrapAPI('invoices',   'raxwo_invoices');
+export const invoiceAPI    = {
+  ...wrapAPI('invoices', 'raxwo_invoices'),
+  pay: (id) => api.post(`invoices/${id}/pay`)
+};
 export const quotationAPI  = wrapAPI('quotations', 'raxwo_quotations');
 export const attendanceAPI = wrapAPI('attendance', 'raxwo_attendance');
 export const advanceAPI    = wrapAPI('advances',   'raxwo_advances');
 export const extraIncomeAPI = wrapAPI('extra-income', 'raxwo_extra_income');
 export const expenseAPI     = wrapAPI('expenses', 'raxwo_expenses');
+export const accountAPI     = wrapAPI('accounts', 'raxwo_accounts');
+export const chequeAPI      = wrapAPI('cheques', 'raxwo_cheques');
 export const settingsAPI    = wrapAPI('settings', 'raxwo_settings');
 export const bookingAPI     = {
   ...wrapAPI('bookings', 'raxwo_bookings'),
@@ -191,6 +205,4 @@ export const bookingAPI     = {
   sendReminder: (id) =>
     api.post(`bookings/${id}/remind`)
 };
-
 export default api;
-

@@ -36,7 +36,7 @@ router.post('/login', async (req, res) => {
     // 1. Check for Hardcoded Admin (Emergency/Initial Setup)
     if (username === 'admin' && password === 'admin@123') {
       const token = jwt.sign(
-        { id: 'admin_id', username: 'admin', role: 'Admin', name: 'Master Admin' },
+        { id: '000000000000000000000001', username: 'admin', role: 'Admin', name: 'Master Admin' },
         process.env.JWT_SECRET || 'supersecretkey123',
         { expiresIn: '1d' }
       );

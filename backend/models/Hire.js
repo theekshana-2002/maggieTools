@@ -4,6 +4,7 @@ const HireSchema = new mongoose.Schema({
   // Basic Info
   date:             { type: Date, default: Date.now },
   client:           { type: String, required: true },
+  nic:              { type: String },
   toolId:           { type: String, required: true },
   address:          { type: String },
   city:             { type: String },
@@ -45,7 +46,10 @@ const HireSchema = new mongoose.Schema({
   
   // Payment
   advancePayment:   { type: Number, default: 0 },
-  paymentMethod:    { type: String, default: 'Cash' }
+  paymentMethod:    { type: String, default: 'Cash' },
+  accountId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
+  updatedBy:        { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedByName:    { type: String }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Hire', HireSchema);

@@ -4,7 +4,7 @@ import Modal from './Modal';
 import ConsumablesForm from './ConsumablesForm';
 import { dieselAPI, toolAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, RefreshCw, PlusCircle, Fuel, Droplets, TrendingDown, Clock, Info, CheckCircle, AlertCircle, Package } from 'lucide-react';
+import { Download, Search, RefreshCw, PlusCircle, Fuel, Droplets, TrendingDown, Clock, Info, CheckCircle, AlertCircle, Package, FileText, Trash2 } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import ToolFilter from './ToolFilter';
@@ -81,8 +81,16 @@ const ConsumablesBook = () => {
         ),
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            {canManage && <button className="edit-btn" onClick={() => { setEditingItem(item); setIsModalOpen(true); }}>Edit</button>}
-            {canManage && <button className="delete-btn" onClick={() => handleDelete(item._id)}>Delete</button>}
+            {canManage && (
+              <button className="action-icon-btn btn-details" onClick={() => { setEditingItem(item); setIsModalOpen(true); }} title="Edit Record">
+                <FileText />
+              </button>
+            )}
+            {canManage && (
+              <button className="action-icon-btn btn-delete" onClick={() => handleDelete(item._id)} title="Delete Record">
+                <Trash2 />
+              </button>
+            )}
           </div>
         )
       }));
@@ -120,9 +128,9 @@ const ConsumablesBook = () => {
              <Search className="search-icon" size={18} />
              <input type="text" placeholder="Search logs..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
            </div>
-           <button className="theme-toggle-btn" onClick={fetchRecords} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+           <button className="action-icon-btn btn-refresh" onClick={fetchRecords} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
            {canManage && (
-             <button className="refresh-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
+             <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
                <PlusCircle size={18} /> Add Entry
              </button>
            )}
@@ -160,7 +168,7 @@ const ConsumablesBook = () => {
             <ToolFilter tools={tools} selectedTool={selectedTool} onSelect={setSelectedTool} />
           </div>
         </div>
-        <button className="theme-toggle-btn" onClick={() => {}} title="Export PDF" style={{ width: '48px', height: '48px' }}><Download size={18} /></button>
+        <button className="action-icon-btn btn-print" onClick={() => {}} title="Export PDF" style={{ width: '48px', height: '48px' }}><Download size={18} /></button>
       </div>
 
       {success && <div className="form-info-banner" style={{ background: 'var(--success)', color: '#fff', border: 'none' }}><CheckCircle size={18} /> {success}</div>}

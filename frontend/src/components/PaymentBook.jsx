@@ -4,8 +4,8 @@ import Modal from './Modal';
 import PaymentForm from './PaymentForm';
 import RecordDetails from './RecordDetails';
 import { paymentAPI, toolAPI } from '../services/api';
-import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, PlusCircle, RefreshCw } from 'lucide-react';
+import { generateGenericReportPDF } from '../utils/genericReportGenerator';
+import { Download, Search, PlusCircle, RefreshCw, FileText, Trash2 } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import ToolFilter from './ToolFilter';
@@ -69,30 +69,37 @@ const PaymentBook = () => {
     _id:  item._id,
 
     /* ── display fields ── */
-    date:        item.date ? new Date(item.date).toLocaleDateString() : '—',
-    clientName:  safe(item.client),
-    vehicleNo:   safe(item.tool || item.vehicle),
-    address:     item.address || '—',
-    city:        item.city    || item.location || '—',
-    days:        item.days    || 1,
-    startKm:     item.startKm || 0,
-    endKm:       item.endKm   || 0,
-    extraKmCharges: item.extraKmCharges || 0,
+    'DATE':      item.date ? new Date(item.date).toLocaleDateString() : '—',
+    'CLIENT':    safe(item.client),
+    'TOOL':      safe(item.tool || item.vehicle),
     'HIRE AMT':  fmt(item.hireAmount),
-    PAID:        fmt(item.takenAmount),
-    BALANCE:     fmt(Math.max(0, item.balance || 0)),
-    status_text: item.status || 'Pending',
-    status_disp: (
+    'PAID':      fmt(item.takenAmount),
+    'BALANCE':   fmt(Math.max(0, item.balance || 0)),
+    'STATUS': (
       <span className={`status-badge ${item.status === 'Paid' ? 'status-completed' : 'status-active'}`}>
         {item.status || 'Pending'}
       </span>
     ),
-    action: (
+    'ACTION': (
       <div className="table-actions" onClick={e => e.stopPropagation()}>
-        {canManage && <button className="edit-btn"   onClick={() => handleEdit(item)}>Edit</button>}
-        {canManage && <button className="delete-btn" onClick={() => handleDelete(item._id)}>Delete</button>}
+        {canManage && (
+          <button className="action-icon-btn btn-details" onClick={() => handleEdit(item)} title="Edit Record">
+             <FileText />
+          </button>
+        )}
+        {canManage && (
+          <button className="action-icon-btn btn-delete" onClick={() => handleDelete(item._id)} title="Delete Record">
+             <Trash2 />
+          </button>
+        )}
       </div>
     ),
+    /* Legacy search keys */
+    status_text: item.status || 'Pending',
+    vehicleNo:   safe(item.tool || item.vehicle),
+    clientName:  safe(item.client),
+    city:        item.city    || item.location || '—',
+    address:     item.address || '—',
   });
 
   /* Derived filtered rows */
@@ -100,7 +107,7 @@ const PaymentBook = () => {
     return rawRecords
       .map(buildRow)
       .filter(r => {
-        const matchV = !selectedTool || r.vehicleNo === selectedTool;
+        const matchV = !selectedTool || (r.vehicleNo && r.vehicleNo.toString().includes(selectedTool));
         const q      = searchQuery.toLowerCase();
         const matchS = !q ||
           (r.clientName || '').toLowerCase().includes(q) ||
@@ -165,19 +172,7 @@ const PaymentBook = () => {
 
   /* ── PDF Export ─────────────────────────────────────────────── */
   const handleExportPDF = () => {
-    const cols = ['DATE','CLIENT','VEHICLE','DAYS','START KM','END KM','EXTRA KM','HIRE AMT','ADVANCE','TAKEN','BALANCE','STATUS'];
-    const data = displayRows.map(r => [
-      r.date, r.clientName, r.vehicleNo,
-      r.days, r.startKm, r.endKm, r.extraKmCharges,
-      r.hireAmount, r.dayPayment, r.takenAmount,
-      r.balance, r.status_text,
-    ]);
-    generatePDFReport({
-      title:    'Payment History Report',
-      columns:  cols,
-      data,
-      filename: `Payments_${new Date().toISOString().split('T')[0]}.pdf`,
-    });
+    generateGenericReportPDF('Payment History Report', ['DATE', 'CLIENT', 'TOOL', 'HIRE AMT', 'PAID', 'BALANCE', 'STATUS'], rawRecords);
   };
 
   /* ── Render ──────────────────────────────────────────────────── */
@@ -225,15 +220,15 @@ const PaymentBook = () => {
           />
         </div>
         <div className="filter-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button className="secondary-btn" onClick={fetchRecords} title="Refresh">
+          <button className="action-icon-btn" onClick={fetchRecords} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
-          <button className="secondary-btn" onClick={handleExportPDF}>
-            <Download size={18} /> <span>Export PDF</span>
+          <button className="action-icon-btn" onClick={handleExportPDF} title="Export PDF">
+            <Download size={18} />
           </button>
           {canManage && (
-            <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
-              <PlusCircle size={18} /> <span>Add Payment</span>
+            <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
+              <PlusCircle size={18} /> Add Payment
             </button>
           )}
         </div>

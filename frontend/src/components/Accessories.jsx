@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable';
 import Modal from './Modal';
 import { accessoryAPI } from '../services/api';
-import { Package, PlusCircle, Search, RefreshCw, Trash2, Edit3, Save, X } from 'lucide-react';
+import { Package, PlusCircle, Search, RefreshCw, Trash2, FileText, Save, X } from 'lucide-react';
 import '../styles/books.css';
 
 const Accessories = () => {
@@ -112,8 +112,12 @@ const Accessories = () => {
             'PRICE': `LKR ${i.price.toLocaleString()}`,
             'ACTION': (
               <div className="table-actions">
-                <button className="edit-btn" onClick={() => handleEdit(i)}>Edit</button>
-                <button className="delete-btn" onClick={() => handleDelete(i._id)}>Delete</button>
+                <button className="action-icon-btn btn-details" onClick={() => handleEdit(i)} title="Edit Accessory">
+                  <FileText />
+                </button>
+                <button className="action-icon-btn btn-delete" onClick={() => handleDelete(i._id)} title="Delete Accessory">
+                  <Trash2 />
+                </button>
               </div>
             )
           }))}

@@ -22,6 +22,7 @@ const PaymentSchema = new mongoose.Schema({
   balance:        { type: Number, default: 0 },
   status:         { type: String, enum: ['Pending', 'Paid', 'Partial'], default: 'Pending' },
   paymentMethod:  { type: String, default: 'Cash' },
+  accountId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
   
   // Linking
   hireId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Hire' },

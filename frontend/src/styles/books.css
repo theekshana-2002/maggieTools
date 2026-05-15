@@ -44,7 +44,8 @@
 }
 
 .summary-item svg {
-  opacity: 0.4 !important; /* Boosted from 0.2 */
+  opacity: 0.4 !important;
+  /* Boosted from 0.2 */
 }
 
 .summary-item h3 {
@@ -156,15 +157,17 @@
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
-  color: var(--text-dim); /* Increased visibility from muted */
+  color: var(--text-dim);
+  /* Increased visibility from muted */
   flex-shrink: 0;
   letter-spacing: 0.02em;
 }
 
 .tab-switcher button.active-tab {
   position: relative;
-  background: var(--accent); /* Changed from accent-soft for better contrast */
-  color: #fff; 
+  background: var(--accent);
+  /* Changed from accent-soft for better contrast */
+  color: #fff;
   font-weight: 800;
   box-shadow: 0 4px 12px var(--accent-glow);
 }
@@ -347,11 +350,11 @@
     align-items: stretch;
     padding: 16px;
   }
-  
+
   .search-box {
     max-width: none;
   }
-  
+
   .filter-actions {
     justify-content: flex-start;
   }
@@ -364,7 +367,7 @@
   .summary-item h3 {
     font-size: 1.25rem;
   }
-  
+
   .summary-item {
     padding: 16px;
   }

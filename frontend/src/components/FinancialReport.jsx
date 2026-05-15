@@ -53,13 +53,13 @@ const FinancialReport = ({ appSettings }) => {
 
   useEffect(() => {
     fetchAll();
-    
+
     // Polling as a fallback (every 10 seconds)
     const interval = setInterval(() => fetchAll(true), 10000);
-    
+
     // Real-time update listeners
     const handleRefresh = () => fetchAll(true);
-    
+
     window.addEventListener('focus', handleRefresh);
     window.addEventListener('raxwo_data_updated', handleRefresh);
     window.addEventListener('raxwo_lease_updated', handleRefresh);
@@ -90,12 +90,12 @@ const FinancialReport = ({ appSettings }) => {
   };
 
   const stats = useMemo(() => {
-    const fHires       = filterByPeriod(data.hires, 'date');
-    const fBookings    = filterByPeriod(data.bookings, 'date');
-    const fSalaries    = filterSalaries(data.salaries);
-    const fPayments    = filterByPeriod(data.payments, 'date');
+    const fHires = filterByPeriod(data.hires, 'date');
+    const fBookings = filterByPeriod(data.bookings, 'date');
+    const fSalaries = filterSalaries(data.salaries);
+    const fPayments = filterByPeriod(data.payments, 'date');
     const fExtraIncome = filterByPeriod(data.extraIncome, 'date');
-    const fExpenses    = filterByPeriod(data.expenses, 'date');
+    const fExpenses = filterByPeriod(data.expenses, 'date');
 
     // Tally Rental Revenue correctly from primary records (Hires + Bookings)
     // fHires uses .totalAmount or .billAmount, fBookings uses .amount or .totalAmount
@@ -103,10 +103,10 @@ const FinancialReport = ({ appSettings }) => {
     const totalBookingRevenue = fBookings.reduce((s, r) => s + (parseFloat(r.totalAmount || r.amount) || 0), 0);
     const totalRentalRevenue = totalHireRevenue + totalBookingRevenue;
 
-    const totalSalary      = fSalaries.reduce((s, r) => s + (parseFloat(r.netPay) || 0), 0);
-    const totalPayments    = fPayments.reduce((s, r) => s + (parseFloat(r.takenAmount || r.paidAmount) || 0), 0);
+    const totalSalary = fSalaries.reduce((s, r) => s + (parseFloat(r.netPay) || 0), 0);
+    const totalPayments = fPayments.reduce((s, r) => s + (parseFloat(r.takenAmount || r.paidAmount) || 0), 0);
     const totalExtraIncome = fExtraIncome.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const totalOtherExp    = fExpenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalOtherExp = fExpenses.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
     const totalLeasing = data.tools
       .filter(v => v.hasLeasing && v.monthlyPremium)
@@ -128,13 +128,13 @@ const FinancialReport = ({ appSettings }) => {
       }, 0);
 
 
-    const totalIncome   = totalRentalRevenue + totalExtraIncome;
-    const totalExpense  = totalSalary + totalOtherExp + totalLeasing;
-    const netProfit     = totalIncome - totalExpense;
-    
+    const totalIncome = totalRentalRevenue + totalExtraIncome;
+    const totalExpense = totalSalary + totalOtherExp + totalLeasing;
+    const netProfit = totalIncome - totalExpense;
+
     // Actual Cash in Hand: Actual Payments Received + Extra Income - Expenses
-    const cashBalance   = (totalPayments + totalExtraIncome) - totalExpense;
-    
+    const cashBalance = (totalPayments + totalExtraIncome) - totalExpense;
+
     // Group payments by payment method for the breakdown
     const paymentsByMethod = fPayments.reduce((acc, r) => {
       const method = r.paymentMethod || 'Cash';
@@ -165,7 +165,7 @@ const FinancialReport = ({ appSettings }) => {
         import('jspdf'),
         import('html2canvas')
       ]);
-      
+
       const jsPDF = jspdfMod.default || jspdfMod.jsPDF || jspdfMod;
       const html2canvas = html2canvasMod.default || html2canvasMod;
 
@@ -174,7 +174,7 @@ const FinancialReport = ({ appSettings }) => {
 
       // Add class to body to ensure CSS selectors like .is-downloading #report-document work
       document.body.classList.add('is-downloading');
-      
+
       // Small delay to allow the layout to recalculate
       await new Promise(resolve => setTimeout(resolve, 300));
 
@@ -311,7 +311,7 @@ const FinancialReport = ({ appSettings }) => {
             <div className="kpi-sub">Actual Cash in Hand</div>
           </div>
           <div className={`kpi-card ${stats.netProfit >= 0 ? 'kpi-profit' : 'kpi-loss'}`}
-               style={{ '--kpi-color': stats.netProfit >= 0 ? '#10B981' : '#EF4444' }}>
+            style={{ '--kpi-color': stats.netProfit >= 0 ? '#10B981' : '#EF4444' }}>
             <div className="kpi-label">Net Profit / Loss</div>
             <div className="kpi-value">LKR {stats.netProfit.toLocaleString()}</div>
             <div className="kpi-sub">Total Income − Total Expenses</div>
@@ -347,7 +347,7 @@ const FinancialReport = ({ appSettings }) => {
                   <td>{stats.totalIncome > 0 ? ((stats.totalExtraIncome / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
                 </tr>
                 <tr>
-                  <td><span className="cat-badge cat-revenue" style={{background: '#8B5CF6', color: '#fff'}}>Payments Received</span></td>
+                  <td><span className="cat-badge cat-revenue" style={{ background: '#8B5CF6', color: '#fff' }}>Payments Received</span></td>
                   <td>Info</td>
                   <td>{stats.fPayments.length}</td>
                   <td className="amount-cell amount-pos">+ {stats.totalPayments.toLocaleString()}</td>

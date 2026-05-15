@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { clientAPI, toolAPI } from '../services/api';
+import { clientAPI, toolAPI, accountAPI } from '../services/api';
 import Autocomplete from './Autocomplete';
 import '../styles/forms.css';
 
@@ -22,7 +22,8 @@ const defaultForm = () => ({
   advancePayment: 0,
   totalAmount: 0,
   status: 'Draft',
-  paymentMethod: 'Cash'
+  paymentMethod: 'Cash',
+  accountId: ''
 });
 
 const calcTotal = (d) => {
@@ -40,6 +41,7 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
   const [clients,    setClients]    = useState([]);
   const [tools,      setTools]      = useState([]);
   const [accList,    setAccList]    = useState([]);
+  const [bankAccounts, setBankAccounts] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [toolSearch, setToolSearch] = useState('');
   const [accSearch,  setAccSearch]  = useState('');
@@ -54,6 +56,7 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
         items: initialData.items || [],
         accessories: initialData.accessories || [],
         paymentMethod: initialData.paymentMethod || 'Cash',
+        accountId: initialData.accountId || '',
         date: initialData.date
           ? new Date(initialData.date).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
@@ -65,14 +68,16 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
 
   const fetchLinkedData = async () => {
     try {
-      const [cRes, tRes, aRes] = await Promise.all([
+      const [cRes, tRes, aRes, accRes] = await Promise.all([
         clientAPI.get(),
         toolAPI.get(),
+        accountAPI.get(),
         api.get('accessories')
       ]);
       setClients(Array.isArray(cRes.data) ? cRes.data : []);
       setTools(Array.isArray(tRes.data) ? tRes.data : []);
-      setAccList(Array.isArray(aRes.data) ? aRes.data : []);
+      setBankAccounts(Array.isArray(aRes.data) ? aRes.data : []);
+      setAccList(Array.isArray(accRes.data) ? accRes.data : []);
     } catch (err) {
       console.error('Failed to fetch linked data', err);
     }
@@ -309,6 +314,17 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
               </select>
             </div>
           </div>
+          {formData.paymentMethod === 'Bank Transfer' && (
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label>Target Bank Account *</label>
+              <select name="accountId" required value={formData.accountId} onChange={handleChange}>
+                <option value="">Select Account</option>
+                {bankAccounts.map(acc => (
+                  <option key={acc._id} value={acc._id}>{acc.accountName} (LKR {acc.balance.toLocaleString()})</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
       </div>

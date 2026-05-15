@@ -5,6 +5,7 @@ import BookingForm from './BookingForm';
 import RecordDetails from './RecordDetails';
 import { bookingAPI } from '../services/api';
 import { generatePDFReport, generateInvoicePDF } from '../utils/reportGenerator';
+import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import { Download, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
@@ -83,9 +84,15 @@ const BookingBook = () => {
   const filteredRecords = useMemo(() => {
     return bookings.filter(r => {
       const matchStatus = statusFilter === 'All' || r.status === statusFilter;
-      const matchSearch = !searchQuery || 
-        r.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        r.tool?.number?.toLowerCase().includes(searchQuery.toLowerCase());
+      const search = searchQuery.toLowerCase().trim();
+      if (!search) return matchStatus;
+
+      const matchSearch = 
+        r.clientName?.toLowerCase().includes(search) ||
+        r.displayTool?.toLowerCase().includes(search) ||
+        r.bookingId?.toLowerCase().includes(search) ||
+        (r.items && r.items.some(it => it.toolNumber?.toLowerCase().includes(search)));
+        
       return matchStatus && matchSearch;
     });
   }, [bookings, statusFilter, searchQuery]);
@@ -227,23 +234,7 @@ const BookingBook = () => {
   };
 
   const handleExportPDF = () => {
-    const exportColumns = ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'STATUS'];
-    const exportData = filteredRecords.map(r => [
-      r.displayId, 
-      r.clientName, 
-      r.displayTool, 
-      r.displayPickup, 
-      r.displayReturn, 
-      r.totalDays, 
-      `LKR ${r.displayTotal}`, 
-      r.displayStatus
-    ]);
-    generatePDFReport({ 
-      title: 'RAXWO - Tool Reservations Report', 
-      columns: exportColumns, 
-      data: exportData, 
-      filename: `RAXWO_Reservations_${new Date().toISOString().split('T')[0]}.pdf` 
-    });
+    generateGenericReportPDF('Tool Reservations Report', ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'STATUS'], filteredRecords);
   };
 
   return (
@@ -326,29 +317,37 @@ const BookingBook = () => {
               <div className="table-actions" onClick={e => e.stopPropagation()}>
                 {canManage && (
                   <>
-                    <button className="print-btn" onClick={() => handlePrint(r.rawData)} title="Print Bill">
-                      <Printer size={18} />
+                    <button className="action-icon-btn btn-print" onClick={() => handlePrint(r.rawData)} title="Print Bill">
+                      <Printer />
                     </button>
-                    <button className="print-btn" style={{ background: '#64748b', color: '#fff', borderColor: '#64748b' }} onClick={() => handlePrintQuote(r.rawData)} title="Print Quotation">
-                      <FileText size={18} />
+                    <button className="action-icon-btn btn-details" onClick={() => handlePrintQuote(r.rawData)} title="Print Quotation">
+                      <FileText />
                     </button>
                   </>
                 )}
                 {canManage && r.displayStatus === 'Active' && (
                   <button 
-                    className="edit-btn" 
-                    style={{ background: 'var(--success-soft)', color: 'var(--success)', borderColor: 'var(--success)' }}
+                    className="action-icon-btn btn-msg" 
+                    style={{ width: 'auto', padding: '0 12px' }}
                     onClick={(e) => { e.stopPropagation(); setReturnRecord(r.rawData || r); setReturnDate(new Date().toISOString().split('T')[0]); setReturnModalOpen(true); }}
                   >
                     Mark Returned
                   </button>
                 )}
-                <div className="table-actions" style={{ gap: '6px' }}>
-                  <button className="edit-btn" onClick={() => handleEdit(r)} title="Edit Booking"><PlusCircle size={14} /></button>
-                  <button className="edit-btn" style={{ background: '#0EA5E9' }} onClick={(e) => handleNotify(e, r)} title="Send SMS Reminder"><Bell size={14} /></button>
-                  <button className="edit-btn" style={{ background: '#25D366' }} onClick={(e) => handleWhatsApp(e, r)} title="Send WhatsApp Reminder"><MessageCircle size={14} /></button>
-                  {canManage && <button className="delete-btn" onClick={() => handleDelete(r._id)} title="Delete"><Trash2 size={14} /></button>}
-                </div>
+                <button className="action-icon-btn btn-details" onClick={() => handleEdit(r)} title="Edit Booking">
+                  <FileText />
+                </button>
+                <button className="action-icon-btn btn-bell" onClick={(e) => handleNotify(e, r)} title="Send SMS Reminder">
+                  <Bell />
+                </button>
+                <button className="action-icon-btn btn-msg" onClick={(e) => handleWhatsApp(e, r)} title="Send WhatsApp Reminder">
+                  <MessageCircle />
+                </button>
+                {canManage && (
+                  <button className="action-icon-btn btn-delete" onClick={() => handleDelete(r._id)} title="Delete">
+                    <Trash2 />
+                  </button>
+                )}
               </div>
             )
           }))}

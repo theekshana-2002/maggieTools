@@ -8,6 +8,7 @@ const Counter = require('../models/Counter');
 const Payment = require('../models/Payment');
 const Client = require('../models/Client');
 const { sendSMS } = require('../utils/smsService');
+const Account = require('../models/Account');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
 async function getNextSequence(name) {
@@ -157,12 +158,22 @@ router.post('/', authMiddleware, async (req, res) => {
     const booking = new Booking(req.body);
     booking.bookingId = bookingId;
     
-    // Ensure the primary 'tool' field is set for backward compatibility
+    // Ensure tool IDs are strings, not objects (fixes BSON errors during population)
     if (req.body.items && req.body.items.length > 0) {
-      booking.tool = req.body.items[0].tool;
+      const firstTool = req.body.items[0].tool;
+      booking.tool = typeof firstTool === 'object' ? firstTool._id : firstTool;
+      
+      booking.items = req.body.items.map(it => ({
+        ...it,
+        tool: typeof it.tool === 'object' ? it.tool._id : it.tool
+      }));
     }
 
+    booking.updatedBy = req.user.id;
+    booking.updatedByName = req.user.name;
+
     const newBooking = await booking.save();
+    console.log(`✅ Booking Saved: ${newBooking._id}`);
 
     // 1. Update Tool Status
     if (newBooking.items && newBooking.items.length > 0) {
@@ -244,6 +255,8 @@ async function processBookingSideEffects(newBooking) {
           quantity: a.quantity, 
           price: a.price 
         })),
+        updatedBy: newBooking.updatedBy,
+        updatedByName: newBooking.updatedByName,
         remarks: `Auto-updated from booking ${newBooking.bookingId}`
       };
 
@@ -300,6 +313,9 @@ async function processBookingSideEffects(newBooking) {
       const balAmt = totalAmt - advAmt;
       const payStatus = advAmt >= totalAmt ? 'Paid' : advAmt > 0 ? 'Partial' : 'Pending';
 
+      const itemsList = Array.isArray(newBooking.items) ? newBooking.items : [];
+      const tNo = itemsList.map(it => it.toolNumber).join(' / ') || 'Tool';
+
       const paymentData = {
         date: newBooking.pickupDate || new Date(),
         client: newBooking.clientName,
@@ -316,12 +332,17 @@ async function processBookingSideEffects(newBooking) {
         city: newBooking.pickupLocation || 'Rental',
         bookingId: newBooking._id
       };
-      
       await Payment.findOneAndUpdate(
         { bookingId: newBooking._id },
-        paymentData,
+        { ...paymentData, accountId: newBooking.accountId || undefined },
         { upsert: true, new: true }
       );
+      
+      // UPDATE BALANCE IF BANK TRANSFER
+      if (newBooking.paymentMethod === 'Bank Transfer' && newBooking.accountId) {
+        await Account.findByIdAndUpdate(newBooking.accountId, { $inc: { balance: advAmt } });
+      }
+      
       console.log('DEBUG: Payment record synced for booking:', newBooking.bookingId);
       // 4. Accessory Stock update now handled explicitly in routes (POST/PUT)
       // 5. Send Confirmation SMS
@@ -357,6 +378,19 @@ router.post('/bulk', authMiddleware, async (req, res) => {
         const booking = new Booking(bData);
         booking.bookingId = `${commonId}${toolCode}`;
         
+        // Harden IDs and add audit fields
+        if (bData.items && bData.items.length > 0) {
+          const firstTool = bData.items[0].tool;
+          booking.tool = typeof firstTool === 'object' ? firstTool._id : firstTool;
+          booking.items = bData.items.map(it => ({
+            ...it,
+            tool: typeof it.tool === 'object' ? it.tool._id : it.tool
+          }));
+        }
+        
+        booking.updatedBy = req.user.id;
+        booking.updatedByName = req.user.name;
+
         const saved = await booking.save();
         console.log(`[BULK] Saved item ${i+1}/${bookings.length}: ${booking.bookingId}`);
         
@@ -410,9 +444,28 @@ router.put('/:id', authMiddleware, async (req, res) => {
         }
     }
 
+    // Harden IDs in items array if present
+    if (req.body.items && Array.isArray(req.body.items)) {
+      req.body.items = req.body.items.map(it => ({
+        ...it,
+        tool: typeof it.tool === 'object' ? it.tool._id : it.tool
+      }));
+      
+      // Sync top-level tool for legacy support
+      if (req.body.items.length > 0) {
+        const firstTool = req.body.items[0].tool;
+        req.body.tool = typeof firstTool === 'object' ? firstTool._id : firstTool;
+      }
+    } else if (req.body.tool) {
+      req.body.tool = typeof req.body.tool === 'object' ? req.body.tool._id : req.body.tool;
+    }
+
+    // Sanitize accountId
+    if (req.body.accountId === '') req.body.accountId = null;
+
     const updatedBooking = await Booking.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      { ...req.body, updatedBy: req.user.id, updatedByName: req.user.name },
       { new: true }
     );
     

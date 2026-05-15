@@ -1,20 +1,31 @@
 import React from 'react';
 import DataTable from './DataTable';
 import Modal from './Modal';
-import { extraIncomeAPI } from '../services/api';
-import { Download, Search, RefreshCw, PlusCircle, Wallet } from 'lucide-react';
+import { extraIncomeAPI, accountAPI } from '../services/api';
+import { Download, Search, RefreshCw, PlusCircle, Wallet, Filter, FileText, Trash2 } from 'lucide-react';
+import { generateGenericReportPDF } from '../utils/genericReportGenerator';
+import Autocomplete from './Autocomplete';
 import '../styles/forms.css';
 import '../styles/books.css';
 
-const ExtraIncomeForm = ({ onSubmit, onCancel, initialData }) => {
-  const [formData, setFormData] = React.useState(initialData || { date: new Date().toISOString().split('T')[0], description: '', amount: '', category: '', note: '' });
+const ExtraIncomeForm = ({ onSubmit, onCancel, initialData, categories = [] }) => {
+  const [formData, setFormData] = React.useState(initialData || { date: new Date().toISOString().split('T')[0], description: '', amount: '', category: '', note: '', paymentMethod: 'Cash', accountId: '' });
+  const [accounts, setAccounts] = React.useState([]);
 
   React.useEffect(() => {
+    fetchAccounts();
     if (initialData) {
       const formattedDate = initialData.date ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-      setFormData({ ...initialData, date: formattedDate });
+      setFormData({ ...initialData, date: formattedDate, paymentMethod: initialData.paymentMethod || 'Cash', accountId: initialData.accountId || '' });
     }
   }, [initialData]);
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await accountAPI.get();
+      setAccounts(res.data || []);
+    } catch (e) { console.error(e); }
+  };
   
   return (
     <form className="hire-form" onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }}>
@@ -42,9 +53,32 @@ const ExtraIncomeForm = ({ onSubmit, onCancel, initialData }) => {
           <div className="form-grid-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
               <label>Category</label>
-              <input type="text" placeholder="e.g. Service, Sales" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
+              <Autocomplete 
+                name="category"
+                value={formData.category} 
+                onChange={e => setFormData({...formData, category: e.target.value})} 
+                options={categories}
+                placeholder="e.g. Service, Sales" 
+              />
+            </div>
+            <div className="form-group">
+              <label>Payment Method</label>
+              <select value={formData.paymentMethod} onChange={e => setFormData({...formData, paymentMethod: e.target.value})}>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+              </select>
             </div>
           </div>
+          {(formData.paymentMethod === 'Bank Transfer' || formData.paymentMethod === 'Cheque') && (
+            <div className="form-group" style={{ marginTop: '16px' }}>
+              <label>Target Bank Account *</label>
+              <select required value={formData.accountId} onChange={e => setFormData({...formData, accountId: e.target.value})}>
+                <option value="">Select Account</option>
+                {accounts.map(acc => <option key={acc._id} value={acc._id}>{acc.accountName} (LKR {acc.balance.toLocaleString()})</option>)}
+              </select>
+            </div>
+          )}
           <div className="form-group" style={{ marginTop: '16px' }}>
             <label>Notes</label>
             <textarea placeholder="Additional info..." value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})} rows={3} />
@@ -76,10 +110,11 @@ const ExtraIncome = () => {
   const [editingRecord, setEditingRecord] = React.useState(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [successMsg, setSuccessMsg] = React.useState('');
+  const [selectedMonth, setSelectedMonth] = React.useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
 
   const columns = canManage 
-    ? ['DATE', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)', 'ACTION']
-    : ['DATE', 'DESCRIPTION', 'CATEGORY', 'AMOUNT (LKR)'];
+    ? ['DATE', 'DESCRIPTION', 'CATEGORY', 'METHOD', 'AMOUNT (LKR)', 'ACTION']
+    : ['DATE', 'DESCRIPTION', 'CATEGORY', 'METHOD', 'AMOUNT (LKR)'];
 
   React.useEffect(() => { fetchRecords(); }, []);
 
@@ -99,8 +134,12 @@ const ExtraIncome = () => {
         ),
         action: canManage ? (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" onClick={() => handleEdit(r)}>Edit</button>
-            <button className="delete-btn" onClick={() => handleDelete(r._id)}>Delete</button>
+            <button className="action-icon-btn btn-details" onClick={() => handleEdit(r)} title="Edit Record">
+              <FileText />
+            </button>
+            <button className="action-icon-btn btn-delete" onClick={() => handleDelete(r._id)} title="Delete Record">
+              <Trash2 />
+            </button>
           </div>
         ) : null
       }));
@@ -111,11 +150,18 @@ const ExtraIncome = () => {
 
   const filteredRecords = React.useMemo(() => {
     return records.filter(r => {
-      return !searchQuery || 
+      const matchMonth = !selectedMonth || r.date?.startsWith(selectedMonth);
+      const matchSearch = !searchQuery || 
         (r.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (r.category || '').toLowerCase().includes(searchQuery.toLowerCase());
+      return matchMonth && matchSearch;
     });
-  }, [records, searchQuery]);
+  }, [records, searchQuery, selectedMonth]);
+
+  const categories = React.useMemo(() => {
+    const cats = records.map(r => r.category).filter(Boolean);
+    return [...new Set(cats)];
+  }, [records]);
 
   const totalAmount = React.useMemo(() => {
     return filteredRecords.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
@@ -152,6 +198,10 @@ const ExtraIncome = () => {
       } catch (err) { console.error(err); }
     }
   };
+  
+  const handleExportPDF = () => {
+    generateGenericReportPDF('Extra Income Report', ['DATE', 'DESCRIPTION', 'CATEGORY', 'METHOD', 'AMOUNT'], filteredRecords);
+  };
 
   return (
     <div className="book-container">
@@ -177,8 +227,17 @@ const ExtraIncome = () => {
           />
         </div>
         <div className="filter-actions">
-          <button className="secondary-btn" onClick={fetchRecords} title="Refresh">
+          <input 
+            type="month" 
+            className="date-filter"
+            value={selectedMonth} 
+            onChange={e => setSelectedMonth(e.target.value)} 
+          />
+          <button className="action-icon-btn btn-refresh" onClick={fetchRecords} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
+          </button>
+          <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Download PDF">
+            <Download size={18} />
           </button>
           {canManage && (
             <button className="add-btn" onClick={() => { setEditingRecord(null); setIsModalOpen(true); }}>
@@ -197,6 +256,7 @@ const ExtraIncome = () => {
           DATE: r.date_disp,
           DESCRIPTION: r.description,
           CATEGORY: r.category || '—',
+          METHOD: r.paymentMethod || 'Cash',
           'AMOUNT (LKR)': r.amount_disp,
           ACTION: r.action
         }))} 
@@ -213,6 +273,7 @@ const ExtraIncome = () => {
           onSubmit={handleAdd} 
           onCancel={() => { setIsModalOpen(false); setEditingRecord(null); }} 
           initialData={editingRecord}
+          categories={categories}
         />
       </Modal>
     </div>

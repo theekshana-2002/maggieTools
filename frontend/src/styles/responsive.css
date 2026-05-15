@@ -9,6 +9,7 @@
     transform: translateX(-100%) !important;
     width: 280px !important;
     max-width: 85vw;
+    z-index: 1000 !important;
   }
 
   .sidebar.open {
@@ -22,24 +23,14 @@
     width: 100% !important;
   }
 
-  /* Force header icons to be centered and visible */
-  .nav-avatar, .theme-toggle-btn, .header-logout-btn, .mobile-menu-btn {
-    width: 36px !important;
-    height: 36px !important;
-    padding: 0 !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-  }
-
   /* Force dashboard grid to collapse */
-  .stats-grid, .summary-grid {
+  .stats-grid, .summary-grid, .report-kpi-grid {
     grid-template-columns: repeat(2, 1fr) !important;
-    gap: 12px !important;
+    gap: 16px !important;
   }
 
   /* Book Filters & Action Bar */
-  .book-filters {
+  .book-filters, .audit-filters {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 16px !important;
@@ -51,7 +42,7 @@
     width: 100% !important;
   }
 
-  .filter-actions {
+  .filter-actions, .filter-group {
     width: 100% !important;
     justify-content: space-between !important;
     gap: 12px !important;
@@ -59,197 +50,115 @@
 
   .tab-switcher {
     width: 100% !important;
-    order: -1; /* Tabs first on mobile */
+    order: -1;
     margin-bottom: 4px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    display: flex;
+    flex-wrap: nowrap;
   }
 
-  .filter-actions .utility-icon-btn {
-    flex: 0 0 44px !important;
-    height: 44px !important;
-  }
-
-  .filter-actions .add-btn, .filter-actions .refresh-btn {
-    flex: 1 !important;
-    height: 44px !important;
-    font-size: 0.8rem !important;
-    padding: 0 16px !important;
-    justify-content: center !important;
-    gap: 8px !important;
+  .tab-switcher button {
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 }
 
 @media (max-width: 768px) {
   /* Stack grids to single column */
-  .stats-grid, .summary-grid, .form-grid, .form-grid-2, .form-grid-3, .grid-3-col, .grid-2-col, .detail-grid {
+  .stats-grid, .summary-grid, .form-grid, .form-grid-2, .form-grid-3, .grid-3-col, .grid-2-col, .detail-grid, .report-kpi-grid {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
   }
 
   /* Ensure tables are scrollable */
-  .data-table-root {
+  .data-table-root, .report-section-table-wrapper {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     width: 100%;
+    border-radius: 8px;
   }
 
-  .data-table {
-    min-width: 600px !important;
+  .data-table, .breakdown-table {
+    min-width: 700px !important; /* Force horizontal scroll for readability */
   }
 
-  /* Compact header */
-  .main-header {
-    padding: 0 12px !important;
-    height: 64px !important;
+  /* Audit Log Mobile Styling */
+  .audit-header-top {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    text-align: center !important;
   }
 
-  .header-left h2 {
-    font-size: 1rem !important;
-    max-width: 150px;
+  .audit-title-area {
+    flex-direction: column !important;
   }
 
-  /* Form Adjustments - Force stacking on all handhelds */
-  .form-grid, .hire-form-grid, .detail-grid {
-    grid-template-columns: 1fr !important;
-    gap: 16px !important;
+  .audit-stats {
+    justify-content: center !important;
   }
 
+  .audit-stat-card {
+    text-align: center !important;
+  }
+
+  /* Financial Report Header */
+  .report-header {
+    flex-direction: column !important;
+    text-align: center !important;
+    gap: 20px !important;
+  }
+
+  .report-header-left {
+    flex-direction: column !important;
+  }
+
+  .report-controls {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 16px !important;
+  }
+
+  .report-divider { display: none; }
+
+  /* Form Adjustments */
   .item-row {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
     padding: 16px !important;
-    position: relative !important;
-  }
-
-  .item-row > * {
-    width: 100% !important;
-  }
-
-  .remove-item-btn {
-    position: absolute !important;
-    top: 12px !important;
-    right: 12px !important;
-    width: 32px !important;
-    height: 32px !important;
   }
 
   .hire-form-scroll {
-    padding: 16px !important;
-  }
-
-  .form-group label {
-    font-size: 0.8rem !important;
-  }
-
-  .form-group input, .form-group select, .form-group textarea {
-    height: 44px !important;
-    font-size: 0.9rem !important;
-  }
-}
-
-@media (max-width: 768px) {
-  /* Footer stacking */
-  .hire-form-footer {
-    flex-direction: column !important;
-    padding: 16px !important;
-    align-items: stretch !important;
-  }
-
-  .total-display {
-    text-align: center !important;
-    margin-bottom: 12px;
-  }
-
-  .modal-actions {
-    flex-direction: column !important;
-    width: 100% !important;
-    gap: 8px !important;
-  }
-
-  .modal-actions button {
-    width: 100% !important;
+    padding: 12px !important;
   }
 }
 
 @media (max-width: 480px) {
-  /* Small phone specific refinements */
-  .premium-card {
+  .premium-card, .kpi-card {
     padding: 16px !important;
-    border-radius: 12px !important;
   }
 
   /* Modal Content */
   .modal-content {
-    width: 100% !important;
+    width: 95% !important;
     padding: 16px !important;
-    max-height: 98vh !important;
-    border-radius: 20px 20px 0 0 !important;
+    max-height: 90vh !important;
+    margin: 20px auto !important;
   }
 
   .form-section {
-    padding: 16px !important;
-    border-radius: 16px !important;
-    width: 100% !important;
-    margin-bottom: 16px !important;
-    overflow: hidden; /* Ensure nothing sticks out */
-  }
-
-  /* Stack Tool Item Rows in Booking Form */
-  .tool-item-row {
-    grid-template-columns: 1fr !important;
     padding: 12px !important;
   }
 
-  .accessory-item-row {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
-  }
-
-  /* Dashboard & Book Header Controls */
-  .dashboard-header, .book-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    text-align: center !important;
-    gap: 20px !important;
-    padding-bottom: 24px !important;
-  }
-
-  .header-actions, .header-controls {
-    flex-direction: column !important;
-    gap: 12px !important;
-    width: 100% !important;
-  }
-
-  .header-actions select, .header-controls select, .header-controls .search-box {
-    width: 100% !important;
-    max-width: none !important;
-    height: 48px !important;
-  }
-
-  .header-actions .refresh-btn, .header-controls .theme-toggle-btn {
-    width: 100% !important;
-    justify-content: center !important;
-    height: 48px !important;
-    margin: 0 !important;
-  }
-
-  /* Quick Action Buttons & Cards */
+  /* Action Buttons */
   .action-buttons {
-    gap: 12px !important;
-    margin-top: 24px !important;
+    grid-template-columns: 1fr !important;
   }
 
   .action-buttons button {
-    height: 56px !important;
-    font-size: 1rem !important;
-    justify-content: center !important; /* Changed from space-between */
-    gap: 12px !important;
-    padding: 0 20px !important;
-    text-align: center !important;
-  }
-
-  .compliance-content .book-filters {
-    flex-direction: column !important;
-    align-items: stretch !important;
+    height: 52px !important;
+    font-size: 0.95rem !important;
   }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import api from '../services/api';
+import api, { invoiceAPI } from '../services/api';
 import DataTable from './DataTable';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
@@ -22,8 +22,22 @@ const InvoiceBook = () => {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => { fetchInvoices(); }, []);
+
+  const handleMarkAsPaid = async (id) => {
+    if (window.confirm('Mark this invoice as fully paid? This will update the balance to zero.')) {
+      try {
+        await invoiceAPI.pay(id);
+        setSuccessMsg('Invoice marked as Paid!');
+        fetchInvoices();
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } catch (err) {
+        alert('Failed to update invoice status.');
+      }
+    }
+  };
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this invoice? This cannot be undone.')) {
@@ -59,17 +73,24 @@ const InvoiceBook = () => {
           ),
           action: (
             <div className="table-actions" onClick={e => e.stopPropagation()}>
-              <button className="edit-btn" style={{ background: 'var(--accent-soft)', color:'var(--accent)', border: '1px solid var(--accent-soft)' }} onClick={() => generateInvoicePDF(inv)}>
-                 <FileDown size={14} /> PDF
+              <button className="action-icon-btn btn-print" onClick={() => generateInvoicePDF(inv)} title="Download PDF">
+                 <FileDown />
               </button>
-              <button className="edit-btn" style={{ background: '#64748b', color:'#fff', border: 'none' }} onClick={() => generateInvoicePDF(inv, 'print')}>
-                 <Printer size={14} /> PRINT
+              <button className="action-icon-btn btn-details" style={{ background: '#64748b', color:'#fff' }} onClick={() => generateInvoicePDF(inv, 'print')} title="Direct Print">
+                 <Printer />
               </button>
               {canManage && (
                 <>
-                  <button className="edit-btn" onClick={() => { setEditingItem(inv); setShowModal(true); }}>Edit</button>
-                  <button className="delete-btn" onClick={() => handleDelete(inv._id)} style={{ color: 'var(--danger)' }}>
-                    <Trash2 size={14} />
+                  <button className="action-icon-btn btn-details" onClick={() => { setEditingItem(inv); setShowModal(true); }} title="Edit Invoice">
+                    <FileText />
+                  </button>
+                  {inv.status !== 'Paid' && (
+                    <button className="action-icon-btn btn-msg" onClick={() => handleMarkAsPaid(inv._id)} title="Mark as Paid">
+                      <CheckCircle />
+                    </button>
+                  )}
+                  <button className="action-icon-btn btn-delete" onClick={() => handleDelete(inv._id)} title="Delete Invoice">
+                    <Trash2 />
                   </button>
                 </>
               )}
@@ -135,6 +156,8 @@ const InvoiceBook = () => {
           <CheckCircle size={16} color="var(--success)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
         </div>
       </div>
+ 
+      {successMsg && <div className="success-banner" style={{ margin: '0 20px 20px' }}>{successMsg}</div>}
 
       <div className="compliance-card">
         <DataTable 

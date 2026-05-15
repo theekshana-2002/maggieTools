@@ -3,8 +3,8 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import SalaryForm from './SalaryForm';
 import { salaryAPI, toolAPI, employeeAPI, bookingAPI, attendanceAPI, advanceAPI } from '../services/api';
-import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, RefreshCw, Calendar, Users, Wallet, CreditCard, ChevronRight, TrendingUp, ShieldCheck, Clock, AlertCircle, PlusCircle } from 'lucide-react';
+import { generateGenericReportPDF } from '../utils/genericReportGenerator';
+import { Download, Search, RefreshCw, Calendar, Users, Wallet, CreditCard, ChevronRight, TrendingUp, ShieldCheck, Clock, AlertCircle, PlusCircle, FileText, Trash2 } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import RecordDetails from './RecordDetails';
@@ -112,7 +112,9 @@ const SalaryBook = () => {
         netPay_val: netPay,
         ACTION: canManage ? (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" onClick={() => handleEdit(dbRecord || { _id: `live-${emp.name}`, employee: emp.name, month: targetMonth, basic, hourlyEarnings, dailyAllowance, netPay })}> {dbRecord ? 'Edit' : 'Finalize'}</button>
+            <button className="action-icon-btn btn-details" onClick={() => handleEdit(dbRecord || { _id: `live-${emp.name}`, employee: emp.name, month: targetMonth, basic, hourlyEarnings, dailyAllowance, netPay })} title={dbRecord ? 'Edit Salary' : 'Finalize Salary'}>
+               <FileText />
+            </button>
           </div>
         ) : null
       };
@@ -127,6 +129,10 @@ const SalaryBook = () => {
   const handleEdit = (item) => {
     setEditingItem(item);
     setIsModalOpen(true);
+  };
+
+  const handleExportPDF = () => {
+    generateGenericReportPDF(`Payroll Report - ${targetMonth}`, ['EMPLOYEE', 'BASIC', 'HOURLY', 'ALLOWANCE', 'HOURS', 'NET PAY', 'STATUS'], processedSalaries);
   };
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -150,6 +156,7 @@ const SalaryBook = () => {
                {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
              </select>
            </div>
+           <button className="theme-toggle-btn" onClick={handleExportPDF} title="Download Payroll Report"><Download size={18} /></button>
            <button className="theme-toggle-btn" onClick={fetchBaseData}><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
         </div>
       </div>
@@ -215,7 +222,13 @@ const SalaryBook = () => {
                   ...a,
                   date: new Date(a.date).toLocaleDateString(),
                   amount: <strong style={{ color: 'var(--danger)' }}>LKR {a.amount.toLocaleString()}</strong>,
-                  action: <button className="delete-btn" onClick={async () => { await advanceAPI.delete(a._id); fetchBaseData(); }}>Delete</button>
+                  action: (
+                    <div className="table-actions">
+                      <button className="action-icon-btn btn-delete" onClick={async () => { if(window.confirm('Delete this advance?')) { await advanceAPI.delete(a._id); fetchBaseData(); } }} title="Delete Advance">
+                        <Trash2 />
+                      </button>
+                    </div>
+                  )
                }))}
             />
           </div>

@@ -2,8 +2,7 @@ const axios = require('axios');
 
 /**
  * SMS Service Utility
- * Currently set as a Mock service. 
- * To use a real provider (e.g., Notify.lk or Twilio), replace the logic below.
+ * Integrated with SMSlenz.lk
  */
 
 const sendSMS = async (to, message) => {
@@ -12,32 +11,48 @@ const sendSMS = async (to, message) => {
       console.warn('[SMS SERVICE] Missing phone number. Skipping.');
       return { success: false, error: 'Missing phone number' };
     }
-    const cleanPhone = to.replace(/[^0-9]/g, '');
+
+    // SMSlenz usually requires international format (e.g., +947XXXXXXXX)
+    let cleanPhone = to.replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '94' + cleanPhone.substring(1);
+    } else if (!cleanPhone.startsWith('94')) {
+      cleanPhone = '94' + cleanPhone;
+    }
     
-    console.log(`--------------------------------------------------`);
-    console.log(`📲 AUTOMATED SMS LOG`);
-    console.log(`TO: ${cleanPhone}`);
-    console.log(`MESSAGE: ${message}`);
-    console.log(`STATUS: Test Mode (Logging only)`);
-    console.log(`--------------------------------------------------`);
+    const formattedPhone = '+' + cleanPhone;
 
-    /**
-     * EXAMPLE INTEGRATION (Notify.lk):
-     * 
-     * await axios.get('https://app.notify.lk/api/v1/send', {
-     *   params: {
-     *     user_id: 'YOUR_USER_ID',
-     *     api_key: 'YOUR_API_KEY',
-     *     sender_id: 'NotifyDemo',
-     *     to: cleanPhone,
-     *     message: message
-     *   }
-     * });
-     */
+    const userId = process.env.SMS_USER_ID;
+    const apiKey = process.env.SMS_API_KEY;
+    const senderId = process.env.SMS_SENDER_ID || 'SMSlenzDEMO';
 
-    return { success: true, message: 'SMS Sent (Mock)' };
+    if (!userId || !apiKey) {
+      console.error('[SMS SERVICE] Credentials missing in .env');
+      return { success: false, error: 'SMS credentials missing' };
+    }
+
+    const response = await axios.get('https://www.smslenz.lk/api/send-sms', {
+      params: {
+        user_id: userId,
+        api_key: apiKey,
+        sender_id: senderId,
+        contact: formattedPhone,
+        message: message
+      }
+    });
+
+    console.log(`DEBUG: SMSlenz Request Params:`, { userId, senderId, contact: formattedPhone });
+
+    if (response.data && (response.data.success === true || response.data.status === 'success')) {
+      console.log(`✅ SMS Sent Successfully to ${formattedPhone} via SMSlenz`);
+      return { success: true, data: response.data };
+    } else {
+      console.error('❌ SMS Failed (SMSlenz):', response.data);
+      return { success: false, error: response.data };
+    }
+
   } catch (err) {
-    console.error('SMS Service Error:', err.message);
+    console.error('❌ SMS Service Error (SMSlenz):', err.response ? err.response.data : err.message);
     return { success: false, error: err.message };
   }
 };

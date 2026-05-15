@@ -3,7 +3,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import { toolAPI, markLeasePayment } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, RefreshCw, PlusCircle, CheckCircle, XCircle, CreditCard, ChevronRight, Wrench, Info, AlertCircle, Package, Trash2 } from 'lucide-react';
+import { Download, Search, RefreshCw, PlusCircle, CheckCircle, XCircle, CreditCard, ChevronRight, Wrench, Info, AlertCircle, Package, Trash2, FileText, Plus } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import RecordDetails from './RecordDetails';
@@ -113,21 +113,23 @@ const Tools = () => {
       const formatted = raw.map(t => ({
         ...t,
         rawData: t,
-        number: <strong style={{ color: 'var(--text-main)' }}>{t.number || '—'}</strong>,
-        model_disp: t.model || '—',
-        category_disp: <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{t.category}</span>,
-        dailyRate_disp: <strong style={{ color: 'var(--accent)' }}>LKR {(t.dailyRate || 0).toLocaleString()}</strong>,
-        status_disp: (
-          <span className={`status-badge ${t.status === 'Available' ? 'status-completed' : t.status === 'Booked' ? 'status-active' : 'status-cancelled'}`}>
+        'TOOL ID / SERIAL': <strong style={{ color: 'var(--text-main)' }}>{t.number || '—'}</strong>,
+        'MODEL': t.model || '—',
+        'CATEGORY': <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{t.category}</span>,
+        'DAILY RATE': <strong style={{ color: 'var(--accent)' }}>LKR {(t.dailyRate || 0).toLocaleString()}</strong>,
+        'STATUS': (
+          <span className={`status-badge ${t.status === 'Available' ? 'status-completed' : t.status === 'Booked' ? 'status-active' : t.status === 'Cancelled' ? 'status-cancelled' : ''}`}>
             {t.status || 'Available'}
           </span>
         ),
-        action: (
+        'ACTION': (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" onClick={() => { setSelectedRecord(t); setIsModalOpen(true); }}>Edit</button>
+            <button className="action-icon-btn btn-details" onClick={() => { setSelectedRecord(t); setIsModalOpen(true); }} title="Edit Tool">
+              <FileText />
+            </button>
             {canManage && (
-              <button className="delete-btn" onClick={() => handleDelete(t._id)} style={{ color: 'var(--danger)' }}>
-                <Trash2 size={14} />
+              <button className="action-icon-btn btn-delete" onClick={() => handleDelete(t._id)} title="Delete Tool">
+                <Trash2 />
               </button>
             )}
           </div>

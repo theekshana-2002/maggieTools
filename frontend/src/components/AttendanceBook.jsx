@@ -92,40 +92,27 @@ const AttendanceBook = () => {
               <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                 <button 
                   onClick={() => handleMark(emp.name, 'Present')}
-                  className={`status-badge ${status === 'Present' ? 'status-completed' : ''}`}
-                  style={{ 
-                    padding: '10px', borderRadius: '12px', border: '1px solid var(--border)',
-                    background: status === 'Present' ? 'var(--success-soft)' : 'var(--bg-main)',
-                    color: status === 'Present' ? 'var(--success)' : 'var(--text-dim)',
-                    transition: 'all 0.3s ease'
-                  }}
+                  className={`action-icon-btn btn-msg ${status === 'Present' ? 'active' : ''}`}
+                  style={status === 'Present' ? { background: 'var(--success) !important', color: '#fff !important' } : {}}
                   title="Mark Present"
                 >
-                  <CheckCircle size={20} />
+                  <CheckCircle />
                 </button>
                 <button 
                   onClick={() => handleMark(emp.name, 'Absent')}
-                  style={{ 
-                    padding: '10px', borderRadius: '12px', border: '1px solid var(--border)',
-                    background: status === 'Absent' ? 'var(--danger-soft)' : 'var(--bg-main)',
-                    color: status === 'Absent' ? 'var(--danger)' : 'var(--text-dim)',
-                    transition: 'all 0.3s ease'
-                  }}
+                  className={`action-icon-btn btn-delete ${status === 'Absent' ? 'active' : ''}`}
+                  style={status === 'Absent' ? { background: 'var(--danger) !important', color: '#fff !important' } : {}}
                   title="Mark Absent"
                 >
-                  <XCircle size={20} />
+                  <XCircle />
                 </button>
                 <button 
                   onClick={() => handleMark(emp.name, 'Leave')}
-                  style={{ 
-                    padding: '10px', borderRadius: '12px', border: '1px solid var(--border)',
-                    background: status === 'Leave' ? 'var(--warning-soft)' : 'var(--bg-main)',
-                    color: status === 'Leave' ? 'var(--warning)' : 'var(--text-dim)',
-                    transition: 'all 0.3s ease'
-                  }}
+                  className={`action-icon-btn btn-bell ${status === 'Leave' ? 'active' : ''}`}
+                  style={status === 'Leave' ? { background: 'var(--warning) !important', color: '#fff !important' } : {}}
                   title="Mark Leave"
                 >
-                  <Clock size={20} />
+                  <Clock />
                 </button>
               </div>
             </div>

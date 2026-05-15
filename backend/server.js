@@ -67,6 +67,8 @@ app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/advances', require('./routes/advances'));
 app.use('/api/extra-income', require('./routes/extraIncome'));
 app.use('/api/expenses', require('./routes/expenses'));
+app.use('/api/accounts', require('./routes/accounts'));
+app.use('/api/cheques', require('./routes/cheques'));
 app.use('/api/settings', require('./routes/settings'));
 
 app.get('/', (req, res) => {

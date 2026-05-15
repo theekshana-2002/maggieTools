@@ -56,7 +56,7 @@ const RecordDetails = ({ data, type }) => {
         {fields.map((f, i) => (
           <div key={i} className={`detail-field ${f.isImage ? 'full-width' : ''}`}>
             <label>{f.label}</label>
-            <p>
+            <div className="detail-value">
               {(() => {
                 if (f.value !== undefined) return f.value;
                 const val = (data[f.key] !== undefined && data[f.key] !== null && data[f.key] !== '') ? data[f.key] :
@@ -91,7 +91,7 @@ const RecordDetails = ({ data, type }) => {
 
                 return formatDate(val);
               })()}
-            </p>
+            </div>
           </div>
         ))}
       </div>
@@ -105,6 +105,7 @@ const RecordDetails = ({ data, type }) => {
         { label: 'Bill Number', key: 'billNumber' },
         { label: 'Time Sheet No', key: 'timeSheetNumber' },
         { label: 'Client / Company', key: 'client' },
+        { label: 'Customer NIC', key: 'nic' },
         { label: 'Tool ID / Serial', key: 'tool' },
         { label: 'Service Address', key: 'address' },
         { label: 'City', key: 'city' }
@@ -288,6 +289,7 @@ const RecordDetails = ({ data, type }) => {
     {
       title: 'Customer Information', fields: [
         { label: 'Customer Name', key: 'name' },
+        { label: 'NIC Number', key: 'nic' },
         { label: 'Contact Number', key: 'contact' },
         { label: 'Email', key: 'email' },
         { label: 'Address', key: 'address' }
@@ -537,6 +539,18 @@ const RecordDetails = ({ data, type }) => {
           </div>
         </div>
       )}
+      {/* Audit Trail */}
+      <div className="detail-section" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px dashed var(--border)' }}>
+        <h4 className="detail-section-title" style={{ fontSize: '0.75rem', opacity: 0.7 }}>Audit Trail</h4>
+        <div style={{ display: 'flex', gap: '20px', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+          <div>
+            <strong>Last Updated By:</strong> {data.updatedByName || data.operatorName || 'System'}
+          </div>
+          <div>
+            <strong>Updated At:</strong> {data.updatedAt ? new Date(data.updatedAt).toLocaleString() : new Date(data.createdAt || Date.now()).toLocaleString()}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

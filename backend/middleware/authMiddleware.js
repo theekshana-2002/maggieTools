@@ -9,6 +9,14 @@ const authMiddleware = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretkey123');
+    
+    // Legacy support: Map string 'admin_id' to a valid 24-char hex ObjectId
+    if (decoded.id === 'admin_id' || decoded._id === 'admin_id') {
+      const validId = '000000000000000000000001';
+      decoded.id = validId;
+      decoded._id = validId;
+    }
+    
     req.user = decoded;
     return next();
   } catch (err) {

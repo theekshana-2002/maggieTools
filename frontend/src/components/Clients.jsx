@@ -4,7 +4,7 @@ import Modal from './Modal';
 import ClientForm from './ClientForm';
 import { clientAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, RefreshCw, PlusCircle, Users, CheckCircle, TrendingUp, Clock, UserCheck, Phone, AlertCircle } from 'lucide-react';
+import { Download, Search, RefreshCw, PlusCircle, Users, CheckCircle, TrendingUp, Clock, UserCheck, Phone, AlertCircle, FileText, Trash2 } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import RecordDetails from './RecordDetails';
@@ -23,7 +23,7 @@ const Clients = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const columns = ['CUSTOMER NAME', 'CONTACT', 'TOTAL RENTALS', 'OUTSTANDING', 'STATUS', 'ACTION'];
+  const columns = ['CUSTOMER NAME', 'NIC', 'CONTACT', 'TOTAL RENTALS', 'OUTSTANDING', 'STATUS', 'ACTION'];
 
   useEffect(() => { fetchRecords(); }, []);
 
@@ -34,18 +34,24 @@ const Clients = () => {
       const formatted = (response.data || []).map(item => ({
         ...item,
         rawData: item,
-        name_disp: <strong style={{ color: 'var(--text-main)' }}>{item.name || '—'}</strong>,
-        contact_disp: <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Phone size={14} color="var(--text-dim)" /> {item.contact || '—'}</div>,
-        hires_disp: <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{item.totalHires || 0} Rentals</span>,
-        outstanding_disp: <strong style={{ color: (item.outstanding || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {(item.outstanding || 0).toLocaleString()}</strong>,
-        status_disp: (
+        'CUSTOMER NAME': <strong style={{ color: 'var(--text-main)' }}>{item.name || '—'}</strong>,
+        'NIC': item.nic || '—',
+        'CONTACT': <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Phone size={14} color="var(--text-dim)" /> {item.contact || '—'}</div>,
+        'TOTAL RENTALS': <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{item.totalHires || 0} Rentals</span>,
+        'OUTSTANDING': <strong style={{ color: (item.outstanding || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {(item.outstanding || 0).toLocaleString()}</strong>,
+        'STATUS': (
           <span className={`status-badge ${item.status === 'Active' ? 'status-completed' : 'status-cancelled'}`}>
             {item.status || 'Active'}
           </span>
         ),
-        action: canManage ? (
+        'ACTION': canManage ? (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="edit-btn" onClick={() => { setEditingItem(item); setIsModalOpen(true); }}>Edit</button>
+            <button className="action-icon-btn btn-details" onClick={() => { setEditingItem(item); setIsModalOpen(true); }} title="Edit Client">
+              <FileText />
+            </button>
+            <button className="action-icon-btn btn-delete" onClick={() => handleDelete(item._id)} title="Delete Client">
+              <Trash2 />
+            </button>
           </div>
         ) : null
       }));
@@ -59,8 +65,20 @@ const Clients = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
+      try {
+        await clientAPI.delete(id);
+        fetchRecords();
+      } catch (err) {
+        console.error('Delete failed:', err);
+        alert('Failed to delete client record.');
+      }
+    }
+  };
+
   const filteredRecords = useMemo(() => {
-    return clientRecords.filter(r => !searchQuery || (r.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (r.contact || '').toLowerCase().includes(searchQuery.toLowerCase()));
+    return clientRecords.filter(r => !searchQuery || (r.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (r.nic || '').toLowerCase().includes(searchQuery.toLowerCase()) || (r.contact || '').toLowerCase().includes(searchQuery.toLowerCase()));
   }, [clientRecords, searchQuery]);
 
   const stats = useMemo(() => ({

@@ -3,12 +3,10 @@ import { LogOut, Menu, X, Sun, Moon } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import BookingBook from './components/BookingBook';
-import StockInventory from './components/StockInventory';
-import Accessories from './components/Accessories';
+import InventoryDashboard from './components/InventoryDashboard';
 import SalaryBook from './components/SalaryBook';
 import PaymentBook from './components/PaymentBook';
 import Clients from './components/Clients';
-import Tools from './components/Tools';
 import Employees from './components/Employees';
 import FinancialReport from './components/FinancialReport';
 import InvoiceBook from './components/InvoiceBook';
@@ -30,13 +28,11 @@ import './App.css';
 
 const PAGE_TITLES = {
   dashboard: 'Main Overview',
-  stock: 'Real-time Stock Availability',
-  accessories: 'Parts & Accessories Inventory',
   bookings: 'Rentals & Bookings',
   salaries: 'Staff Wages & Payroll',
   payments: 'Payment History',
   clients: 'Our Customers',
-  tools: 'Tool Inventory',
+  inventory: 'Combined Inventory',
   compliance: 'Maintenance & Service',
   employees: 'Team Members',
   reports: 'Profit & Loss Report',
@@ -104,6 +100,15 @@ const App = () => {
     setSelectedRole(null);
   };
 
+  useEffect(() => {
+    const handleForceLogout = () => {
+      handleLogout();
+      alert('Your session has expired or is invalid. Please log in again.');
+    };
+    window.addEventListener('raxwo_force_logout', handleForceLogout);
+    return () => window.removeEventListener('raxwo_force_logout', handleForceLogout);
+  }, []);
+
   // ── Session Timeout Logic (15 Minutes) ──
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -137,14 +142,12 @@ const App = () => {
 
     switch (activeTab) {
       case 'dashboard': return <Dashboard key="dashboard" role={userRole} name={userName} setActiveTab={setActiveTab} />;
-      case 'stock': return <StockInventory />;
-      case 'accessories': return <Accessories />;
+      case 'inventory': return <InventoryDashboard />;
       case 'bookings': return <BookingBook />;
-      case 'tool-reg': return <ToolRegistration onComplete={() => setActiveTab('tools')} />;
+      case 'tool-reg': return <ToolRegistration onComplete={() => setActiveTab('inventory')} />;
       case 'salaries': return <SalaryBook />;
       case 'payments': return <PaymentBook />;
       case 'clients': return <Clients />;
-      case 'tools': return <Tools />;
       case 'compliance': return <ComplianceBook />;
       case 'employees': return <Employees />;
       case 'reports': return <FinancialReport appSettings={appSettings} />;

@@ -12,9 +12,9 @@ import './Dashboard.css';
 
 const pulseStyle = `
   @keyframes pulse-red {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.2); opacity: 0.7; }
-    100% { transform: scale(1); opacity: 1; }
+    0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { transform: scale(1.1); opacity: 0.8; box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+    100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
   }
   .pulse-icon {
     animation: pulse-red 2s infinite ease-in-out;
@@ -49,35 +49,36 @@ const ReminderCard = ({ r }) => {
   const isToday = r.daysLeft <= 0;
   const isTomorrow = r.daysLeft === 1;
 
-  let urgencyColor = '#3b82f6'; // default blue
-  let iconColor = '#3b82f6';
+  let urgencyColor = '#6366F1'; // default indigo
+  let iconColor = '#6366F1';
 
   if (r.daysLeft <= 0) {
-    urgencyColor = '#ef4444'; // red
-    iconColor = '#ef4444';
+    urgencyColor = '#EF4444'; // red
+    iconColor = '#EF4444';
   } else if (r.daysLeft <= 2) {
-    urgencyColor = '#f59e0b'; // orange
-    iconColor = '#f59e0b';
+    urgencyColor = '#F59E0B'; // orange
+    iconColor = '#F59E0B';
   }
 
   let badgeStyle = {
-    background: '#eff6ff',
-    color: '#3b82f6',
+    background: 'rgba(99, 102, 241, 0.1)',
+    color: '#6366F1',
+    border: '1px solid rgba(99, 102, 241, 0.2)'
   };
   let badgeText = `${r.daysLeft}d`;
 
   if (isToday) {
-    badgeStyle = { background: '#ef4444', color: '#fff' };
+    badgeStyle = { background: '#EF4444', color: '#fff', border: 'none' };
     badgeText = 'DUE';
   } else if (isTomorrow) {
-    badgeStyle = { background: '#f59e0b', color: '#fff' };
+    badgeStyle = { background: '#F59E0B', color: '#fff', border: 'none' };
     badgeText = 'TOMORROW';
   }
 
   return (
     <div className="reminder-card" style={{ borderLeftColor: urgencyColor }}>
       <div className="reminder-icon" style={{ color: iconColor }}>
-        <r.icon size={20} strokeWidth={2.5} />
+        <r.icon size={22} strokeWidth={2.5} />
       </div>
       <div className="reminder-info">
         <div className="reminder-header">
@@ -340,7 +341,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       )}
 
       {error && (
-        <div className="form-info-banner" style={{ background: 'var(--danger)', color: '#fff', border: 'none', marginBottom: '24px' }}>
+        <div className="form-info-banner" style={{ background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.2)', marginBottom: '24px' }}>
           <Bell size={18} />
           <span>{error}</span>
         </div>
@@ -353,7 +354,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
       {isAdmin && (
         <div className="insights-row">
           <div className="insight-card">
-            <div className="section-header" style={{ marginBottom: '20px' }}>
+            <div className="section-header" style={{ marginBottom: '20px', background: 'transparent', padding: '0', borderBottom: 'none' }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Package size={20} style={{ color: 'var(--accent)' }} />
                 Most Rented Tools
@@ -376,7 +377,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
           </div>
 
           <div className="insight-card">
-            <div className="section-header" style={{ marginBottom: '20px' }}>
+            <div className="section-header" style={{ marginBottom: '20px', background: 'transparent', padding: '0', borderBottom: 'none' }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Users size={20} style={{ color: 'var(--success)' }} />
                 Top Customers
@@ -422,9 +423,9 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
             ))}
           </div>
         ) : (
-          <div style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-dim)', background: 'var(--bg-muted)', borderRadius: '20px', margin: '20px' }}>
-            <Clock size={48} style={{ marginBottom: '16px', opacity: 0.1 }} />
-            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px' }}>No Activity Found</h4>
+          <div style={{ padding: '60px 40px', textAlign: 'center', color: 'var(--text-dim)', background: 'var(--bg-main)', margin: '20px', borderRadius: 'var(--r-md)', border: '1px solid var(--border-soft)' }}>
+            <Clock size={48} style={{ marginBottom: '16px', opacity: 0.15 }} />
+            <h4 style={{ color: 'var(--text-main)', marginBottom: '8px', fontWeight: 800 }}>No Activity Found</h4>
             <p style={{ fontSize: '0.875rem' }}>
               No records found for the selected period.
             </p>

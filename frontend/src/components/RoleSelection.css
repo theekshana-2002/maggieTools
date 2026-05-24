@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════
-   RAXWO GATEWAY — Premium Role Selection
+   RAXWO GATEWAY — Premium Role Selection v2
    ═══════════════════════════════════════════ */
 
 .gateway-layout {
   min-height: 100vh;
-  background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.9)), url('/gateway_background_1778526540019.png') center/cover fixed;
+  background: linear-gradient(rgba(8, 12, 32, 0.85), rgba(30, 27, 75, 0.95)), url('https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2069&auto=format&fit=crop') center/cover fixed;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -24,21 +24,21 @@
 .blob {
   position: absolute;
   filter: blur(120px);
-  opacity: 0.2;
+  opacity: 0.15;
   border-radius: 50%;
   z-index: 1;
 }
 
 .blob-1 {
   width: 600px; height: 600px;
-  background: var(--accent);
+  background: #6366F1;
   top: -200px; left: -100px;
   animation: float 20s infinite linear;
 }
 
 .blob-2 {
   width: 500px; height: 500px;
-  background: #10B981;
+  background: #8B5CF6;
   bottom: -150px; right: -100px;
   animation: float 25s infinite linear reverse;
 }
@@ -66,20 +66,24 @@
 .gateway-logo {
   height: 80px;
   margin-bottom: 32px;
+  filter: drop-shadow(0 0 20px rgba(99,102,241,0.3));
 }
 
 .gateway-header h1 {
   font-size: 3.5rem;
-  font-weight: 800;
+  font-weight: 900;
   color: #fff;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   margin-bottom: 12px;
   text-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .gateway-header h1 span {
-  color: var(--accent);
-  font-weight: 800;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
 }
 
 .gateway-header p {
@@ -97,11 +101,11 @@
 }
 
 .gateway-card {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 32px;
+  border-radius: var(--r-xl);
   padding: 40px;
   text-align: left;
   cursor: pointer;
@@ -111,21 +115,34 @@
   justify-content: space-between;
   min-height: 400px;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.gateway-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--role-color);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .gateway-card:hover {
   transform: translateY(-12px);
-  border-color: var(--role-color);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--role-color) inset;
   background: rgba(255, 255, 255, 0.08);
 }
+.gateway-card:hover::before { opacity: 1; }
 
 .gateway-icon-box {
   width: 72px;
   height: 72px;
-  background: var(--bg-main);
-  border: 1px solid var(--border);
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--r-lg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -138,7 +155,7 @@
   background: var(--role-color);
   color: #fff;
   border-color: var(--role-color);
-  box-shadow: 0 8px 20px var(--role-color);
+  box-shadow: 0 8px 24px var(--role-color);
 }
 
 .gateway-card h3 {
@@ -162,7 +179,7 @@
   justify-content: space-between;
   margin-top: 40px;
   padding-top: 24px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .gateway-card-footer span {
@@ -176,27 +193,27 @@
 .action-circle {
   width: 44px;
   height: 44px;
-  background: var(--bg-main);
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-main);
+  color: #fff;
   transition: all 0.4s ease;
 }
 
 .gateway-card:hover .action-circle {
   background: var(--role-color);
-  color: #fff;
   border-color: var(--role-color);
   transform: rotate(-45deg);
+  box-shadow: 0 4px 12px var(--role-color);
 }
 
 /* ── Footer ── */
 .gateway-footer p {
   font-size: 0.875rem;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.5);
   font-weight: 600;
 }
 

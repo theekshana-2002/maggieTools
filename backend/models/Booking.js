@@ -56,6 +56,8 @@ const bookingSchema = new mongoose.Schema({
     price: { type: Number, default: 0 }
   }],
   notes: { type: String },
+  followupSent: { type: Boolean, default: false },
+  followupSentAt: { type: Date },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   updatedByName: { type: String }
 }, { timestamps: true });

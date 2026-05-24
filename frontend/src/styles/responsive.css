@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   RAXWO RESPONSIVE OVERRIDES
+   RAXWO RESPONSIVE OVERRIDES v2
    Additive-only styles for mobile devices.
    ═══════════════════════════════════════════ */
 
@@ -68,7 +68,7 @@
   /* Stack grids to single column */
   .stats-grid, .summary-grid, .form-grid, .form-grid-2, .form-grid-3, .grid-3-col, .grid-2-col, .detail-grid, .report-kpi-grid {
     grid-template-columns: 1fr !important;
-    gap: 12px !important;
+    gap: 16px !important;
   }
 
   /* Ensure tables are scrollable */
@@ -76,7 +76,7 @@
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     width: 100%;
-    border-radius: 8px;
+    border-radius: var(--r-md);
   }
 
   .data-table, .breakdown-table {
@@ -131,25 +131,24 @@
   }
 
   .hire-form-scroll {
-    padding: 12px !important;
+    padding: 16px !important;
   }
 }
 
 @media (max-width: 480px) {
   .premium-card, .kpi-card {
-    padding: 16px !important;
+    padding: 20px !important;
   }
 
   /* Modal Content */
   .modal-content {
-    width: 95% !important;
-    padding: 16px !important;
-    max-height: 90vh !important;
-    margin: 20px auto !important;
+    width: 96% !important;
+    max-height: 94vh !important;
+    margin: auto !important;
   }
 
   .form-section {
-    padding: 12px !important;
+    padding: 20px !important;
   }
 
   /* Action Buttons */

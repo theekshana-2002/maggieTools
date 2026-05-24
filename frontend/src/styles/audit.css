@@ -22,8 +22,8 @@
 
 .title-icon {
   padding: 12px;
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--accent-soft);
+  color: var(--accent);
   border-radius: 12px;
 }
 
@@ -31,7 +31,7 @@
   font-size: 1.5rem;
   font-weight: 800;
   margin: 0;
-  color: var(--text-900);
+  color: var(--text-main);
 }
 
 .audit-title-area p {
@@ -59,7 +59,7 @@
 .audit-stat-card h3 {
   font-size: 1.4rem;
   font-weight: 800;
-  color: var(--primary);
+  color: var(--accent);
   margin: 0;
 }
 
@@ -125,9 +125,9 @@
 }
 
 .refresh-audit:hover {
-  background: var(--primary);
+  background: var(--accent);
   color: #fff;
-  border-color: var(--primary);
+  border-color: var(--accent);
 }
 
 .audit-user-cell {
@@ -140,8 +140,8 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--accent-soft);
+  color: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -152,7 +152,7 @@
   font-size: 0.9rem;
   font-weight: 700;
   margin: 0;
-  color: var(--text-900);
+  color: var(--text-main);
 }
 
 .audit-role {
@@ -191,7 +191,7 @@
   color: var(--text-muted);
 }
 
-.audit-date { font-weight: 600; color: var(--text-900) !important; margin-bottom: 2px !important; }
+.audit-date { font-weight: 600; color: var(--text-main) !important; margin-bottom: 2px !important; }
 
 .status-pill {
   padding: 4px 10px;

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   RAXWO BUTTONS — Theme-Aware UI
+   RAXWO BUTTONS — Premium v2
    ═══════════════════════════════════════════ */
 
 /* ── Base Button ── */
@@ -9,9 +9,9 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: var(--r-md);
   font-weight: 700;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
@@ -19,46 +19,38 @@ button {
   font-size: 0.9375rem;
 }
 
-/* CRITICAL: Fix for disappearing symbols/icons - Forced Pixel Size */
 button svg {
   display: block !important;
   flex-shrink: 0;
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  min-height: 24px !important;
-  stroke-width: 2.5px;
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  stroke-width: 2px;
   margin: 0 auto;
 }
 
-button:active {
-  transform: scale(0.96);
-}
+button:active { transform: scale(0.96); }
 
 /* ── Primary Action (Add, Submit) ── */
-.add-btn,
-.submit-btn,
-.refresh-btn {
-  height: 48px;
-  padding: 0 24px;
-  background: var(--accent);
+.add-btn, .submit-btn, .refresh-btn {
+  height: 46px;
+  padding: 0 22px;
+  background: var(--accent-gradient);
   color: #FFFFFF !important;
   box-shadow: 0 4px 14px var(--accent-soft);
+  border: none;
 }
 
-.add-btn:hover,
-.submit-btn:hover,
-.refresh-btn:hover {
+.add-btn:hover, .submit-btn:hover, .refresh-btn:hover {
   filter: brightness(1.1);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px var(--accent-glow);
+  box-shadow: var(--shadow-accent);
 }
 
 /* ── Secondary / Cancel ── */
-.secondary-btn,
-.cancel-btn,
-.theme-toggle-btn {
-  height: 48px;
+.secondary-btn, .cancel-btn, .theme-toggle-btn {
+  height: 46px;
   padding: 0 20px;
   background: var(--bg-card);
   color: var(--text-main);
@@ -66,30 +58,28 @@ button:active {
   box-shadow: var(--shadow-sm);
 }
 
-.secondary-btn:hover,
-.cancel-btn:hover,
-.theme-toggle-btn:hover {
-  background: var(--bg-main);
-  border-color: var(--accent);
+.secondary-btn:hover, .cancel-btn:hover, .theme-toggle-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
   color: var(--accent);
 }
 
-/* ── Data Actions (Premium Glass Look) ── */
+/* ── Data Actions (Glass Look) ── */
 .table-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
 .action-icon-btn {
-  width: 36px !important;
-  height: 36px !important;
-  min-width: 36px !important;
-  border-radius: 12px !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 10px !important;
   padding: 0 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-soft);
   background: var(--bg-card);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -98,15 +88,16 @@ button:active {
 }
 
 .action-icon-btn svg {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px !important;
-  stroke-width: 2.5px;
-  transition: all 0.3s ease;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  stroke-width: 2.2px;
+  transition: all 0.25s ease;
 }
 
 .action-icon-btn:hover {
-  transform: translateY(-3px) scale(1.08);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
   z-index: 2;
 }
 
@@ -114,44 +105,45 @@ button:active {
   transform: translateY(0) scale(0.95);
 }
 
-/* Color Variants — Premium Translucent Palettes */
-.btn-print { background: rgba(37, 99, 235, 0.08) !important; color: #2563EB !important; border-color: rgba(37, 99, 235, 0.15) !important; }
-.btn-print:hover { background: #2563EB !important; color: #fff !important; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4) !important; }
+/* Premium Translucent Palettes */
+.btn-print { background: rgba(99,102,241,0.06) !important; color: #6366F1 !important; border-color: rgba(99,102,241,0.12) !important; }
+.btn-print:hover { background: #6366F1 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(99,102,241,0.3) !important; }
 
-.btn-details { background: rgba(71, 85, 105, 0.08) !important; color: #475569 !important; border-color: rgba(71, 85, 105, 0.15) !important; }
-.btn-details:hover { background: #475569 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(71, 85, 105, 0.4) !important; }
+.btn-details { background: rgba(75,85,99,0.06) !important; color: #4B5563 !important; border-color: rgba(75,85,99,0.12) !important; }
+.btn-details:hover { background: #4B5563 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(75,85,99,0.3) !important; }
 
-.btn-msg { background: rgba(16, 185, 129, 0.08) !important; color: #10B981 !important; border-color: rgba(16, 185, 129, 0.15) !important; }
-.btn-msg:hover { background: #10B981 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4) !important; }
+.btn-msg { background: rgba(16,185,129,0.06) !important; color: #10B981 !important; border-color: rgba(16,185,129,0.12) !important; }
+.btn-msg:hover { background: #10B981 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(16,185,129,0.3) !important; }
 
-.btn-bell { background: rgba(245, 158, 11, 0.08) !important; color: #F59E0B !important; border-color: rgba(245, 158, 11, 0.15) !important; }
-.btn-bell:hover { background: #F59E0B !important; color: #fff !important; box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4) !important; }
+.btn-bell { background: rgba(245,158,11,0.06) !important; color: #F59E0B !important; border-color: rgba(245,158,11,0.12) !important; }
+.btn-bell:hover { background: #F59E0B !important; color: #fff !important; box-shadow: 0 6px 16px rgba(245,158,11,0.3) !important; }
 
-.btn-delete { background: rgba(239, 68, 68, 0.08) !important; color: #EF4444 !important; border-color: rgba(239, 68, 68, 0.15) !important; }
-.btn-delete:hover { background: #EF4444 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4) !important; }
+.btn-delete { background: rgba(239,68,68,0.06) !important; color: #EF4444 !important; border-color: rgba(239,68,68,0.12) !important; }
+.btn-delete:hover { background: #EF4444 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(239,68,68,0.3) !important; }
 
-.btn-refresh { background: rgba(99, 102, 241, 0.08) !important; color: #6366F1 !important; border-color: rgba(99, 102, 241, 0.15) !important; }
-.btn-refresh:hover { background: #6366F1 !important; color: #fff !important; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4) !important; }
+.btn-refresh { background: rgba(139,92,246,0.06) !important; color: #8B5CF6 !important; border-color: rgba(139,92,246,0.12) !important; }
+.btn-refresh:hover { background: #8B5CF6 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(139,92,246,0.3) !important; }
 
 /* ── Generic Action Buttons ── */
 .action-btn {
-  height: 48px;
-  padding: 0 24px;
-  border-radius: 14px;
+  height: 46px;
+  padding: 0 22px;
+  border-radius: var(--r-md);
   font-weight: 800;
   letter-spacing: 0.02em;
 }
 
 .btn-primary {
-  background: var(--accent);
+  background: var(--accent-gradient);
   color: #fff !important;
-  box-shadow: 0 8px 20px var(--accent-soft);
+  box-shadow: 0 6px 16px var(--accent-soft);
+  border: none;
 }
 
 .btn-primary:hover {
   filter: brightness(1.1);
   transform: translateY(-2px);
-  box-shadow: 0 12px 28px var(--accent-glow);
+  box-shadow: var(--shadow-accent);
 }
 
 /* ── Form Footer Actions ── */
@@ -166,7 +158,7 @@ button:active {
 
 @media (max-width: 640px) {
   .add-btn, .submit-btn, .refresh-btn, .secondary-btn, .cancel-btn, .theme-toggle-btn, .action-btn {
-    height: 44px;
+    height: 42px;
     padding: 0 16px;
     font-size: 0.875rem;
     border-radius: 12px;
@@ -178,7 +170,6 @@ button:active {
   border-color: transparent;
   color: var(--text-muted);
 }
-
 .cancel-btn:hover {
   background: var(--bg-card);
   color: var(--text-main);

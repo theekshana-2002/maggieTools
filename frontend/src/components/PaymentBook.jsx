@@ -226,11 +226,11 @@ const PaymentBook = () => {
           <button className="action-icon-btn" onClick={handleExportPDF} title="Export PDF">
             <Download size={18} />
           </button>
-          {canManage && (
+          {/* {canManage && (
             <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
               <PlusCircle size={18} /> Add Payment
             </button>
-          )}
+          )} */}
         </div>
       </div>
 

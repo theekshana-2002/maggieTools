@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Settings as SettingsIcon, Save, Image as ImageIcon, Phone, MapPin, Mail, Hash, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Image as ImageIcon, Phone, MapPin, Mail, Hash, Globe, MessageSquare } from 'lucide-react';
 import '../styles/books.css';
 
 const Settings = ({ onSettingsUpdate }) => {
@@ -10,7 +10,10 @@ const Settings = ({ onSettingsUpdate }) => {
     phones: [],
     email: '',
     regNo: '',
-    logo: ''
+    logo: '',
+    smsBookingTemplate: '',
+    smsFollowupTemplate: '',
+    followupDays: 14
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -172,6 +175,48 @@ const Settings = ({ onSettingsUpdate }) => {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="settings-section">
+            <h3 className="section-title"><MessageSquare size={18} /> Automated Message Templates (SMS)</h3>
+            <p className="upload-hint" style={{ marginBottom: '15px' }}>
+              Available placeholders: <code>{`{clientName}`}</code>, <code>{`{toolNo}`}</code>, <code>{`{pickupDate}`}</code>, <code>{`{returnDate}`}</code>, <code>{`{totalAmount}`}</code>, <code>{`{balanceAmount}`}</code>, <code>{`{companyName}`}</code>
+            </p>
+            
+            <div className="form-group">
+              <label>Booking Confirmation SMS</label>
+              <textarea 
+                className="premium-input"
+                rows="3" 
+                value={settings.smsBookingTemplate || ''} 
+                onChange={e => setSettings({ ...settings, smsBookingTemplate: e.target.value })}
+                placeholder="Message sent to customer upon new tool booking..."
+              />
+            </div>
+            
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label>Follow-up / Reminder SMS</label>
+              <textarea 
+                className="premium-input"
+                rows="3" 
+                value={settings.smsFollowupTemplate || ''} 
+                onChange={e => setSettings({ ...settings, smsFollowupTemplate: e.target.value })}
+                placeholder="Message sent when a tool is overdue..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label>Auto Follow-up Delay (Days)</label>
+              <input 
+                type="number"
+                className="premium-input"
+                style={{ maxWidth: '150px' }}
+                value={settings.followupDays || 14} 
+                onChange={e => setSettings({ ...settings, followupDays: Number(e.target.value) })}
+                min="1"
+              />
+              <p className="upload-hint">Number of days after the booking date to automatically process follow-ups.</p>
             </div>
           </div>
 

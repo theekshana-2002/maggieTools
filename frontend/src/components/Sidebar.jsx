@@ -38,9 +38,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     {
       title: 'Inventory',
       items: [
-        { id: 'tools',      label: 'Tool Inventory',     icon: Package },
-        { id: 'stock',      label: 'Tool Stock',         icon: Package },
-        { id: 'accessories', label: 'Parts & Accessories', icon: Box },
+        { id: 'inventory',  label: 'Combined Inventory', icon: Package },
         { id: 'compliance', label: 'Service & Maint.',   icon: Wrench },
       ]
     },
@@ -76,7 +74,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     ...cat,
     items: cat.items.filter(item => {
       if (role !== 'Admin' && role !== 'Manager') {
-        return ['dashboard', 'bookings', 'tools', 'compliance'].includes(item.id);
+        return ['dashboard', 'bookings', 'inventory', 'compliance'].includes(item.id);
       }
       return true;
     })

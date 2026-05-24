@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════
-   RAXWO RECORD DETAILS — Premium Data View
+   RAXWO RECORD DETAILS — Premium Data View v2
    ═══════════════════════════════════════════ */
 
 .details-overlay {
@@ -13,17 +13,25 @@
 
 .detail-section {
   background: var(--bg-card);
+  backdrop-filter: var(--blur);
   border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: var(--r-xl);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.detail-section:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent-border);
 }
 
 .detail-section-title {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  color: var(--text-dim);
+  color: var(--accent);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   margin-bottom: 24px;
   display: flex;
   align-items: center;
@@ -34,13 +42,13 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: var(--border);
+  background: linear-gradient(90deg, var(--accent-soft) 0%, transparent 100%);
 }
 
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 24px;
+  gap: 20px;
 }
 
 .detail-field {
@@ -50,11 +58,11 @@
 }
 
 .detail-field label {
-  font-size: 0.6875rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 800;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
 
 .detail-field p {
@@ -63,12 +71,18 @@
   color: var(--text-main);
   padding: 14px 18px;
   background: var(--bg-main);
-  border-radius: 14px;
-  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
   margin: 0;
   min-height: 52px;
   display: flex;
   align-items: center;
+  transition: all 0.25s ease;
+}
+
+.detail-field p:hover {
+  border-color: var(--border);
+  background: var(--bg-card);
 }
 
 /* ── Download PDF Button ── */
@@ -79,24 +93,30 @@
   padding: 12px 24px;
   background: var(--accent-soft);
   color: var(--accent);
-  border-radius: 14px;
-  font-weight: 700;
+  border-radius: var(--r-md);
+  font-weight: 800;
   font-size: 0.875rem;
   transition: all 0.3s ease;
+  border: 1px solid transparent;
 }
 
 .download-pdf-btn:hover {
-  background: var(--accent);
+  background: var(--accent-gradient);
   color: #fff;
   transform: translateY(-2px);
+  box-shadow: 0 6px 16px var(--accent-glow);
 }
 
-.detail-field.full-width {
-  grid-column: 1 / -1;
-}
+.detail-field.full-width { grid-column: 1 / -1; }
 
 .detail-field.full-width p {
   padding: 0;
   background: transparent;
   border: none;
+  min-height: auto;
+}
+
+.detail-field.full-width p:hover {
+  background: transparent;
+  border-color: transparent;
 }

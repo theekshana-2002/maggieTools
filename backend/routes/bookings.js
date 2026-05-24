@@ -7,9 +7,34 @@ const Invoice = require('../models/Invoice');
 const Counter = require('../models/Counter');
 const Payment = require('../models/Payment');
 const Client = require('../models/Client');
+const Setting = require('../models/Setting');
 const { sendSMS } = require('../utils/smsService');
 const Account = require('../models/Account');
 const { authMiddleware } = require('../middleware/authMiddleware');
+
+// Helper: Build SMS from template with placeholder replacement
+async function buildSMSMessage(templateField, bookingData) {
+  try {
+    const settings = await Setting.findOne();
+    const template = settings?.[templateField] || '';
+    if (!template) return null;
+
+    const itemsList = Array.isArray(bookingData.items) ? bookingData.items : [];
+    const toolNo = itemsList.map(it => it.toolNumber).join(' / ') || 'Tool';
+
+    return template
+      .replace(/\{clientName\}/g, bookingData.clientName || 'Customer')
+      .replace(/\{toolNo\}/g, toolNo)
+      .replace(/\{pickupDate\}/g, new Date(bookingData.pickupDate).toLocaleDateString())
+      .replace(/\{returnDate\}/g, new Date(bookingData.returnDate).toLocaleDateString())
+      .replace(/\{totalAmount\}/g, (bookingData.totalAmount || 0).toLocaleString())
+      .replace(/\{balanceAmount\}/g, (bookingData.balanceAmount || 0).toLocaleString())
+      .replace(/\{companyName\}/g, settings?.companyName || 'RAXWO TOOL RENTALS');
+  } catch (err) {
+    console.error('Failed to build SMS from template:', err.message);
+    return null;
+  }
+}
 
 async function getNextSequence(name) {
   const counter = await Counter.findOneAndUpdate(
@@ -345,10 +370,12 @@ async function processBookingSideEffects(newBooking) {
       
       console.log('DEBUG: Payment record synced for booking:', newBooking.bookingId);
       // 4. Accessory Stock update now handled explicitly in routes (POST/PUT)
-      // 5. Send Confirmation SMS
+      // 5. Send Confirmation SMS using customizable template
       if (newBooking.clientPhone) {
-        const msg = `Dear ${newBooking.clientName}, Thank you for choosing DVD Tool Rentals. You have rented ${tNo} from ${new Date(newBooking.pickupDate).toLocaleDateString()} to ${new Date(newBooking.returnDate).toLocaleDateString()}. Total: LKR ${(newBooking.totalAmount || 0).toLocaleString()}.`;
-        await sendSMS(newBooking.clientPhone, msg);
+        const msg = await buildSMSMessage('smsBookingTemplate', newBooking);
+        if (msg) {
+          await sendSMS(newBooking.clientPhone, msg);
+        }
       }
     } catch (payErr) {
       console.error('Failed to create payment record:', payErr.message);
@@ -555,18 +582,139 @@ router.get('/customer/:nic', authMiddleware, async (req, res) => {
   }
 });
 
-// Send manual reminder SMS
+// Send manual reminder SMS (supports custom message from UI)
 router.post('/:id/remind', authMiddleware, async (req, res) => {
   try {
     const b = await Booking.findById(req.params.id).populate('tool');
     if (!b) return res.status(404).json({ message: 'Booking not found' });
     
     if (b.clientPhone) {
-      const msg = `Reminder from DVD Tool Rentals: Dear ${b.clientName}, your rental of ${b.tool ? b.tool.number : 'Tool'} is due on ${new Date(b.returnDate).toLocaleDateString()}. Please ensure timely return to avoid extra charges.`;
+      // Use custom message from request body if provided, otherwise use follow-up template
+      let msg = req.body.customMessage;
+      if (!msg) {
+        msg = await buildSMSMessage('smsFollowupTemplate', b.toObject());
+      }
+      if (!msg) {
+        msg = `Reminder: Dear ${b.clientName}, your rental is due on ${new Date(b.returnDate).toLocaleDateString()}.`;
+      }
       const result = await sendSMS(b.clientPhone, msg);
       return res.json(result);
     }
     res.status(400).json({ message: 'No phone number found' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Process automatic follow-up SMS for overdue bookings
+router.post('/process-followups', authMiddleware, async (req, res) => {
+  try {
+    const settings = await Setting.findOne();
+    const followupDays = settings?.followupDays || 14;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - followupDays);
+
+    // Find active/confirmed bookings that started more than X days ago and haven't been followed up
+    const overdueBookings = await Booking.find({
+      status: { $in: ['Active', 'Confirmed'] },
+      pickupDate: { $lte: cutoffDate },
+      followupSent: { $ne: true },
+      clientPhone: { $exists: true, $ne: '' }
+    }).populate('tool');
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const booking of overdueBookings) {
+      try {
+        const msg = await buildSMSMessage('smsFollowupTemplate', booking.toObject());
+        if (msg && booking.clientPhone) {
+          await sendSMS(booking.clientPhone, msg);
+          await Booking.findByIdAndUpdate(booking._id, {
+            followupSent: true,
+            followupSentAt: new Date()
+          });
+          sent++;
+        }
+      } catch (smsErr) {
+        console.error(`Follow-up SMS failed for ${booking.bookingId}:`, smsErr.message);
+        failed++;
+      }
+    }
+
+    res.json({
+      message: `Follow-up processing complete. Sent: ${sent}, Failed: ${failed}, Total eligible: ${overdueBookings.length}`,
+      sent,
+      failed,
+      total: overdueBookings.length
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get full client details with all bookings and payments
+router.get('/client-details/:clientName', authMiddleware, async (req, res) => {
+  try {
+    const { clientName } = req.params;
+    const decodedName = decodeURIComponent(clientName).trim();
+
+    // Find client record
+    const client = await Client.findOne({
+      name: { $regex: new RegExp(`^${decodedName}$`, 'i') }
+    });
+
+    // Find all bookings for this client
+    const bookings = await Booking.find({
+      clientName: { $regex: new RegExp(`^${decodedName}$`, 'i') }
+    }).populate('tool').sort({ createdAt: -1 });
+
+    // Find all payments for this client
+    const payments = await Payment.find({
+      client: { $regex: new RegExp(`^${decodedName}$`, 'i') }
+    }).sort({ date: -1 });
+
+    // Calculate totals
+    const totalBookings = bookings.length;
+    const totalRevenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    const totalPaid = payments.reduce((sum, p) => sum + (p.takenAmount || 0), 0);
+    const totalOutstanding = bookings.reduce((sum, b) => sum + Math.max(0, b.balanceAmount || 0), 0);
+    const paidBookings = bookings.filter(b => (b.balanceAmount || 0) <= 0).length;
+    const unpaidBookings = bookings.filter(b => (b.balanceAmount || 0) > 0).length;
+
+    res.json({
+      client: client || { name: decodedName },
+      bookings: bookings.map(b => ({
+        _id: b._id,
+        bookingId: b.bookingId,
+        tool: b.items?.map(it => it.toolNumber).join(', ') || (b.tool ? b.tool.number : '—'),
+        pickupDate: b.pickupDate,
+        returnDate: b.returnDate,
+        totalAmount: b.totalAmount,
+        balanceAmount: b.balanceAmount,
+        advancePayment: b.advancePayment,
+        status: b.status,
+        paymentMethod: b.paymentMethod
+      })),
+      payments: payments.map(p => ({
+        _id: p._id,
+        date: p.date,
+        tool: p.tool,
+        takenAmount: p.takenAmount,
+        hireAmount: p.hireAmount,
+        balance: p.balance,
+        status: p.status,
+        paymentMethod: p.paymentMethod
+      })),
+      summary: {
+        totalBookings,
+        totalRevenue,
+        totalPaid,
+        totalOutstanding,
+        paidBookings,
+        unpaidBookings
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -58,15 +58,42 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Intercept 401 Unauthorized to trigger a global logout
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('Unauthorized access (401). Token might be expired or invalid. Triggering logout.');
+      localStorage.removeItem('raxwo_auth_token');
+      localStorage.removeItem('raxwo_user_role');
+      localStorage.removeItem('raxwo_user_name');
+      window.dispatchEvent(new Event('raxwo_force_logout'));
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Fallback logic for LocalStorage
 const getFallback = (key) => JSON.parse(localStorage.getItem(key) || '[]');
 const setFallback = (key, data) => {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    let processData = data;
+    // Strip large base64 images from bookings and clients to prevent quota errors
+    if ((key === 'raxwo_bookings' || key === 'raxwo_clients') && Array.isArray(data)) {
+      processData = data.slice(0, 200).map(item => {
+        const clone = { ...item };
+        if (clone.customerIdFront && clone.customerIdFront.length > 1000) delete clone.customerIdFront;
+        if (clone.customerIdBack && clone.customerIdBack.length > 1000) delete clone.customerIdBack;
+        return clone;
+      });
+    }
+    
+    localStorage.setItem(key, JSON.stringify(processData));
   } catch (err) {
     if (err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
       console.warn(`LocalStorage quota exceeded for ${key}. Data will not be cached locally.`);
-      // Optionally clear old data to make room, but for now we just skip to prevent crash
+      // If we still hit quota, try aggressively clearing the specific key
+      try { localStorage.removeItem(key); } catch(e) {}
     }
   }
 };
@@ -202,7 +229,11 @@ export const bookingAPI     = {
     api.get(`bookings/insights`),
   bulkCreate: (bookings) => 
     api.post(`bookings/bulk`, { bookings }),
-  sendReminder: (id) =>
-    api.post(`bookings/${id}/remind`)
+  sendReminder: (id, customMessage) =>
+    api.post(`bookings/${id}/remind`, { customMessage }),
+  getClientDetails: (clientName) =>
+    api.get(`bookings/client-details/${encodeURIComponent(clientName)}`),
+  processFollowups: () =>
+    api.post(`bookings/process-followups`)
 };
 export default api;

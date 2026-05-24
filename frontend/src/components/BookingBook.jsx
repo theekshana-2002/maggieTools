@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable';
+import { Edit } from "lucide-react";
 import Modal from './Modal';
 import BookingForm from './BookingForm';
 import RecordDetails from './RecordDetails';
-import { bookingAPI } from '../services/api';
+import Autocomplete from './Autocomplete';
+import { bookingAPI, clientAPI } from '../services/api';
 import { generatePDFReport, generateInvoicePDF } from '../utils/reportGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
-import { Download, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText } from 'lucide-react';
+import { Download, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 
@@ -18,7 +20,7 @@ const BookingBook = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
-  
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -26,9 +28,26 @@ const BookingBook = () => {
   const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [paymentFilter, setPaymentFilter] = useState('All');
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
   const [returnRecord, setReturnRecord] = useState(null);
+
+  // Client lookup state
+  const [clientSearch, setClientSearch] = useState('');
+  const [allClients, setAllClients] = useState([]);
+  const [clientDetails, setClientDetails] = useState(null);
+  const [clientPanelOpen, setClientPanelOpen] = useState(false);
+  const [loadingClient, setLoadingClient] = useState(false);
+
+  // Add client modal
+  const [addClientOpen, setAddClientOpen] = useState(false);
+  const [newClient, setNewClient] = useState({ name: '', contact: '', nic: '' });
+
+  // Custom SMS modal
+  const [smsModalOpen, setSmsModalOpen] = useState(false);
+  const [smsRecord, setSmsRecord] = useState(null);
+  const [customSmsText, setCustomSmsText] = useState('');
 
   const handlePrint = (booking) => {
     generateInvoicePDF(booking, 'invoice');
@@ -39,8 +58,20 @@ const BookingBook = () => {
   };
 
   const tableColumns = ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION'];
-  
-  useEffect(() => { fetchBookings(); }, []);
+
+  useEffect(() => { 
+    fetchBookings(); 
+    fetchAllClients();
+  }, []);
+
+  const fetchAllClients = async () => {
+    try {
+      const res = await clientAPI.get();
+      setAllClients(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch clients');
+    }
+  };
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -50,8 +81,8 @@ const BookingBook = () => {
       const formatted = rawData.map((item, index) => {
         let toolsLabel = '—';
         if (item.items && item.items.length > 0) {
-          toolsLabel = item.items.length === 1 
-            ? item.items[0].toolNumber 
+          toolsLabel = item.items.length === 1
+            ? item.items[0].toolNumber
             : `${item.items.length} Tools (${item.items.map(it => it.toolNumber).join(', ')})`;
         } else if (item.tool) {
           toolsLabel = typeof item.tool === 'object' ? item.tool.number : 'Tool';
@@ -59,13 +90,13 @@ const BookingBook = () => {
 
         return {
           ...item,
-          rawData:      item,
-          displayId:    item.bookingId || `BK-${(index + 1).toString().padStart(3, '0')}`,
-          clientName:   item.clientName,
-          displayTool:  toolsLabel,
+          rawData: item,
+          displayId: item.bookingId || `BK-${(index + 1).toString().padStart(3, '0')}`,
+          clientName: item.clientName,
+          displayTool: toolsLabel,
           displayPickup: new Date(item.pickupDate).toLocaleDateString(),
           displayReturn: new Date(item.returnDate).toLocaleDateString(),
-          totalDays:    item.totalDays || 1,
+          totalDays: item.totalDays || 1,
           displayTotal: (item.totalAmount || 0).toLocaleString(),
           displayStatus: item.status || 'Confirmed'
         };
@@ -84,18 +115,77 @@ const BookingBook = () => {
   const filteredRecords = useMemo(() => {
     return bookings.filter(r => {
       const matchStatus = statusFilter === 'All' || r.status === statusFilter;
-      const search = searchQuery.toLowerCase().trim();
-      if (!search) return matchStatus;
+      
+      let matchPayment = true;
+      if (paymentFilter === 'Paid') {
+        matchPayment = (r.balanceAmount || 0) <= 0;
+      } else if (paymentFilter === 'Unpaid') {
+        matchPayment = (r.balanceAmount || 0) > 0;
+      }
 
-      const matchSearch = 
+      const search = searchQuery.toLowerCase().trim();
+      if (!search) return matchStatus && matchPayment;
+
+      const matchSearch =
         r.clientName?.toLowerCase().includes(search) ||
         r.displayTool?.toLowerCase().includes(search) ||
         r.bookingId?.toLowerCase().includes(search) ||
         (r.items && r.items.some(it => it.toolNumber?.toLowerCase().includes(search)));
-        
-      return matchStatus && matchSearch;
+
+      return matchStatus && matchPayment && matchSearch;
     });
-  }, [bookings, statusFilter, searchQuery]);
+  }, [bookings, statusFilter, paymentFilter, searchQuery]);
+
+  const handleClientLookup = async (clientName) => {
+    setClientSearch(clientName);
+    if (!clientName) {
+      setClientDetails(null);
+      setClientPanelOpen(false);
+      return;
+    }
+    setLoadingClient(true);
+    try {
+      const res = await bookingAPI.getClientDetails(clientName);
+      setClientDetails(res.data);
+      setClientPanelOpen(true);
+    } catch (err) {
+      setError('Could not fetch client details.');
+    } finally {
+      setLoadingClient(false);
+    }
+  };
+
+  const handleAddClientSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await clientAPI.create({ ...newClient, status: 'Active' });
+      setSuccess('Client added successfully');
+      setAddClientOpen(false);
+      fetchAllClients();
+      setNewClient({ name: '', contact: '', nic: '' });
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError('Failed to add client');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProcessFollowups = async () => {
+    if (!window.confirm('Process automated follow-up SMS for overdue bookings?')) return;
+    setLoading(true);
+    try {
+      const res = await bookingAPI.processFollowups();
+      setSuccess(res.data.message);
+      fetchBookings();
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError('Failed to process follow-ups');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const stats = useMemo(() => {
     const total = filteredRecords.length;
@@ -118,10 +208,10 @@ const BookingBook = () => {
     const nextStatus = statuses[(currentIdx + 1) % statuses.length];
 
     if (nextStatus === 'Returned') {
-        setReturnRecord(record);
-        setReturnDate(new Date().toISOString().split('T')[0]);
-        setReturnModalOpen(true);
-        return;
+      setReturnRecord(record);
+      setReturnDate(new Date().toISOString().split('T')[0]);
+      setReturnModalOpen(true);
+      return;
     }
 
     try {
@@ -151,14 +241,21 @@ const BookingBook = () => {
   const handleNotify = async (e, record) => {
     e.stopPropagation();
     if (!record.clientPhone) return alert('No phone number found for this customer.');
-    
+    setSmsRecord(record);
+    setCustomSmsText('');
+    setSmsModalOpen(true);
+  };
+
+  const handleSmsSubmit = async () => {
+    if (!smsRecord) return;
     setLoading(true);
     try {
-      await bookingAPI.sendReminder(record._id);
-      setSuccess(`SMS Reminder sent to ${record.clientName}`);
+      await bookingAPI.sendReminder(smsRecord._id, customSmsText);
+      setSuccess(`SMS sent to ${smsRecord.clientName}`);
+      setSmsModalOpen(false);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError('Failed to send SMS reminder.');
+      setError('Failed to send SMS.');
     } finally {
       setLoading(false);
     }
@@ -167,7 +264,7 @@ const BookingBook = () => {
   const handleWhatsApp = (e, record) => {
     e.stopPropagation();
     if (!record.clientPhone) return alert('No phone number found.');
-    
+
     const phone = record.clientPhone.replace(/[^0-9]/g, '');
     const msg = encodeURIComponent(`Reminder from DVD Tool Rentals: Dear ${record.clientName}, your rental of ${record.tool ? record.tool.number : 'Tool'} is due on ${new Date(record.returnDate).toLocaleDateString()}. Please ensure timely return to avoid extra charges.`);
     window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
@@ -179,24 +276,24 @@ const BookingBook = () => {
     try {
       const actualDate = new Date(returnDate);
       const expectedDate = new Date(returnRecord.returnDate);
-      
+
       let extraDays = 0;
       let extraCharges = 0;
-      
+
       if (actualDate > expectedDate) {
         const diffTime = Math.abs(actualDate - expectedDate);
         extraDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         extraCharges = extraDays * (returnRecord.dailyRate || 0);
       }
 
-      await bookingAPI.update(returnRecord._id, { 
-        status: 'Returned', 
+      await bookingAPI.update(returnRecord._id, {
+        status: 'Returned',
         actualReturnDate: returnDate,
         extraCharges,
         totalAfterExtra: (returnRecord.totalAmount || 0) + extraCharges,
         balanceAmount: (returnRecord.balanceAmount || 0) + extraCharges
       });
-      
+
       setSuccess(`Tool Returned. ${extraDays > 0 ? `LKR ${extraCharges.toLocaleString()} extra added for ${extraDays} days.` : 'No extra charges.'}`);
       setReturnModalOpen(false);
       fetchBookings();
@@ -239,6 +336,51 @@ const BookingBook = () => {
 
   return (
     <div className="book-container">
+      {/* ── Client Lookup Panel ── */}
+      <div className="client-lookup-panel glass-card" style={{ padding: '20px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '300px' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-dim)', marginBottom: '8px', display: 'block' }}>Search Customer Profile</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <Autocomplete
+                value={clientSearch}
+                onChange={e => handleClientLookup(e.target.value)}
+                options={allClients.map(c => c.name)}
+                placeholder="Type customer name..."
+              />
+              <button 
+                className="action-icon-btn" 
+                style={{ background: 'var(--accent)', color: '#fff', padding: '0 16px', borderRadius: '8px' }}
+                onClick={() => setAddClientOpen(true)}
+              >
+                <UserPlus size={18} /> Add
+              </button>
+            </div>
+          </div>
+          {clientDetails && clientPanelOpen && (
+            <div className="client-details-summary" style={{ flex: 2, background: 'var(--bg-main)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', gap: '24px' }}>
+              <div>
+                <h4 style={{ margin: '0 0 4px 0', color: 'var(--text-main)' }}>{clientDetails.client.name}</h4>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{clientDetails.client.contact} | {clientDetails.client.nic}</div>
+              </div>
+              <div style={{ display: 'flex', gap: '20px', marginLeft: 'auto' }}>
+                <div className="stat-mini">
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Total Bookings</span>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent)' }}>{clientDetails.summary.totalBookings}</div>
+                </div>
+                <div className="stat-mini">
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Outstanding</span>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: clientDetails.summary.totalOutstanding > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                    LKR {clientDetails.summary.totalOutstanding.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setClientPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '4px' }}><X size={16} /></button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Summary ── */}
       <div className="book-summary">
         <div className="summary-item">
@@ -264,26 +406,36 @@ const BookingBook = () => {
           <Search className="search-icon" size={18} />
           <input type="text" placeholder="Search customer or tool ID..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
         </div>
-        
+
         <div className="filter-actions">
-           <div className="tab-switcher" style={{ margin: 0 }}>
-              {['All', 'Confirmed', 'Active', 'Returned', 'Cancelled'].map(s => (
-                <button key={s} onClick={() => setStatusFilter(s)} className={statusFilter === s ? 'active-tab' : ''}>
-                  {s}
-                </button>
-              ))}
-           </div>
-           <button className="utility-icon-btn" onClick={fetchBookings} title="Refresh">
-              <RefreshCw size={20} className={loading ? 'spinner' : ''} />
-           </button>
-           <button className="utility-icon-btn" onClick={handleExportPDF} title="Export PDF">
-              <Download size={20} />
-           </button>
-           {canManage && (
-              <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
-                <PlusCircle size={20} /> New Tool Booking
+          <div className="tab-switcher" style={{ margin: 0 }}>
+            {['All', 'Confirmed', 'Active', 'Returned', 'Cancelled'].map(s => (
+              <button key={s} onClick={() => setStatusFilter(s)} className={statusFilter === s ? 'active-tab' : ''}>
+                {s}
               </button>
-           )}
+            ))}
+          </div>
+          <div className="tab-switcher" style={{ margin: 0 }}>
+            {['All', 'Paid', 'Unpaid'].map(s => (
+              <button key={s} onClick={() => setPaymentFilter(s)} className={paymentFilter === s ? 'active-tab' : ''}>
+                {s === 'All' ? 'All Payments' : s}
+              </button>
+            ))}
+          </div>
+          <button className="utility-icon-btn" onClick={handleProcessFollowups} title="Process 14-Day SMS Follow-ups">
+            <Send size={18} />
+          </button>
+          <button className="utility-icon-btn" onClick={fetchBookings} title="Refresh">
+            <RefreshCw size={20} className={loading ? 'spinner' : ''} />
+          </button>
+          <button className="utility-icon-btn" onClick={handleExportPDF} title="Export PDF">
+            <Download size={20} />
+          </button>
+          {canManage && (
+            <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
+              <PlusCircle size={20} /> New Tool Booking
+            </button>
+          )}
         </div>
       </div>
 
@@ -291,8 +443,8 @@ const BookingBook = () => {
       {error && <div className="form-info-banner" style={{ background: 'var(--danger)', color: '#fff', border: 'none' }}><AlertCircle size={18} /> {error}</div>}
 
       <div className="compliance-card">
-        <DataTable 
-          columns={tableColumns} 
+        <DataTable
+          columns={tableColumns}
           data={filteredRecords.map(r => ({
             ...r,
             ID: <span style={{ fontWeight: 800, color: 'var(--text-dim)' }}>{r.displayId}</span>,
@@ -304,8 +456,8 @@ const BookingBook = () => {
             TOTAL: <strong style={{ color: 'var(--accent)' }}>LKR {r.displayTotal}</strong>,
             BALANCE: <strong style={{ color: (r.balanceAmount || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {Math.max(0, r.balanceAmount || 0).toLocaleString()}</strong>,
             STATUS: (
-              <span 
-                className={`status-badge status-${(r.displayStatus || 'Confirmed').toLowerCase()}`} 
+              <span
+                className={`status-badge status-${(r.displayStatus || 'Confirmed').toLowerCase()}`}
                 onClick={(e) => handleStatusCycle(e, r)}
                 style={{ cursor: canManage ? 'pointer' : 'default', userSelect: 'none' }}
                 title={canManage ? "Click to cycle status" : ""}
@@ -326,17 +478,23 @@ const BookingBook = () => {
                   </>
                 )}
                 {canManage && r.displayStatus === 'Active' && (
-                  <button 
-                    className="action-icon-btn btn-msg" 
+                  <button
+                    className="action-icon-btn btn-msg"
                     style={{ width: 'auto', padding: '0 12px' }}
                     onClick={(e) => { e.stopPropagation(); setReturnRecord(r.rawData || r); setReturnDate(new Date().toISOString().split('T')[0]); setReturnModalOpen(true); }}
                   >
                     Mark Returned
                   </button>
                 )}
-                <button className="action-icon-btn btn-details" onClick={() => handleEdit(r)} title="Edit Booking">
-                  <FileText />
+                {/* //////////////////////////////////// */}
+                <button
+                  className="action-icon-btn btn-details"
+                  onClick={() => handleEdit(r)}
+                  title="Edit Booking"
+                >
+                  <Edit />
                 </button>
+                {/* //////////////////////////////////// */}
                 <button className="action-icon-btn btn-bell" onClick={(e) => handleNotify(e, r)} title="Send SMS Reminder">
                   <Bell />
                 </button>
@@ -351,8 +509,8 @@ const BookingBook = () => {
               </div>
             )
           }))}
-          loading={loading} 
-          onRowClick={(record) => { setSelectedRecord(record.rawData || record); setViewModalOpen(true); }} 
+          loading={loading}
+          onRowClick={(record) => { setSelectedRecord(record.rawData || record); setViewModalOpen(true); }}
         />
       </div>
 
@@ -385,13 +543,61 @@ const BookingBook = () => {
         </div>
       </Modal>
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => { setIsModalOpen(false); setEditingItem(null); }} 
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => { setIsModalOpen(false); setEditingItem(null); }}
         title={editingItem ? 'Edit Booking' : 'New Tool Booking'}
         wide={true}
       >
         <BookingForm onSubmit={handleFormSubmit} onCancel={() => { setIsModalOpen(false); setEditingItem(null); }} initialData={editingItem} />
+      </Modal>
+
+      {/* ── Add Client Modal ── */}
+      <Modal isOpen={addClientOpen} onClose={() => setAddClientOpen(false)} title="Add New Customer">
+        <form onSubmit={handleAddClientSubmit} className="hire-form" style={{ padding: '20px' }}>
+          <div className="form-group">
+            <label>Customer Name *</label>
+            <input required type="text" value={newClient.name} onChange={e => setNewClient({ ...newClient, name: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>Contact Number</label>
+            <input type="text" value={newClient.contact} onChange={e => setNewClient({ ...newClient, contact: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label>NIC / Passport</label>
+            <input type="text" value={newClient.nic} onChange={e => setNewClient({ ...newClient, nic: e.target.value })} />
+          </div>
+          <div className="modal-actions" style={{ marginTop: '20px' }}>
+            <button type="button" className="cancel-btn" onClick={() => setAddClientOpen(false)}>Cancel</button>
+            <button type="submit" className="submit-btn" disabled={loading}>{loading ? 'Saving...' : 'Add Customer'}</button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Custom SMS Modal ── */}
+      <Modal isOpen={smsModalOpen} onClose={() => setSmsModalOpen(false)} title="Send SMS Reminder">
+        <div className="hire-form" style={{ padding: '20px' }}>
+          <div className="form-group">
+            <label>Customer</label>
+            <input type="text" readOnly value={smsRecord?.clientName || ''} style={{ background: 'var(--bg-main)' }} />
+          </div>
+          <div className="form-group">
+            <label>Custom Message (Optional)</label>
+            <textarea 
+              rows={4} 
+              placeholder="Leave blank to use the default follow-up template..."
+              value={customSmsText}
+              onChange={e => setCustomSmsText(e.target.value)}
+            />
+            <small style={{ color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>If blank, the automated template from Settings will be used.</small>
+          </div>
+          <div className="modal-actions" style={{ marginTop: '20px' }}>
+            <button className="cancel-btn" onClick={() => setSmsModalOpen(false)}>Cancel</button>
+            <button className="submit-btn" onClick={handleSmsSubmit} disabled={loading} style={{ background: 'var(--accent)', color: '#fff' }}>
+              {loading ? 'Sending...' : 'Send SMS'}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

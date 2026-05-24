@@ -1,68 +1,164 @@
 /* ═══════════════════════════════════════════
-   FEEDBACK — Banners, Badges, Loaders
+   RAXWO FEEDBACK — Premium v2
+   Banners, Badges, Loaders, Empty States
    ═══════════════════════════════════════════ */
 
-/* Banners */
+/* ── Banners ── */
 .success-banner {
-  display: flex; align-items: center; gap: 10px;
-  background: #F0FDF4; color: #15803D;
-  border: 1px solid #BBF7D0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--success-soft);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
   border-radius: var(--r-md);
-  padding: 10px 16px;
-  font-size: 0.83rem; font-weight: 600;
+  padding: 14px 20px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  animation: slideInDown 0.4s ease;
 }
 
 .error-banner {
-  display: flex; align-items: center; gap: 10px;
-  background: #FFF1F2; color: #BE123C;
-  border: 1px solid #FECDD3;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.25);
   border-radius: var(--r-md);
-  padding: 10px 16px;
-  font-size: 0.83rem; font-weight: 600;
+  padding: 14px 20px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  animation: slideInDown 0.4s ease;
 }
 
-/* Status Badges */
-.status-badge {
+.info-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--info-soft);
+  color: var(--info);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  border-radius: var(--r-md);
+  padding: 14px 20px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  animation: slideInDown 0.4s ease;
+}
+
+.warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--r-md);
+  padding: 14px 20px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  animation: slideInDown 0.4s ease;
+}
+
+@keyframes slideInDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
+
+/* ── Status Badges (Dot Style) ── */
+.badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 99px;
   font-size: 0.71rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
+  border: 1px solid transparent;
 }
-.status-badge::before {
+
+.badge::before {
   content: '';
-  width: 5px; height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
 }
 
-.status-active   { background: #DCFCE7; color: #15803D; }
-.status-pending  { background: #FEF9C3; color: #92400E; }
-.status-inactive { background: #FEE2E2; color: #9F1239; }
+.badge-active    { background: var(--success-soft);  color: var(--success);  border-color: rgba(16,185,129,0.2); }
+.badge-pending   { background: var(--warning-soft);  color: var(--warning);  border-color: rgba(245,158,11,0.2); }
+.badge-inactive  { background: var(--danger-soft);   color: var(--danger);   border-color: rgba(239,68,68,0.2);  }
+.badge-info      { background: var(--info-soft);     color: var(--info);     border-color: rgba(14,165,233,0.2); }
+.badge-accent    { background: var(--accent-soft);   color: var(--accent);   border-color: var(--accent-border); }
 
-/* Shimmer Loader */
-.loading-cell { padding: 40px; text-align: center; }
+/* ── Shimmer Loader ── */
 .shimmer-loader {
-  height: 14px; max-width: 420px;
-  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  height: 14px;
+  max-width: 420px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 25%,
+    var(--accent-soft) 50%,
+    var(--bg-card) 75%
+  );
   background-size: 200%;
   animation: shimmer 1.4s infinite;
-  border-radius: 99px; margin: 0 auto;
+  border-radius: 99px;
+  margin: 0 auto;
 }
+
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
+  0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
-/* Empty state */
-.empty-row { padding: 64px 0; text-align: center; color: var(--text-300); }
-.empty-content { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+/* ── Empty State ── */
+.empty-row {
+  padding: 80px 0;
+  text-align: center;
+  color: var(--text-dim);
+}
 
-/* Spinner */
-.spinner { animation: spin 0.9s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.empty-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-content svg {
+  opacity: 0.12;
+  color: var(--accent);
+}
+
+.empty-content p {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.empty-content span {
+  font-size: 0.825rem;
+  color: var(--text-dim);
+}
+
+/* ── Spinner ── */
+.spinner {
+  display: inline-block;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Loading Cell ── */
+.loading-cell {
+  padding: 80px 0;
+  text-align: center;
+  color: var(--text-dim);
+}

@@ -4,7 +4,6 @@ import { Edit } from "lucide-react";
 import Modal from './Modal';
 import BookingForm from './BookingForm';
 import RecordDetails from './RecordDetails';
-import Autocomplete from './Autocomplete';
 import { bookingAPI, clientAPI } from '../services/api';
 import { generatePDFReport, generateInvoicePDF } from '../utils/reportGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
@@ -33,12 +32,12 @@ const BookingBook = () => {
   const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
   const [returnRecord, setReturnRecord] = useState(null);
 
-  // Client lookup state
-  const [clientSearch, setClientSearch] = useState('');
+  // Client lookup state (merged with main search)
   const [allClients, setAllClients] = useState([]);
   const [clientDetails, setClientDetails] = useState(null);
   const [clientPanelOpen, setClientPanelOpen] = useState(false);
   const [loadingClient, setLoadingClient] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Add client modal
   const [addClientOpen, setAddClientOpen] = useState(false);
@@ -136,23 +135,42 @@ const BookingBook = () => {
     });
   }, [bookings, statusFilter, paymentFilter, searchQuery]);
 
-  const handleClientLookup = async (clientName) => {
-    setClientSearch(clientName);
-    if (!clientName) {
+  // Unified search handler: filters bookings + looks up client profile
+  const handleUnifiedSearch = async (value) => {
+    setSearchQuery(value);
+    setShowSuggestions(value.length > 0);
+
+    if (!value.trim()) {
       setClientDetails(null);
       setClientPanelOpen(false);
       return;
     }
-    setLoadingClient(true);
-    try {
-      const res = await bookingAPI.getClientDetails(clientName);
-      setClientDetails(res.data);
-      setClientPanelOpen(true);
-    } catch (err) {
-      setError('Could not fetch client details.');
-    } finally {
-      setLoadingClient(false);
+
+    // Check if the query matches an exact client name
+    const matched = allClients.find(
+      c => c.name?.toLowerCase() === value.toLowerCase().trim()
+    );
+
+    if (matched) {
+      setLoadingClient(true);
+      try {
+        const res = await bookingAPI.getClientDetails(matched.name);
+        setClientDetails(res.data);
+        setClientPanelOpen(true);
+      } catch (err) {
+        setClientPanelOpen(false);
+      } finally {
+        setLoadingClient(false);
+      }
+    } else {
+      setClientDetails(null);
+      setClientPanelOpen(false);
     }
+  };
+
+  const handleSuggestionSelect = (name) => {
+    handleUnifiedSearch(name);
+    setShowSuggestions(false);
   };
 
   const handleAddClientSubmit = async (e) => {
@@ -334,52 +352,18 @@ const BookingBook = () => {
     generateGenericReportPDF('Tool Reservations Report', ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'STATUS'], filteredRecords);
   };
 
+  // Filtered suggestions for autocomplete dropdown
+  const clientSuggestions = useMemo(() => {
+    if (!searchQuery.trim() || !showSuggestions) return [];
+    const q = searchQuery.toLowerCase();
+    return allClients
+      .filter(c => c.name?.toLowerCase().includes(q))
+      .slice(0, 6)
+      .map(c => c.name);
+  }, [searchQuery, allClients, showSuggestions]);
+
   return (
     <div className="book-container">
-      {/* ── Client Lookup Panel ── */}
-      <div className="client-lookup-panel glass-card" style={{ padding: '20px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '300px' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-dim)', marginBottom: '8px', display: 'block' }}>Search Customer Profile</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <Autocomplete
-                value={clientSearch}
-                onChange={e => handleClientLookup(e.target.value)}
-                options={allClients.map(c => c.name)}
-                placeholder="Type customer name..."
-              />
-              <button
-                className="add-btn"
-                onClick={() => setAddClientOpen(true)}
-                style={{ height: '40px', padding: '0 16px' }}
-              >
-                <UserPlus size={18} /> Add Customer
-              </button>
-            </div>
-          </div>
-          {clientDetails && clientPanelOpen && (
-            <div className="client-details-summary" style={{ flex: 2, background: 'var(--bg-main)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', gap: '24px' }}>
-              <div>
-                <h4 style={{ margin: '0 0 4px 0', color: 'var(--text-main)' }}>{clientDetails.client.name}</h4>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{clientDetails.client.contact} | {clientDetails.client.nic}</div>
-              </div>
-              <div style={{ display: 'flex', gap: '20px', marginLeft: 'auto' }}>
-                <div className="stat-mini">
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Total Bookings</span>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent)' }}>{clientDetails.summary.totalBookings}</div>
-                </div>
-                <div className="stat-mini">
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Outstanding</span>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: clientDetails.summary.totalOutstanding > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                    LKR {clientDetails.summary.totalOutstanding.toLocaleString()}
-                  </div>
-                </div>
-              </div>
-              <button onClick={() => setClientPanelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-dim)', padding: '4px' }}><X size={16} /></button>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* ── Summary ── */}
       <div className="book-summary">
@@ -400,14 +384,70 @@ const BookingBook = () => {
         </div>
       </div>
 
-      {/* ── Filters ── */}
+      {/* ── Unified Filters & Search Bar ── */}
       <div className="book-filters">
-        <div className="search-box">
-          <Search className="search-icon" size={18} />
-          <input type="text" placeholder="Search customer or tool ID..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+        {/* ─ Row 1: Search + Action Buttons ─ */}
+        <div className="bf-top-row">
+          <div className="search-box-unified" style={{ position: 'relative' }}>
+            {loadingClient
+              ? <RefreshCw className="search-icon spinner" size={18} />
+              : <Search className="search-icon" size={18} />}
+            <input
+              type="text"
+              placeholder="Search by customer name, tool ID, booking ID..."
+              value={searchQuery}
+              onChange={e => handleUnifiedSearch(e.target.value)}
+              onFocus={() => searchQuery && setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 180)}
+              autoComplete="off"
+            />
+            {searchQuery && (
+              <button
+                className="search-clear-btn"
+                onClick={() => { setSearchQuery(''); setClientDetails(null); setClientPanelOpen(false); setShowSuggestions(false); }}
+                title="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+            {/* Autocomplete dropdown */}
+            {showSuggestions && clientSuggestions.length > 0 && (
+              <ul className="search-suggestions">
+                {clientSuggestions.map(name => (
+                  <li key={name} onMouseDown={() => handleSuggestionSelect(name)}>
+                    <Users size={14} />
+                    <span>{name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="bf-action-btns">
+            {canManage && (
+              <button className="add-btn" onClick={() => setAddClientOpen(true)}>
+                <UserPlus size={18} /> Add Customer
+              </button>
+            )}
+            <button className="utility-icon-btn" onClick={handleProcessFollowups} title="Process 14-Day SMS Follow-ups">
+              <Send size={18} />
+            </button>
+            <button className="utility-icon-btn" onClick={fetchBookings} title="Refresh">
+              <RefreshCw size={20} className={loading ? 'spinner' : ''} />
+            </button>
+            <button className="utility-icon-btn" onClick={handleExportPDF} title="Export PDF">
+              <Download size={20} />
+            </button>
+            {canManage && (
+              <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
+                <PlusCircle size={20} /> New Booking
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="filter-actions">
+        {/* ─ Row 2: Status & Payment Tabs ─ */}
+        <div className="bf-tabs-row">
           <div className="tab-switcher" style={{ margin: 0 }}>
             {['All', 'Confirmed', 'Active', 'Returned', 'Cancelled'].map(s => (
               <button key={s} onClick={() => setStatusFilter(s)} className={statusFilter === s ? 'active-tab' : ''}>
@@ -422,21 +462,35 @@ const BookingBook = () => {
               </button>
             ))}
           </div>
-          <button className="utility-icon-btn" onClick={handleProcessFollowups} title="Process 14-Day SMS Follow-ups">
-            <Send size={18} />
-          </button>
-          <button className="utility-icon-btn" onClick={fetchBookings} title="Refresh">
-            <RefreshCw size={20} className={loading ? 'spinner' : ''} />
-          </button>
-          <button className="utility-icon-btn" onClick={handleExportPDF} title="Export PDF">
-            <Download size={20} />
-          </button>
-          {canManage && (
-            <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
-              <PlusCircle size={20} /> New Tool Booking
-            </button>
-          )}
         </div>
+
+        {/* ─ Client Profile Card (shown when name matches) ─ */}
+        {clientDetails && clientPanelOpen && (
+          <div className="client-profile-inline">
+            <div className="cpi-info">
+              <div className="cpi-avatar">{clientDetails.client.name?.charAt(0).toUpperCase()}</div>
+              <div>
+                <div className="cpi-name">{clientDetails.client.name}</div>
+                <div className="cpi-meta">{clientDetails.client.contact}{clientDetails.client.nic ? ` · ${clientDetails.client.nic}` : ''}</div>
+              </div>
+            </div>
+            <div className="cpi-stats">
+              <div className="cpi-stat">
+                <span className="cpi-stat-label">Total Bookings</span>
+                <span className="cpi-stat-value accent">{clientDetails.summary.totalBookings}</span>
+              </div>
+              <div className="cpi-stat">
+                <span className="cpi-stat-label">Outstanding</span>
+                <span className={`cpi-stat-value ${clientDetails.summary.totalOutstanding > 0 ? 'danger' : 'success'}`}>
+                  LKR {clientDetails.summary.totalOutstanding.toLocaleString()}
+                </span>
+              </div>
+            </div>
+            <button className="cpi-close" onClick={() => setClientPanelOpen(false)} title="Close profile">
+              <X size={16} />
+            </button>
+          </div>
+        )}
       </div>
 
       {success && <div className="form-info-banner" style={{ background: 'var(--success)', color: '#fff', border: 'none' }}><CheckCircle size={18} /> {success}</div>}

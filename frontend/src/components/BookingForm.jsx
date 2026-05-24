@@ -409,7 +409,12 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
               <div className="form-group" style={{ position: 'relative' }}>
                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Customer Name *</span>
-                  <button type="button" onClick={() => setShowAddClient(!showAddClient)} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddClient(!showAddClient)}
+                    className="add-btn"
+                    style={{ height: '34px', padding: '0 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                  >
                     <Plus size={14} /> New
                   </button>
                 </label>

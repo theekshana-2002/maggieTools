@@ -348,12 +348,12 @@ const BookingBook = () => {
                 options={allClients.map(c => c.name)}
                 placeholder="Type customer name..."
               />
-              <button 
-                className="action-icon-btn" 
-                style={{ background: 'var(--accent)', color: '#fff', padding: '0 16px', borderRadius: '8px' }}
+              <button
+                className="add-btn"
                 onClick={() => setAddClientOpen(true)}
+                style={{ height: '40px', padding: '0 16px' }}
               >
-                <UserPlus size={18} /> Add
+                <UserPlus size={18} /> Add Customer
               </button>
             </div>
           </div>

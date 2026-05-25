@@ -241,8 +241,12 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
   };
 
-  const addAccessory = (accName) => {
-    const acc = allAccessories.find(a => a.name === accName);
+  const addAccessory = (accIdentifier) => {
+    const acc = allAccessories.find(a => 
+      a.name === accIdentifier || 
+      a.number === accIdentifier || 
+      `${a.number || 'No ID'} - ${a.name}` === accIdentifier
+    );
     if (!acc) return;
     const existing = formData.bookingAccessories.find(a => a.accessoryId === acc._id);
     if (existing) {
@@ -253,7 +257,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     } else {
       setFormData({
         ...formData,
-        bookingAccessories: [...formData.bookingAccessories, { accessoryId: acc._id, name: acc.name, quantity: 1, price: acc.price }]
+        bookingAccessories: [...formData.bookingAccessories, { accessoryId: acc._id, number: acc.number, name: acc.name, quantity: 1, price: acc.price }]
       });
     }
     setAccSearch(''); // Clear search after adding
@@ -309,6 +313,22 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      if (!formData.pickupDate) {
+        alert('Pickup Date is required.');
+        return;
+      }
+      if (!formData.returnDate) {
+        alert('Return Date is required.');
+        return;
+      }
+      if (!formData.clientName || formData.clientName.trim() === '') {
+        alert('Customer Name is required.');
+        return;
+      }
+      if (formData.paymentMethod === 'Bank Transfer' && !formData.accountId) {
+        alert('Target Bank Account is required for Bank Transfers.');
+        return;
+      }
       if (formData.items.length === 0) {
         alert('Please select at least one tool.');
         return;
@@ -352,7 +372,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
 
   return (
     <div className="booking-form-wrapper form-flex form-bg-side">
-      <form onSubmit={handleSubmit} className="hire-form form-flex-1">
+      <form onSubmit={handleSubmit} className="hire-form form-flex-1" noValidate>
         <div className="hire-form-scroll">
 
           <div className="form-section">
@@ -758,12 +778,13 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 onChange={e => {
                   const val = e.target.value;
                   setAccSearch(val);
-                  if (allAccessories.some(a => a.name === val)) {
+                  const found = allAccessories.find(a => a.name === val || a.number === val || `${a.number || 'No ID'} - ${a.name}` === val);
+                  if (found) {
                     addAccessory(val);
                   }
                 }}
-                options={allAccessories.map(a => a.name)}
-                placeholder="Type to search parts/accessories..."
+                options={allAccessories.map(a => `${a.number || 'No ID'} - ${a.name}`)}
+                placeholder="Search by ID or name..."
                 className="full-width-autocomplete"
               />
             </div>
@@ -805,7 +826,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                       boxShadow: '0 2px 4px var(--accent-glow)'
                     }}
                   >
-                    <Plus size={14} strokeWidth={3} /> {a.name}
+                    <Plus size={14} strokeWidth={3} /> {a.number ? `${a.number} - ` : ''}{a.name}
                   </button>
                 ))}
               </div>
@@ -842,7 +863,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                     boxShadow: 'var(--shadow-sm)'
                   }}>
                     <div className="accessory-info" style={{ flex: 1 }}>
-                      <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{acc.name}</strong>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                        {acc.number ? <span style={{ color: 'var(--accent)', fontFamily: 'monospace', marginRight: '6px' }}>[{acc.number}]</span> : null}
+                        {acc.name}
+                      </strong>
                       <div className="accessory-price" style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>LKR {acc.price.toLocaleString()} / unit</div>
                     </div>
                     <div className="accessory-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -1214,7 +1238,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
           </div>
           <div className="modal-actions">
             <button type="button" className="cancel-btn" onClick={onCancel}>Cancel</button>
-            <button type="submit" className="submit-btn" disabled={formData.items.length === 0 || formData.items.some(it => !it.tool)}>
+            <button type="submit" className="submit-btn">
               {initialData ? 'Update Booking' : 'Confirm Multi-Tool Booking'}
             </button>
           </div>

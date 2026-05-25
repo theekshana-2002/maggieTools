@@ -4,6 +4,8 @@ const InvoiceSchema = new mongoose.Schema({
   invoiceNo: { type: String, required: true, unique: true },
   date: { type: Date, default: Date.now },
   clientName: { type: String, required: true },
+  clientPhone: { type: String },
+  clientNic: { type: String },
   site: { type: String },
   toolNo: { type: String }, // Optional if items array is used
   toolCategory: { type: String },
@@ -41,6 +43,7 @@ const InvoiceSchema = new mongoose.Schema({
   hireId: { type: mongoose.Schema.Types.ObjectId, ref: 'Hire' },
   bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
   accessories: [{
+    number: String,
     name: String,
     quantity: Number,
     price: Number

@@ -264,6 +264,8 @@ async function processBookingSideEffects(newBooking) {
       const invoiceData = {
         date: new Date(),
         clientName: newBooking.clientName,
+        clientPhone: newBooking.clientPhone || '',
+        clientNic: newBooking.clientNic || '',
         toolNo: toolsNo || 'Tool',
         toolType: itemsList.length > 1 ? 'Multiple Tools' : (itemsList[0]?.category || 'Tool'),
         jobDescription: `Tool Rental: ${new Date(newBooking.pickupDate).toLocaleDateString()} - ${new Date(newBooking.returnDate).toLocaleDateString()}\nTools: ${toolsDesc}${accDesc ? `\nAccessories: ${accDesc}` : ''}`,
@@ -276,6 +278,7 @@ async function processBookingSideEffects(newBooking) {
         balanceAmount: newBooking.balanceAmount || 0,
         bookingId: newBooking._id,
         accessories: accList.map(a => ({ 
+          number: a.number,
           name: a.name, 
           quantity: a.quantity, 
           price: a.price 

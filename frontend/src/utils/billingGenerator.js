@@ -214,8 +214,14 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     doc.text(invoice.clientName || 'VALUED CUSTOMER', pageWidth - 95, 94);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    if (invoice.site) { /* site removed per user request */ }
-    doc.text(`Tool: ${invoice.toolNo || 'N/A'}`, pageWidth - 95, 105);
+    if (invoice.clientPhone) {
+      doc.text(invoice.clientPhone, pageWidth - 95, 100);
+    }
+    if (invoice.clientNic) {
+      doc.text(`NIC: ${invoice.clientNic}`, pageWidth - 95, 105);
+    } else if (invoice.toolNo) {
+      doc.text(`Tool: ${invoice.toolNo}`, pageWidth - 95, 105);
+    }
 
     // Table Data Construction
     const tableData = [];
@@ -246,7 +252,7 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     if (invoice.accessories && invoice.accessories.length > 0) {
         invoice.accessories.forEach(acc => {
             tableData.push([
-                `Accessory: ${acc.name} (x${acc.quantity})`, 
+                `${acc.number ? `[${acc.number}] ` : ''}Accessory: ${acc.name} (x${acc.quantity})`, 
                 `LKR ${(acc.price * acc.quantity).toLocaleString()}`
             ]);
         });

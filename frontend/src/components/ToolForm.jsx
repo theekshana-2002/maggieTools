@@ -102,7 +102,7 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
                 <select
                   id="powerSource"
                   value={formData.powerSource}
-                  onChange={e => set('powerSource', e.target.value)}
+                  onChange={e => setFormData({ ...formData, powerSource: e.target.value })}
                   style={{ paddingLeft: '10px' }}
                 >
                   <option value="" disabled>Select source</option>

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const accessorySchema = new mongoose.Schema({
+  number: { type: String, required: true, unique: true }, // Accessory ID — must not overlap with Tool IDs
   name: { type: String, required: true },
   category: { type: String }, // e.g. "Drill Bits", "Saw Blades"
   price: { type: Number, default: 0 },

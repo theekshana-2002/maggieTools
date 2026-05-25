@@ -6,6 +6,8 @@ import '../styles/forms.css';
 /* ── Helpers ───────────────────────────────────────────────── */
 const defaultForm = () => ({
   clientName: '',
+  clientPhone: '',
+  clientNic: '',
   site: '',
   toolNo: '',   // Legacy
   toolCategory: '', // Legacy
@@ -15,7 +17,7 @@ const defaultForm = () => ({
   totalUnits: 0,
   ratePerUnit: 0,
   items: [], // [{ toolNumber, model, category, dailyRate, totalUnits, unitType }]
-  accessories: [], // { name, quantity, price }
+  accessories: [], // { number, name, quantity, price }
   transportCharge: 0,
   otherCharges: 0,
   discount: 0,
@@ -113,10 +115,10 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
     setFormData(updated);
   };
 
-  const addAccessoryToInvoice = (accName) => {
-    const a = accList.find(x => x.name === accName);
+  const addAccessoryToInvoice = (accIdentifier) => {
+    const a = accList.find(x => x.name === accIdentifier || x.number === accIdentifier || `${x.number || 'No ID'} - ${x.name}` === accIdentifier);
     if (!a) return;
-    const newItem = { name: a.name, quantity: 1, price: a.price || 0 };
+    const newItem = { number: a.number, name: a.name, quantity: 1, price: a.price || 0 };
     const updated = { ...formData, accessories: [...(formData.accessories || []), newItem] };
     updated.totalAmount = calcTotal(updated);
     setFormData(updated);
@@ -159,6 +161,14 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
                 placeholder="Customer name"
                 required
               />
+            </div>
+            <div className="form-group">
+              <label>Contact Number</label>
+              <input type="text" name="clientPhone" value={formData.clientPhone || ''} onChange={handleChange} placeholder="Customer Phone" />
+            </div>
+            <div className="form-group">
+              <label>NIC / Passport</label>
+              <input type="text" name="clientNic" value={formData.clientNic || ''} onChange={handleChange} placeholder="Optional ID" />
             </div>
             <div className="form-group">
               <label>Invoice Date *</label>
@@ -258,15 +268,20 @@ const InvoiceForm = ({ onSubmit, onCancel, initialData }) => {
               value={accSearch} 
               onChange={e => {
                 setAccSearch(e.target.value);
-                if (accList.some(a => a.name === e.target.value)) addAccessoryToInvoice(e.target.value);
+                if (accList.some(a => a.name === e.target.value || a.number === e.target.value || `${a.number || 'No ID'} - ${a.name}` === e.target.value)) {
+                  addAccessoryToInvoice(e.target.value);
+                }
               }} 
-              options={accList.map(a => a.name)}
-              placeholder="Add accessory..."
+              options={accList.map(a => `${a.number || 'No ID'} - ${a.name}`)}
+              placeholder="Search ID or name..."
             />
           </div>
           {formData.accessories && formData.accessories.map((acc, idx) => (
             <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 10px', background: 'var(--bg-side)', borderRadius: '6px', marginBottom: '5px' }}>
-                <span style={{ fontSize: '12px' }}>{acc.name} (x{acc.quantity})</span>
+                <span style={{ fontSize: '12px' }}>
+                  {acc.number ? <strong style={{ color: 'var(--accent)', marginRight: '6px' }}>[{acc.number}]</strong> : null}
+                  {acc.name} (x{acc.quantity})
+                </span>
                 <span style={{ fontSize: '12px', fontWeight: 'bold' }}>LKR {(acc.price * acc.quantity).toLocaleString()}</span>
                 <button type="button" onClick={() => removeAccessoryFromInvoice(idx)} style={{ color: 'var(--danger)', border: 'none', background: 'none' }}>×</button>
             </div>

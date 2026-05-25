@@ -197,7 +197,7 @@ const RecordDetails = ({ data, type }) => {
     ...(data?.accessories?.length > 0 ? [{
       title: 'Parts & Accessories',
       fields: data.accessories.map((a, i) => ({
-        label: `${a.name} (x${a.quantity})`,
+        label: `${a.number ? `[${a.number}] ` : ''}${a.name} (x${a.quantity})`,
         key: `acc_${i}`,
         value: `LKR ${(a.price * a.quantity).toLocaleString()}`
       }))
@@ -418,7 +418,7 @@ const RecordDetails = ({ data, type }) => {
     ...(data?.accessories?.length > 0 ? [{
       title: 'Parts & Accessories',
       fields: data.accessories.map((a, i) => ({
-        label: `${a.name} (x${a.quantity})`,
+        label: `${a.number ? `[${a.number}] ` : ''}${a.name} (x${a.quantity})`,
         key: `acc_${i}`,
         value: `LKR ${(a.price * a.quantity).toLocaleString()}`
       }))

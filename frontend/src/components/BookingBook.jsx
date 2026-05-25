@@ -4,9 +4,12 @@ import { Edit } from "lucide-react";
 import Modal from './Modal';
 import BookingForm from './BookingForm';
 import RecordDetails from './RecordDetails';
-import { bookingAPI, clientAPI } from '../services/api';
-import { generatePDFReport, generateInvoicePDF } from '../utils/reportGenerator';
+import { bookingAPI, clientAPI, invoiceAPI } from '../services/api';
+import api from '../services/api';
+import { generatePDFReport } from '../utils/reportGenerator';
+import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
+import InvoiceForm from './InvoiceForm';
 import { Download, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
@@ -48,12 +51,23 @@ const BookingBook = () => {
   const [smsRecord, setSmsRecord] = useState(null);
   const [customSmsText, setCustomSmsText] = useState('');
 
-  const handlePrint = (booking) => {
-    generateInvoicePDF(booking, 'invoice');
+  // Auto Invoice Modal
+  const [autoInvoiceModalOpen, setAutoInvoiceModalOpen] = useState(false);
+  const [autoInvoice, setAutoInvoice] = useState(null);
+
+  const handlePrint = async (booking) => {
+    try {
+      const res = await api.get('invoices');
+      const invoices = res.data || [];
+      const invoice = invoices.find(inv => inv.bookingId === booking._id) || booking;
+      generateInvoicePDF(invoice, 'print');
+    } catch (e) {
+      generateInvoicePDF(booking, 'print');
+    }
   };
 
   const handlePrintQuote = (booking) => {
-    generateInvoicePDF(booking, 'quotation');
+    // generateInvoicePDF(booking, 'quotation'); // if we need quotes
   };
 
   const tableColumns = ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION'];
@@ -326,6 +340,7 @@ const BookingBook = () => {
   const handleFormSubmit = async (formData) => {
     setLoading(true);
     try {
+      let createdBookingId = null;
       if (Array.isArray(formData)) {
         await bookingAPI.bulkCreate(formData);
         setSuccess(`${formData.length} tools booked successfully.`);
@@ -333,16 +348,34 @@ const BookingBook = () => {
         await bookingAPI.update(editingItem._id, formData);
         setSuccess('Booking updated successfully.');
       } else {
-        await bookingAPI.create(formData);
+        const res = await bookingAPI.create(formData);
         setSuccess('Booking created successfully.');
+        createdBookingId = res.data._id;
       }
       fetchBookings();
       setIsModalOpen(false);
       setEditingItem(null);
+      
+      // Auto-open bill generator for new bookings
+      if (createdBookingId) {
+        try {
+          const invRes = await api.get('invoices');
+          const invoices = invRes.data || [];
+          const generatedInvoice = invoices.find(inv => inv.bookingId === createdBookingId);
+          if (generatedInvoice) {
+            setAutoInvoice(generatedInvoice);
+            setAutoInvoiceModalOpen(true);
+          }
+        } catch (err) {
+          console.error("Failed to fetch auto-invoice", err);
+        }
+      }
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       console.error('Save failed:', err);
-      setError(err.response?.data?.message || 'Failed to save booking.');
+      const msg = err.response?.data?.message || 'Failed to save booking.';
+      setError(msg);
+      alert('Booking Failed: ' + msg);
     } finally {
       setLoading(false);
     }
@@ -652,6 +685,22 @@ const BookingBook = () => {
             </button>
           </div>
         </div>
+      </Modal>
+
+      {/* ── Auto Invoice Modal ── */}
+      <Modal isOpen={autoInvoiceModalOpen} onClose={() => { setAutoInvoiceModalOpen(false); setAutoInvoice(null); }} title="Generate Professional Bill" wide={true}>
+        <div style={{ marginBottom: '15px', background: 'var(--success-soft)', color: 'var(--success)', padding: '10px 15px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+          <CheckCircle size={18} /> Booking successful! An automated SMS has been sent to the customer. You can now edit and print the final bill.
+        </div>
+        <InvoiceForm 
+          initialData={autoInvoice} 
+          onSubmit={async (d) => { 
+            await api.put(`/invoices/${autoInvoice._id}`, d); 
+            setAutoInvoiceModalOpen(false); 
+            generateInvoicePDF(d, 'print'); // Instantly print it!
+          }} 
+          onCancel={() => setAutoInvoiceModalOpen(false)} 
+        />
       </Modal>
     </div>
   );

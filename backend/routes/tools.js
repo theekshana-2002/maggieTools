@@ -73,10 +73,31 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
-// Add new tool
+// Add new tool — ID must not clash with any Accessory ID
 router.post('/', authMiddleware, async (req, res) => {
-  const tool = new Tool(req.body);
   try {
+    const { number } = req.body;
+
+    if (!number) {
+      return res.status(400).json({ message: 'Tool ID (number) is required.' });
+    }
+
+    const normNum = number.trim().toUpperCase();
+
+    // Cross-collection check: Accessory IDs
+    const Accessory = require('../models/Accessory');
+    const accExists = await Accessory.findOne({ number: normNum });
+    if (accExists) {
+      return res.status(400).json({ message: `ID "${normNum}" is already used by an Accessory. Tool and Accessory IDs must be unique across both collections.` });
+    }
+
+    // Within-collection check
+    const toolExists = await Tool.findOne({ number: normNum });
+    if (toolExists) {
+      return res.status(400).json({ message: `Tool ID "${normNum}" already exists. Please use a unique ID.` });
+    }
+
+    const tool = new Tool({ ...req.body, number: normNum });
     const newTool = await tool.save();
     res.status(201).json(newTool);
   } catch (err) {

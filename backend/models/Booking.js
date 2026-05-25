@@ -51,6 +51,7 @@ const bookingSchema = new mongoose.Schema({
   },
   accessories: [{
     accessory: { type: mongoose.Schema.Types.ObjectId, ref: 'Accessory' },
+    number: String,
     name: String,
     quantity: { type: Number, default: 1 },
     price: { type: Number, default: 0 }

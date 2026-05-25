@@ -82,7 +82,11 @@ const PaymentBook = () => {
     ),
     'ACTION': (
       <div className="table-actions" onClick={e => e.stopPropagation()}>
-        {canManage && (
+        
+            <button className="action-icon-btn btn-details" onClick={(e) => { e.stopPropagation(); setSelectedRecord(pay.rawData || pay); setIsDetailsOpen(true); }} title="View Details">
+              <Eye />
+            </button>
+            {canManage && (
           <button className="action-icon-btn btn-details" onClick={() => handleEdit(item)} title="Edit Record">
              <FileText />
           </button>
@@ -199,7 +203,7 @@ const PaymentBook = () => {
 
       {/* Filters & Actions */}
       <div className="book-filters">
-        <div className="search-box" style={{ width: '200px', flex: 'none' }}>
+        <div className="search-box-unified" style={{ width: '200px', flex: 'none' }}>
           <select 
             value={statusFilter} 
             onChange={e => setStatusFilter(e.target.value)}
@@ -210,7 +214,8 @@ const PaymentBook = () => {
             <option value="Pending">Pending Only</option>
           </select>
         </div>
-        <div className="search-box">
+        <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
           <Search className="search-icon" size={20} />
           <input
             type="text"
@@ -219,10 +224,12 @@ const PaymentBook = () => {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="filter-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button className="action-icon-btn" onClick={fetchRecords} title="Refresh">
+            <button className="action-icon-btn" onClick={fetchRecords} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
+          </div>
+        <div className="filter-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          
           <button className="action-icon-btn" onClick={handleExportPDF} title="Export PDF">
             <Download size={18} />
           </button>

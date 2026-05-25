@@ -190,7 +190,8 @@ const HireBook = () => {
       />
 
       <div className="book-filters">
-        <div className="search-box">
+        <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
           <Search className="search-icon" size={20} style={{ minWidth: '20px' }} />
           <input 
             type="text" 
@@ -199,10 +200,12 @@ const HireBook = () => {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="filter-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button className="action-icon-btn btn-refresh" onClick={fetchRecords} title="Refresh">
+            <button className="utility-icon-btn" onClick={fetchRecords} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
+          </div>
+        <div className="filter-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          
           <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Export PDF">
             <Download size={18} />
           </button>

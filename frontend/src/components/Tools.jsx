@@ -177,22 +177,39 @@ const Tools = () => {
 
   return (
     <div className="book-container">
-      <div className="dashboard-header">
-        <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Inventory Management</p>
-          <h1>Tool Inventory</h1>
+      <div className="book-header" style={{ marginBottom: '10px' }}>
+        <div className="header-title">
+          <Wrench />
+          <h2>Tool Inventory</h2>
         </div>
-        <div className="header-controls">
-          <div className="search-box">
+        <p className="header-subtitle">Manage tools, stock levels, and monitor leasing schedules.</p>
+      </div>
+
+      <div className="book-filters">
+        <div className="bf-top-row">
+          <div style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
             <Search className="search-icon" size={18} />
-            <input type="text" placeholder="Search inventory..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+            <input type="text" placeholder="Search inventory by ID or Model..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
           </div>
-          <button className="theme-toggle-btn" onClick={fetchTools} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
-          {canManage && (
-            <button className="refresh-btn add-tool-btn" onClick={() => { setSelectedRecord(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
-              <PlusCircle size={18} /> Add Tool
+            <button className="utility-icon-btn" onClick={fetchTools} title="Refresh">
+              <RefreshCw size={18} className={loading ? 'spinner' : ''} />
             </button>
-          )}
+          </div>
+            
+          </div>
+          <div className="bf-action-btns">
+            <button className="utility-icon-btn" onClick={handleExportPDF} title="Export PDF">
+              <Download size={18} />
+            </button>
+            
+            {canManage && (
+              <button className="add-btn" onClick={() => { setSelectedRecord(null); setIsModalOpen(true); }}>
+                <PlusCircle size={16} /> Add Tool
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

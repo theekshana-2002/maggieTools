@@ -4,7 +4,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
 import InvoiceForm from './InvoiceForm';
-import { FileText, Plus, Download, Trash2, Search, RefreshCw, FileDown, TrendingUp, CheckCircle, Clock, CreditCard, PlusCircle, Printer, Users } from 'lucide-react';
+import { FileText, Plus, Download, Trash2, Search, RefreshCw, FileDown, TrendingUp, CheckCircle, Clock, CreditCard, PlusCircle, Printer, Users , Eye } from 'lucide-react';
 import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import '../styles/forms.css';
@@ -166,7 +166,11 @@ const InvoiceBook = () => {
         ),
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="action-icon-btn btn-print" onClick={() => generateInvoicePDF(inv)} title="Download PDF">
+            
+                <button className="action-icon-btn btn-details" onClick={(e) => { e.stopPropagation(); setSelectedRecord(inv.rawData || inv); setIsDetailsOpen(true); }} title="View Details">
+                  <Eye />
+                </button>
+                <button className="action-icon-btn btn-print" onClick={() => generateInvoicePDF(inv)} title="Download PDF">
                <FileDown />
             </button>
             <button className="action-icon-btn btn-details" style={{ background: '#64748b', color:'#fff' }} onClick={() => generateInvoicePDF(inv, 'print')} title="Direct Print">
@@ -215,8 +219,9 @@ const InvoiceBook = () => {
         ),
         action: (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
-            <button className="action-icon-btn btn-details" onClick={() => { setSelectedRecord(pay); setIsDetailsOpen(true); }}>
-              <FileText />
+            
+            <button className="action-icon-btn btn-details" onClick={(e) => { e.stopPropagation(); setSelectedRecord(pay.rawData || pay); setIsDetailsOpen(true); }} title="View Details">
+              <Eye />
             </button>
             {canManage && (
               <button className="action-icon-btn btn-delete" onClick={() => handleDeletePayment(pay._id)}>
@@ -242,17 +247,24 @@ const InvoiceBook = () => {
   return (
     <div className="book-container">
       {/* ── Header ── */}
-      <div className="dashboard-header">
-        <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Billing & Receivables</p>
-          <h1>Invoices & Payments</h1>
+      <div className="book-header" style={{ marginBottom: '10px' }}>
+        <div className="header-title">
+          <h2>Invoices & Payments</h2>
         </div>
-        <div className="header-controls">
-           <div className="search-box">
+        <p className="header-subtitle">Billing & Receivables</p>
+      </div>
+      <div className="book-filters">
+        <div className="bf-top-row">
+          
+           <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
              <Search className="search-icon" size={18} />
              <input type="text" placeholder="Search records..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
-           <button className="theme-toggle-btn" onClick={fetchData} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+            <button className="utility-icon-btn" onClick={fetchData} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+          </div>
+           
+        
         </div>
       </div>
  
@@ -314,7 +326,7 @@ const InvoiceBook = () => {
                'ACTION': r.action
             }))}
             loading={loading}
-            onRowClick={(r) => { setSelectedRecord(r.rawData || r); setIsDetailsOpen(true); }}
+            
           />
         )}
         {activeTab === 'Payments' && (
@@ -331,7 +343,7 @@ const InvoiceBook = () => {
                'ACTION': r.action
             }))}
             loading={loading}
-            onRowClick={(r) => { setSelectedRecord(r.rawData || r); setIsDetailsOpen(true); }}
+            
           />
         )}
       </div>

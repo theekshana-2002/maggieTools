@@ -25,6 +25,7 @@ import ToolRegistration from './components/ToolRegistration';
 import HireBook from './components/HireBook';
 import Settings from './components/Settings';
 import './App.css';
+import './styles/Modal.css';
 
 const PAGE_TITLES = {
   dashboard: 'Main Overview',

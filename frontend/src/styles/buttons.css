@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════
-   RAXWO BUTTONS — Premium v2
+   RAXWO BUTTONS — Premium v3 Mobile-First
    ═══════════════════════════════════════════ */
 
-/* ── Base Button ── */
+/* ── Base Reset ── */
 button {
   font-family: inherit;
   cursor: pointer;
@@ -13,48 +13,53 @@ button {
   border: 1px solid transparent;
   border-radius: var(--r-md);
   font-weight: 700;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   outline: none;
-  font-size: 0.9375rem;
+  font-size: 0.9rem;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 button svg {
   display: block !important;
   flex-shrink: 0;
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
-  min-height: 20px !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
   stroke-width: 2px;
-  margin: 0 auto;
+  margin: 0;
 }
 
-button:active { transform: scale(0.96); }
+button:active { transform: scale(0.96) !important; }
 
-/* ── Primary Action (Add, Submit) ── */
+/* ── Primary Action (Add/Submit) ── */
 .add-btn, .submit-btn, .refresh-btn {
-  height: 46px;
-  padding: 0 22px;
+  height: 44px;
+  padding: 0 20px;
   background: var(--accent-gradient);
   color: #FFFFFF !important;
   box-shadow: 0 4px 14px var(--accent-soft);
   border: none;
+  border-radius: var(--r-md);
+  font-size: 0.875rem;
+  font-weight: 800;
 }
 
 .add-btn:hover, .submit-btn:hover, .refresh-btn:hover {
   filter: brightness(1.1);
-  transform: translateY(-2px);
+  transform: translateY(-2px) !important;
   box-shadow: var(--shadow-accent);
 }
 
 /* ── Secondary / Cancel ── */
 .secondary-btn, .cancel-btn, .theme-toggle-btn {
-  height: 46px;
+  height: 44px;
   padding: 0 20px;
   background: var(--bg-card);
   color: var(--text-main);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
   box-shadow: var(--shadow-sm);
 }
 
@@ -64,7 +69,7 @@ button:active { transform: scale(0.96); }
   color: var(--accent);
 }
 
-/* ── Data Actions (Glass Look) ── */
+/* ── Table Action Buttons ── */
 .table-actions {
   display: flex;
   gap: 6px;
@@ -77,72 +82,86 @@ button:active { transform: scale(0.96); }
   min-width: 34px !important;
   border-radius: 10px !important;
   padding: 0 !important;
-  border: 1px solid var(--border-soft);
+  border: 1.5px solid var(--border-soft);
   background: var(--bg-card);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .action-icon-btn svg {
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
   stroke-width: 2.2px;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
 }
 
 .action-icon-btn:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) !important;
   box-shadow: var(--shadow-sm);
   z-index: 2;
 }
 
 .action-icon-btn:active {
-  transform: translateY(0) scale(0.95);
+  transform: translateY(0) scale(0.94) !important;
+}
+
+/* ── Mobile: larger tap targets ── */
+@media (max-width: 768px) {
+  .action-icon-btn {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+  }
+  .action-icon-btn svg {
+    width: 16px !important;
+    height: 16px !important;
+    min-width: 16px !important;
+  }
 }
 
 /* Premium Translucent Palettes */
-.btn-print { background: rgba(99,102,241,0.06) !important; color: #6366F1 !important; border-color: rgba(99,102,241,0.12) !important; }
-.btn-print:hover { background: #6366F1 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(99,102,241,0.3) !important; }
+.btn-print   { background: rgba(99,102,241,0.07) !important; color: #6366F1 !important; border-color: rgba(99,102,241,0.15) !important; }
+.btn-print:hover { background: #6366F1 !important; color: #fff !important; box-shadow: 0 5px 14px rgba(99,102,241,0.3) !important; }
 
-.btn-details { background: rgba(75,85,99,0.06) !important; color: #4B5563 !important; border-color: rgba(75,85,99,0.12) !important; }
-.btn-details:hover { background: #4B5563 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(75,85,99,0.3) !important; }
+.btn-details { background: rgba(75,85,99,0.07) !important; color: #4B5563 !important; border-color: rgba(75,85,99,0.15) !important; }
+.btn-details:hover { background: #4B5563 !important; color: #fff !important; box-shadow: 0 5px 14px rgba(75,85,99,0.3) !important; }
 
-.btn-msg { background: rgba(16,185,129,0.06) !important; color: #10B981 !important; border-color: rgba(16,185,129,0.12) !important; }
-.btn-msg:hover { background: #10B981 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(16,185,129,0.3) !important; }
+.btn-msg     { background: rgba(16,185,129,0.07) !important; color: #10B981 !important; border-color: rgba(16,185,129,0.15) !important; }
+.btn-msg:hover { background: #10B981 !important; color: #fff !important; box-shadow: 0 5px 14px rgba(16,185,129,0.3) !important; }
 
-.btn-bell { background: rgba(245,158,11,0.06) !important; color: #F59E0B !important; border-color: rgba(245,158,11,0.12) !important; }
-.btn-bell:hover { background: #F59E0B !important; color: #fff !important; box-shadow: 0 6px 16px rgba(245,158,11,0.3) !important; }
+.btn-bell    { background: rgba(245,158,11,0.07) !important; color: #F59E0B !important; border-color: rgba(245,158,11,0.15) !important; }
+.btn-bell:hover { background: #F59E0B !important; color: #fff !important; box-shadow: 0 5px 14px rgba(245,158,11,0.3) !important; }
 
-.btn-delete { background: rgba(239,68,68,0.06) !important; color: #EF4444 !important; border-color: rgba(239,68,68,0.12) !important; }
-.btn-delete:hover { background: #EF4444 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(239,68,68,0.3) !important; }
+.btn-delete  { background: rgba(239,68,68,0.07) !important; color: #EF4444 !important; border-color: rgba(239,68,68,0.15) !important; }
+.btn-delete:hover { background: #EF4444 !important; color: #fff !important; box-shadow: 0 5px 14px rgba(239,68,68,0.3) !important; }
 
-.btn-refresh { background: rgba(139,92,246,0.06) !important; color: #8B5CF6 !important; border-color: rgba(139,92,246,0.12) !important; }
-.btn-refresh:hover { background: #8B5CF6 !important; color: #fff !important; box-shadow: 0 6px 16px rgba(139,92,246,0.3) !important; }
+.btn-refresh { background: rgba(139,92,246,0.07) !important; color: #8B5CF6 !important; border-color: rgba(139,92,246,0.15) !important; }
+.btn-refresh:hover { background: #8B5CF6 !important; color: #fff !important; box-shadow: 0 5px 14px rgba(139,92,246,0.3) !important; }
 
-/* ── Generic Action Buttons ── */
+/* ── Action button (generic) ── */
 .action-btn {
-  height: 46px;
+  height: 44px;
   padding: 0 22px;
   border-radius: var(--r-md);
   font-weight: 800;
   letter-spacing: 0.02em;
+  font-size: 0.875rem;
 }
 
 .btn-primary {
   background: var(--accent-gradient);
   color: #fff !important;
-  box-shadow: 0 6px 16px var(--accent-soft);
+  box-shadow: 0 5px 14px var(--accent-soft);
   border: none;
 }
 
 .btn-primary:hover {
   filter: brightness(1.1);
-  transform: translateY(-2px);
+  transform: translateY(-2px) !important;
   box-shadow: var(--shadow-accent);
 }
 
@@ -151,26 +170,39 @@ button:active { transform: scale(0.96); }
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 32px;
-  padding-top: 24px;
+  margin-top: 24px;
+  padding-top: 20px;
   border-top: 1px solid var(--border);
 }
 
+/* ── Mobile scaling ── */
 @media (max-width: 640px) {
-  .add-btn, .submit-btn, .refresh-btn, .secondary-btn, .cancel-btn, .theme-toggle-btn, .action-btn {
-    height: 42px;
-    padding: 0 16px;
-    font-size: 0.875rem;
-    border-radius: 12px;
+  .add-btn, .submit-btn, .secondary-btn, .cancel-btn, .action-btn {
+    height: 48px;
+    padding: 0 18px;
+    font-size: 0.9rem;
+    border-radius: var(--r-md);
   }
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  .modal-actions button { width: 100%; justify-content: center; }
 }
 
+/* ── Cancel ── */
 .cancel-btn {
   background: transparent;
-  border-color: transparent;
+  border-color: var(--border);
   color: var(--text-muted);
 }
 .cancel-btn:hover {
   background: var(--bg-card);
+  border-color: var(--border);
   color: var(--text-main);
 }
+
+/* ── Glow effect ── */
+.btn-glow { transition: all 0.2s ease !important; }
+.btn-glow:hover { filter: brightness(1.08); box-shadow: var(--shadow-accent) !important; transform: translateY(-2px) !important; }
+.btn-glow:active { transform: translateY(0) !important; }

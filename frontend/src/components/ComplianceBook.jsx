@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toolAPI, markLeasePayment, renewToolDocument } from '../services/api';
 import DataTable from './DataTable';
 import Modal from './Modal';
-import { ShieldCheck, FileText, CreditCard, Calendar, Search, RefreshCw, AlertCircle, CheckCircle, XCircle, Clock, ChevronRight, Wrench } from 'lucide-react';
+import { ShieldCheck, FileText, CreditCard, Calendar, Search, RefreshCw, AlertCircle, CheckCircle, XCircle, Clock, ChevronRight, Wrench, Package } from 'lucide-react';
 import '../styles/books.css';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -141,7 +141,7 @@ const ComplianceBook = () => {
         number: <strong style={{ color: 'var(--text-main)' }}>{t.number}</strong>,
         emi: <span style={{ color: 'var(--text-dim)' }}>{type === 'warranty' ? (t.warrantyEmiNumber || '—') : (t.financeEmiNumber || '—')}</span>,
         action: (
-          <button onClick={() => handleRenewClick(t, type)} className="refresh-btn" style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto' }}>
+          <button onClick={() => handleRenewClick(t, type)} className="utility-icon-btn" style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto' }}>
             <RefreshCw size={12} /> Update
           </button>
         )
@@ -162,19 +162,26 @@ const ComplianceBook = () => {
   return (
     <div className="book-container">
       {/* ── Header ── */}
-      <div className="dashboard-header" style={{ marginBottom: '8px' }}>
-        <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Service & Maintenance</p>
-          <h1>Tool Compliance</h1>
+      <div className="book-header" style={{ marginBottom: '10px' }}>
+        <div className="header-title">
+          <h2>Tool Compliance</h2>
         </div>
-        <div className="header-controls">
-          <div className="search-box">
+        <p className="header-subtitle">Service & Maintenance</p>
+      </div>
+      <div className="book-filters">
+        <div className="bf-top-row">
+          
+          <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
             <Search className="search-icon" size={18} />
             <input type="text" placeholder="Search tool..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
-          <button className="theme-toggle-btn" onClick={fetchData} title="Refresh Data">
+            <button className="utility-icon-btn" onClick={fetchData} title="Refresh Data">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
+          </div>
+          
+        
         </div>
       </div>
 
@@ -300,22 +307,57 @@ const ComplianceBook = () => {
 
       {/* Renewal Modal */}
       <Modal isOpen={renewalModal.isOpen} onClose={() => setRenewalModal({ ...renewalModal, isOpen: false })} title={`Update ${renewalModal.type}`}>
-        <form onSubmit={handleRenewSubmit} className="dashboard-container" style={{ gap: '20px' }}>
-           <div className="summary-item" style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent)' }}>
-              <label>Target Tool</label>
-              <h3 style={{ color: 'var(--accent)' }}>{renewalModal.toolNumber}</h3>
+        <form onSubmit={handleRenewSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '10px 0' }}>
+           <div style={{ background: 'linear-gradient(145deg, var(--bg-card), var(--accent-soft))', padding: '20px', borderRadius: '16px', border: '1px solid var(--accent-glow)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                 <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>Target Asset</span>
+                 <strong style={{ fontSize: '1.4rem', color: 'var(--text-main)', marginTop: '4px' }}>{renewalModal.toolNumber}</strong>
+              </div>
+              <div style={{ background: 'var(--bg-main)', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                 <Package size={24} />
+              </div>
            </div>
-           <div className="search-box" style={{ maxWidth: 'none' }}>
-              <Calendar size={18} className="search-icon" />
-              <input type="date" required value={renewalModal.newExpirationDate} onChange={e => setRenewalModal({ ...renewalModal, newExpirationDate: e.target.value })} />
+
+           <div style={{ background: 'var(--bg-card)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-soft)', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+             <div>
+               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-dim)', marginBottom: '6px' }}>New {renewalModal.type} Date *</label>
+               <div style={{ position: 'relative' }}>
+                  <Calendar size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)' }} />
+                  <input 
+                     type="date" required 
+                     value={renewalModal.newExpirationDate} 
+                     onChange={e => setRenewalModal({ ...renewalModal, newExpirationDate: e.target.value })} 
+                     style={{ width: '100%', padding: '14px 14px 14px 44px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '0.95rem', color: 'var(--text-main)', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                     onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                     onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  />
+               </div>
+             </div>
+
+             <div>
+               <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-dim)', marginBottom: '6px' }}>Maintenance Cost (LKR)</label>
+               <div style={{ position: 'relative' }}>
+                  <CreditCard size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+                  <input 
+                     type="number" placeholder="Enter Cost (Optional)" 
+                     value={renewalModal.cost} 
+                     onChange={e => setRenewalModal({ ...renewalModal, cost: e.target.value })} 
+                     style={{ width: '100%', padding: '14px 14px 14px 44px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontSize: '0.95rem', color: 'var(--text-main)', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                     onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                     onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  />
+               </div>
+             </div>
            </div>
-           <div className="search-box" style={{ maxWidth: 'none' }}>
-              <CreditCard size={18} className="search-icon" />
-              <input type="number" placeholder="Enter Cost (LKR)" value={renewalModal.cost} onChange={e => setRenewalModal({ ...renewalModal, cost: e.target.value })} />
+
+           <div style={{ display: 'flex', gap: '12px', marginTop: '10px' }}>
+             <button type="button" onClick={() => setRenewalModal({ ...renewalModal, isOpen: false })} style={{ flex: 1, padding: '14px', borderRadius: '12px', border: 'none', background: 'var(--bg-main)', color: 'var(--text-main)', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => Object.assign(e.currentTarget.style, { background: '#e2e8f0', transform: 'translateY(-2px)' })} onMouseOut={e => Object.assign(e.currentTarget.style, { background: 'var(--bg-main)', transform: 'none' })}>
+                Cancel
+             </button>
+             <button type="submit" disabled={isSubmitting} style={{ flex: 2, padding: '14px', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, var(--accent), var(--accent-glow))', color: '#fff', fontWeight: '800', cursor: isSubmitting ? 'not-allowed' : 'pointer', boxShadow: '0 4px 15px var(--accent-soft)', transition: 'all 0.2s', opacity: isSubmitting ? 0.7 : 1 }} onMouseOver={e => { if(!isSubmitting) Object.assign(e.currentTarget.style, { transform: 'translateY(-2px)', boxShadow: '0 6px 20px var(--accent-soft)' }) }} onMouseOut={e => { if(!isSubmitting) Object.assign(e.currentTarget.style, { transform: 'none', boxShadow: '0 4px 15px var(--accent-soft)' }) }}>
+                {isSubmitting ? 'Processing Update...' : 'Confirm System Update'}
+             </button>
            </div>
-           <button type="submit" className="refresh-btn" disabled={isSubmitting} style={{ width: '100%', height: '54px', fontSize: '1rem' }}>
-              {isSubmitting ? 'Processing...' : 'Confirm Update'}
-           </button>
         </form>
       </Modal>
     </div>

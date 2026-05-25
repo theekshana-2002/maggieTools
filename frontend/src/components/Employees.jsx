@@ -4,7 +4,7 @@ import Modal from './Modal';
 import EmployeeForm from './EmployeeForm';
 import { employeeAPI } from '../services/api';
 import { generatePDFReport } from '../utils/reportGenerator';
-import { Download, Search, UserPlus, RefreshCw, FileText, Trash2 } from 'lucide-react';
+import { Download, Search, UserPlus, RefreshCw, FileText, Trash2, PlusCircle } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import RecordDetails from './RecordDetails';
@@ -161,37 +161,31 @@ const Employees = () => {
         </div>
       </div>
 
-      <div className="book-filters">
-        <div className="search-box">
-          <Search className="search-icon" size={18} />
-          <input
-            type="text"
-            placeholder="Search name, NIC, or contact..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
+      <div className="book-filters" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flex: 1, minWidth: '300px' }}>
+          <div className="search-box-unified" style={{ flex: 1, maxWidth: '400px' }}>
+            <Search className="search-icon" size={20} />
+            <input 
+              type="text" 
+              placeholder="Search employees..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="filter-actions">
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-            <option value="All">All Roles</option>
-            <option value="Driver">Driver</option>
-            <option value="Helper">Helper</option>
-            <option value="Mechanic">Mechanic</option>
-            <option value="Manager">Manager</option>
-            <option value="Admin">Admin</option>
-            <option value="Other">Other</option>
-          </select>
-          <button className="action-icon-btn" onClick={handleExportPDF} title="Export PDF">
-            <Download size={18} />
-          </button>
-          <button className="action-icon-btn" onClick={fetchRecords} title="Refresh">
-            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
-          </button>
+        
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {canManage && (
             <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }}>
-              <UserPlus size={18} /> Register
+              <PlusCircle size={18} /> <span>Register Staff</span>
             </button>
           )}
+          <button className="utility-icon-btn" onClick={fetchRecords} title="Refresh">
+            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
+          </button>
+          <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Download PDF">
+            <Download size={18} />
+          </button>
         </div>
       </div>
 

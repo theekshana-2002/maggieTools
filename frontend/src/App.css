@@ -28,13 +28,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
+  padding: 0 28px;
   position: sticky;
   top: 0;
   z-index: 900;
   box-shadow: var(--shadow-sm);
-  gap: 24px;
-  position: relative;
+  gap: 16px;
 }
 
 /* Gradient accent line on bottom of header */
@@ -217,11 +216,11 @@
 /* ── Content Area ── */
 .content-area {
   flex: 1;
-  padding: 36px 40px;
+  padding: 28px 32px;
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
-  animation: contentFadeIn 0.4s ease;
+  animation: contentFadeIn 0.35s ease;
   overflow-x: hidden;
 }
 
@@ -248,7 +247,7 @@
 
 /* ── RESPONSIVE ── */
 @media (max-width: 1200px) {
-  .content-area { padding: 28px 24px; }
+  .content-area { padding: 24px 20px; }
   .main-header { padding: 0 20px; }
 }
 
@@ -258,26 +257,27 @@
   .desktop-collapse-btn { display: none; }
   .user-details { display: none; }
   .header-logout-btn span { display: none; }
-  .header-logout-btn { padding: 8px; border-radius: 50%; }
+  .header-logout-btn { padding: 8px; border-radius: 50%; width: 38px; height: 38px; }
   .user-nav-info { padding: 4px; border-radius: 50%; }
 }
 
 @media (max-width: 768px) {
-  .main-header { height: 58px; padding: 0 12px; gap: 8px; }
+  .main-header { height: 58px; padding: 0 14px; gap: 8px; }
   .header-left { gap: 8px; }
-  .header-left h2 { font-size: 0.9rem; max-width: 130px; }
+  .header-left h2 { font-size: 0.9rem; max-width: 140px; }
   .header-right { gap: 6px; }
   .nav-avatar, .theme-toggle-btn, .header-logout-btn, .mobile-menu-btn {
-    width: 34px !important; height: 34px !important;
-    min-width: 34px !important; padding: 0 !important;
+    width: 36px !important; height: 36px !important;
+    min-width: 36px !important; padding: 0 !important;
     display: flex !important; justify-content: center !important; align-items: center !important;
   }
-  .content-area { padding: 16px 12px; }
+  .content-area { padding: 14px 12px; }
 }
 
 @media (max-width: 480px) {
   .header-left h2 { display: none; }
   .main-header { justify-content: space-between; }
+  .content-area { padding: 12px 10px; }
 }
 
 @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

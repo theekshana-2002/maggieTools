@@ -1,145 +1,195 @@
 /* ═══════════════════════════════════════════
-   RAXWO RECORD DETAILS — Premium Data View v2
+   RECORD DETAILS — Premium v3 Mobile-First
    ═══════════════════════════════════════════ */
 
-.details-overlay {
+.record-details-container {
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 20px;
   overflow-y: auto;
-  padding: 32px;
-  flex: 1;
+  -webkit-overflow-scrolling: touch;
+  max-height: 70vh;
 }
 
+@media (max-width: 768px) { .record-details-container { padding: 16px; gap: 14px; max-height: 75vh; } }
+@media (max-width: 480px) { .record-details-container { padding: 12px; gap: 12px; } }
+
+/* ── Record Header ── */
+.record-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--r-lg);
+  flex-wrap: wrap;
+}
+
+.record-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 6px 16px var(--accent-glow);
+}
+.record-icon svg { width: 24px !important; height: 24px !important; }
+
+.record-header-info { flex: 1; min-width: 0; }
+.record-id { font-size: 0.65rem; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin: 0 0 4px; }
+.record-name { font-size: 1.1875rem; font-weight: 900; color: var(--text-main); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Detail Section ── */
 .detail-section {
   background: var(--bg-card);
-  backdrop-filter: var(--blur);
   border: 1px solid var(--border);
-  border-radius: var(--r-xl);
-  padding: 28px;
-  box-shadow: var(--shadow-sm);
-  transition: all 0.3s ease;
-}
-
-.detail-section:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--accent-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
 }
 
 .detail-section-title {
-  font-size: 0.72rem;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 0.68rem;
   font-weight: 800;
   color: var(--accent);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  margin-bottom: 24px;
+  letter-spacing: 0.1em;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  background: var(--bg-glass);
 }
-
-.detail-section-title::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: linear-gradient(90deg, var(--accent-soft) 0%, transparent 100%);
-}
+.detail-section-title svg { width: 14px !important; height: 14px !important; }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
 }
 
 .detail-field {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-soft);
+}
+.detail-field:nth-child(even) { border-right: none; }
+.detail-field:nth-last-child(-n+2) { border-bottom: none; }
+
+.detail-field-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.detail-field-value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-main);
+  word-break: break-word;
+}
+
+/* Full-width fields */
+.detail-field.full {
+  grid-column: 1 / -1;
+  border-right: none;
+}
+
+/* ── Financial Summary ── */
+.financial-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+.fin-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  background: var(--bg-main);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
+}
+
+.fin-item-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.fin-item-value {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+.fin-item-value.positive { color: var(--success); }
+.fin-item-value.negative { color: var(--danger); }
+.fin-item-value.accent   { color: var(--accent); }
+
+/* ── Tools List in detail ── */
+.tools-list {
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.detail-field label {
-  font-size: 0.7rem;
-  font-weight: 800;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.detail-field p {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  color: var(--text-main);
-  padding: 14px 18px;
+.tool-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
   background: var(--bg-main);
   border-radius: var(--r-md);
   border: 1px solid var(--border-soft);
-  margin: 0;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  transition: all 0.25s ease;
+  flex-wrap: wrap;
 }
 
-.detail-field p:hover {
-  border-color: var(--border);
-  background: var(--bg-card);
-}
-
-/* ── Download PDF Button ── */
-.download-pdf-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-radius: var(--r-md);
+.tool-chip-id {
   font-weight: 800;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+.tool-chip-name {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  flex: 1;
+}
+.tool-chip-rate {
+  font-weight: 700;
+  color: var(--text-main);
   font-size: 0.875rem;
-  transition: all 0.3s ease;
-  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
-.download-pdf-btn:hover {
-  background: var(--accent-gradient);
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px var(--accent-glow);
-}
-
-.detail-field.full-width { grid-column: 1 / -1; }
-
-.detail-field.full-width p {
-  padding: 0;
-  background: transparent;
-  border: none;
-  min-height: auto;
-}
-
-.detail-field.full-width p:hover {
-  background: transparent;
-  border-color: transparent;
-}
-
-/* ── Mobile Optimization ── */
+/* ── Mobile ── */
 @media (max-width: 640px) {
-  .details-overlay {
-    padding: 20px 16px;
-    gap: 20px;
-  }
-  
-  .detail-section {
-    padding: 20px 16px;
-  }
-  
-  .detail-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .detail-field p {
-    padding: 12px 14px;
-    min-height: 48px;
-    font-size: 0.875rem;
-  }
+  .detail-grid { grid-template-columns: 1fr; }
+  .detail-field { border-right: none; }
+  .detail-field:last-child { border-bottom: none; }
+  .financial-summary { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+  .record-header { padding: 14px 16px; gap: 12px; }
+  .record-icon { width: 44px; height: 44px; border-radius: 13px; }
+  .record-name { font-size: 1.0625rem; }
+}
+
+@media (max-width: 400px) {
+  .financial-summary { grid-template-columns: 1fr; }
 }

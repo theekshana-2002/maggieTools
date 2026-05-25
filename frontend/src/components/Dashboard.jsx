@@ -288,12 +288,15 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
 
   return (
     <div className="dashboard-container">
-      <div className="dashboard-header">
-        <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Operations Dashboard</p>
-          <h1>Hello, {displayName}</h1>
+      <div className="book-header" style={{ marginBottom: '10px' }}>
+        <div className="header-title">
+          <h2>Hello, {displayName}</h2>
         </div>
-        <div className="header-controls">
+        <p className="header-subtitle">Operations Dashboard</p>
+      </div>
+      <div className="book-filters">
+        <div className="bf-top-row">
+          
           <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="period-select">
             <option value="All">All Months</option>
             {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -301,10 +304,11 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
           <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="period-select">
             {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={() => fetchAll(false)} className="refresh-btn">
+          <button onClick={() => fetchAll(false)} className="utility-icon-btn">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
             Sync
           </button>
+        
         </div>
       </div>
 

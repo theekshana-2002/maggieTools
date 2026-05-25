@@ -10,11 +10,70 @@ import { generatePDFReport } from '../utils/reportGenerator';
 import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import InvoiceForm from './InvoiceForm';
-import { Download, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send } from 'lucide-react';
+import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 
 const BookingBook = () => {
+    const [smsBuilder, setSmsBuilder] = useState({
+    bookingFee: '',
+    transport: '',
+    otherCharges: '',
+    discount: '',
+    deposit: '',
+    advancePaid: '',
+    totalPrice: '',
+    balanceDue: '',
+    policies: 'Thank you for choosing MAGGI TOOLS RENTALS!'
+  });
+
+  const getSmsString = (builder, record) => {
+    if (!record) return '';
+    const itemsList = Array.isArray(record.items) ? record.items : [];
+    const toolNo = itemsList.map(it => it.toolNumber).join(' / ') || 'Tool';
+    const accList = Array.isArray(record.accessories) ? record.accessories : [];
+    const accStr = accList.map(a => `${a.name} (x${a.quantity})`).join(', ');
+
+    const f = (val) => val ? `LKR ${Number(val).toLocaleString()}` : '-';
+
+    return `--- MAGGI TOOLS BOOKING BILL ---
+Customer: ${record.clientName || 'Customer'}
+Phone: ${record.clientPhone || 'N/A'}
+Date: ${new Date(record.pickupDate || new Date()).toLocaleDateString()} to ${new Date(record.returnDate || new Date()).toLocaleDateString()}
+
+Items Booked:
+${toolNo}
+${accStr ? 'Accessories: ' + accStr : ''}
+
+Booking Fee: ${f(builder.bookingFee)}
+Transport: ${f(builder.transport)}
+Other Charges: ${f(builder.otherCharges)}
+Deposit: ${f(builder.deposit)}
+Discount: ${f(builder.discount)}
+--------------------
+Total Price: ${f(builder.totalPrice)}
+Paid: ${f(builder.advancePaid)}
+Balance Due: ${f(builder.balanceDue)}
+
+${builder.policies}`.trim();
+  };
+
+  const initSmsBuilder = (record) => {
+    if (!record) return;
+    const builder = {
+      bookingFee: record.baseAmount || record.totalAmount || '',
+      transport: record.transportCharge || '',
+      otherCharges: record.extraCharges || '',
+      discount: record.discount || '',
+      deposit: record.securityDeposit || '',
+      totalPrice: record.totalAmount || '',
+      advancePaid: record.advancePayment || '',
+      balanceDue: record.balanceAmount || '',
+      policies: 'Thank you for choosing MAGGI TOOLS RENTALS!'
+    };
+    setSmsBuilder(builder);
+    setCustomSmsText(getSmsString(builder, record));
+  };
   const userRole = localStorage.getItem('raxwo_user_role');
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
@@ -274,7 +333,7 @@ const BookingBook = () => {
     e.stopPropagation();
     if (!record.clientPhone) return alert('No phone number found for this customer.');
     setSmsRecord(record);
-    setCustomSmsText('');
+    initSmsBuilder(record);
     setSmsModalOpen(true);
   };
 
@@ -344,6 +403,13 @@ const BookingBook = () => {
       if (Array.isArray(formData)) {
         await bookingAPI.bulkCreate(formData);
         setSuccess(`${formData.length} tools booked successfully.`);
+        const firstBooking = res.data.bookings ? res.data.bookings[0] : res.data[0];
+        if (firstBooking) {
+            setAutoInvoice(firstBooking.invoiceDetails);
+            setSmsRecord(firstBooking);
+            initSmsBuilder(firstBooking);
+            setAutoInvoiceModalOpen(true);
+        }
       } else if (editingItem && editingItem._id) {
         await bookingAPI.update(editingItem._id, formData);
         setSuccess('Booking updated successfully.');
@@ -576,8 +642,8 @@ const BookingBook = () => {
                 <option value="Returned">Returned</option>
                 <option value="Paid & Returned">Paid &amp; Returned</option>
                 <option value="Unpaid & Returned">Unpaid &amp; Returned</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="Cancelled">Cancelled</option>
+                
+                
               </select>
             ),
             ACTION: (
@@ -625,7 +691,7 @@ const BookingBook = () => {
             )
           }))}
           loading={loading}
-          onRowClick={(record) => { setSelectedRecord(record.rawData || record); setViewModalOpen(true); }}
+          
         />
       </div>
 
@@ -697,14 +763,53 @@ const BookingBook = () => {
             <input type="text" readOnly value={smsRecord?.clientName || ''} style={{ background: 'var(--bg-main)' }} />
           </div>
           <div className="form-group">
-            <label>Custom Message (Optional)</label>
+            <label>Live SMS Preview</label>
+            
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginBottom: '15px' }}>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Booking Fee</label>
+               <input type="number" placeholder="Booking Fee" value={smsBuilder.bookingFee} onChange={e => { const nb = {...smsBuilder, bookingFee: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Transport</label>
+               <input type="number" placeholder="Transport" value={smsBuilder.transport} onChange={e => { const nb = {...smsBuilder, transport: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Other Charges</label>
+               <input type="number" placeholder="Other Charges" value={smsBuilder.otherCharges} onChange={e => { const nb = {...smsBuilder, otherCharges: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+                            <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Deposit</label>
+               <input type="number" placeholder="Deposit" value={smsBuilder.deposit} onChange={e => { const nb = {...smsBuilder, deposit: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Discount</label>
+               <input type="number" placeholder="Discount" value={smsBuilder.discount} onChange={e => { const nb = {...smsBuilder, discount: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Total Price</label>
+               <input type="number" placeholder="Total" value={smsBuilder.totalPrice} onChange={e => { const nb = {...smsBuilder, totalPrice: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Paid</label>
+               <input type="number" placeholder="Paid" value={smsBuilder.advancePaid} onChange={e => { const nb = {...smsBuilder, advancePaid: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Balance</label>
+               <input type="number" placeholder="Balance" value={smsBuilder.balanceDue} onChange={e => { const nb = {...smsBuilder, balanceDue: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+           </div>
+           <div style={{ marginBottom: '15px' }}>
+             <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Policies / Footer Note</label>
+             <input type="text" value={smsBuilder.policies} onChange={e => { const nb = {...smsBuilder, policies: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+           </div>
+           
             <textarea 
-              rows={4} 
-              placeholder="Leave blank to use the default follow-up template..."
+              rows={8} 
               value={customSmsText}
               onChange={e => setCustomSmsText(e.target.value)}
+              style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}
             />
-            <small style={{ color: 'var(--text-dim)', marginTop: '4px', display: 'block' }}>If blank, the automated template from Settings will be used.</small>
           </div>
           <div className="modal-actions" style={{ marginTop: '20px' }}>
             <button className="cancel-btn" onClick={() => setSmsModalOpen(false)}>Cancel</button>
@@ -718,7 +823,64 @@ const BookingBook = () => {
       {/* ── Auto Invoice Modal ── */}
       <Modal isOpen={autoInvoiceModalOpen} onClose={() => { setAutoInvoiceModalOpen(false); setAutoInvoice(null); }} title="Generate Professional Bill" wide={true}>
         <div style={{ marginBottom: '15px', background: 'var(--success-soft)', color: 'var(--success)', padding: '10px 15px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-          <CheckCircle size={18} /> Booking successful! An automated SMS has been sent to the customer. You can now edit and print the final bill.
+          <CheckCircle size={18} /> Booking successful! Review and send the SMS to the customer below.
+        </div>
+        
+        <div className="hire-form" style={{ marginBottom: '20px', padding: '15px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px' }}>
+           <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-main)' }}>Send SMS Notification</h4>
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+             
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginBottom: '15px' }}>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Booking Fee</label>
+               <input type="number" placeholder="Booking Fee" value={smsBuilder.bookingFee} onChange={e => { const nb = {...smsBuilder, bookingFee: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Transport</label>
+               <input type="number" placeholder="Transport" value={smsBuilder.transport} onChange={e => { const nb = {...smsBuilder, transport: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Other Charges</label>
+               <input type="number" placeholder="Other Charges" value={smsBuilder.otherCharges} onChange={e => { const nb = {...smsBuilder, otherCharges: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+                            <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Deposit</label>
+               <input type="number" placeholder="Deposit" value={smsBuilder.deposit} onChange={e => { const nb = {...smsBuilder, deposit: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Discount</label>
+               <input type="number" placeholder="Discount" value={smsBuilder.discount} onChange={e => { const nb = {...smsBuilder, discount: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Total Price</label>
+               <input type="number" placeholder="Total" value={smsBuilder.totalPrice} onChange={e => { const nb = {...smsBuilder, totalPrice: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Paid</label>
+               <input type="number" placeholder="Paid" value={smsBuilder.advancePaid} onChange={e => { const nb = {...smsBuilder, advancePaid: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+             <div>
+               <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Balance</label>
+               <input type="number" placeholder="Balance" value={smsBuilder.balanceDue} onChange={e => { const nb = {...smsBuilder, balanceDue: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+             </div>
+           </div>
+           <div style={{ marginBottom: '15px' }}>
+             <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Policies / Footer Note</label>
+             <input type="text" value={smsBuilder.policies} onChange={e => { const nb = {...smsBuilder, policies: e.target.value}; setSmsBuilder(nb); setCustomSmsText(getSmsString(nb, smsRecord)); }} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
+           </div>
+           
+             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+               <textarea 
+                 value={customSmsText} 
+                 onChange={e => setCustomSmsText(e.target.value)}
+                 rows={8} 
+                 style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid var(--border)', fontFamily: 'monospace', fontSize: '0.85rem' }}
+               />
+               <button type="button" className="submit-btn" onClick={handleSmsSubmit} disabled={loading} style={{ whiteSpace: 'nowrap', padding: '0 20px', height: '42px', background: 'var(--accent)', color: '#fff' }}>
+                  {loading ? 'Sending...' : 'Send SMS'}
+               </button>
+             </div>
+           </div>
         </div>
         <InvoiceForm 
           initialData={autoInvoice} 

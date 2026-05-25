@@ -93,7 +93,7 @@ const ExtraIncomeForm = ({ onSubmit, onCancel, initialData, categories = [] }) =
         </div>
         <div className="modal-actions">
           <button type="button" className="cancel-btn" onClick={onCancel}>Cancel</button>
-          <button type="submit" className="submit-btn">{initialData ? 'Update Income' : 'Add Income'}</button>
+          <button type="submit" className="add-btn">{initialData ? 'Update Income' : 'Add Income'}</button>
         </div>
       </div>
     </form>
@@ -216,34 +216,37 @@ const ExtraIncome = () => {
         </div>
       </div>
 
-      <div className="book-filters">
-        <div className="search-box">
-          <Search className="search-icon" size={20} />
-          <input 
-            type="text" 
-            placeholder="Search description, category..." 
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="filter-actions">
+      <div className="book-filters" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flex: 1, minWidth: '300px' }}>
+          <div className="search-box-unified" style={{ flex: 1, maxWidth: '400px' }}>
+            <Search className="search-icon" size={20} />
+            <input 
+              type="text" 
+              placeholder="Search description, category..." 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
           <input 
             type="month" 
             className="date-filter"
             value={selectedMonth} 
             onChange={e => setSelectedMonth(e.target.value)} 
           />
-          <button className="action-icon-btn btn-refresh" onClick={fetchRecords} title="Refresh">
-            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
-          </button>
-          <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Download PDF">
-            <Download size={18} />
-          </button>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           {canManage && (
             <button className="add-btn" onClick={() => { setEditingRecord(null); setIsModalOpen(true); }}>
               <PlusCircle size={18} /> <span>Add Income</span>
             </button>
           )}
+          <button className="utility-icon-btn" onClick={fetchRecords} title="Refresh">
+            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
+          </button>
+          <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Download PDF">
+            <Download size={18} />
+          </button>
         </div>
       </div>
       

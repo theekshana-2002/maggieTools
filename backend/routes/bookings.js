@@ -16,8 +16,7 @@ const { authMiddleware } = require('../middleware/authMiddleware');
 async function buildSMSMessage(templateField, bookingData) {
   try {
     const settings = await Setting.findOne();
-    const template = settings?.[templateField] || '';
-    if (!template) return null;
+    const template = settings?.[templateField] || {detailedBill};
 
     const itemsList = Array.isArray(bookingData.items) ? bookingData.items : [];
     const toolNo = itemsList.map(it => it.toolNumber).join(' / ') || 'Tool';
@@ -26,7 +25,7 @@ async function buildSMSMessage(templateField, bookingData) {
     const accStr = accList.map(a => `${a.name} (x${a.quantity})`).join(', ');
 
     const detailedBill = `
---- RAXWO BOOKING BILL ---
+--- MAGGI TOOLS BOOKING BILL ---
 Customer: ${bookingData.clientName || 'Customer'}
 Phone: ${bookingData.clientPhone || 'N/A'}
 NIC: ${bookingData.clientNic || 'N/A'}
@@ -42,7 +41,7 @@ Advance Paid: LKR ${(bookingData.advancePayment || 0).toLocaleString()}
 Balance Due: LKR ${(bookingData.balanceAmount || 0).toLocaleString()}
 
 Terms & Conditions apply.
-Thank you for choosing ${settings?.companyName || 'RAXWO TOOL RENTALS'}!
+Thank you for choosing ${settings?.companyName || 'MAGGI TOOLS RENTALS'}!
     `.trim();
 
     // If template has {detailedBill}, use it. Else append it.
@@ -263,9 +262,12 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     // 3. Handle Other Side Effects (Invoice, SMS, etc)
-    await processBookingSideEffects(newBooking.toObject());
+    
+    const sideEffects = await processBookingSideEffects(newBooking.toObject());
+    const responseObj = newBooking.toObject();
+    responseObj.generatedSms = sideEffects?.generatedSms;
+    res.status(201).json(responseObj);
 
-    res.status(201).json(newBooking);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -398,12 +400,15 @@ async function processBookingSideEffects(newBooking) {
       console.log('DEBUG: Payment record synced for booking:', newBooking.bookingId);
       // 4. Accessory Stock update now handled explicitly in routes (POST/PUT)
       // 5. Send Confirmation SMS using customizable template
+      
+      
+      let generatedSms = '';
       if (newBooking.clientPhone) {
-        const msg = await buildSMSMessage('smsBookingTemplate', newBooking);
-        if (msg) {
-          await sendSMS(newBooking.clientPhone, msg);
-        }
+        generatedSms = await buildSMSMessage('smsBookingTemplate', newBooking);
       }
+      return { generatedSms };
+
+
     } catch (payErr) {
       console.error('Failed to create payment record:', payErr.message);
     }
@@ -450,9 +455,12 @@ router.post('/bulk', authMiddleware, async (req, res) => {
         
         // Process side effects (invoice, client, payment, stock)
         // We await this to ensure sequential processing
-        await processBookingSideEffects(saved.toObject());
         
-        results.push(saved);
+        const sideEffects = await processBookingSideEffects(saved.toObject());
+        const obj = saved.toObject();
+        obj.generatedSms = sideEffects?.generatedSms;
+        results.push(obj);
+
       } catch (itemErr) {
         console.error(`[BULK] Failed at item ${i+1}:`, itemErr.message);
         // Continue with other items or throw if critical

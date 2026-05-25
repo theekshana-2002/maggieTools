@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Download, TrendingUp, TrendingDown, Wallet, FileText, RefreshCw, Package } from 'lucide-react';
+import { Download, TrendingUp, TrendingDown, Wallet, FileText, RefreshCw, Package, Calendar, Filter, Coins, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { hireAPI, bookingAPI, salaryAPI, paymentAPI, extraIncomeAPI, expenseAPI, toolAPI } from '../services/api';
 import logoUrl from '../logo.png';
 import '../styles/report.css';
@@ -54,10 +54,7 @@ const FinancialReport = ({ appSettings }) => {
   useEffect(() => {
     fetchAll();
 
-    // Polling as a fallback (every 10 seconds)
     const interval = setInterval(() => fetchAll(true), 10000);
-
-    // Real-time update listeners
     const handleRefresh = () => fetchAll(true);
 
     window.addEventListener('focus', handleRefresh);
@@ -97,8 +94,6 @@ const FinancialReport = ({ appSettings }) => {
     const fExtraIncome = filterByPeriod(data.extraIncome, 'date');
     const fExpenses = filterByPeriod(data.expenses, 'date');
 
-    // Tally Rental Revenue correctly from primary records (Hires + Bookings)
-    // fHires uses .totalAmount or .billAmount, fBookings uses .amount or .totalAmount
     const totalHireRevenue = fHires.reduce((s, r) => s + (parseFloat(r.totalAmount || r.billAmount) || 0), 0);
     const totalBookingRevenue = fBookings.reduce((s, r) => s + (parseFloat(r.totalAmount || r.amount) || 0), 0);
     const totalRentalRevenue = totalHireRevenue + totalBookingRevenue;
@@ -127,15 +122,11 @@ const FinancialReport = ({ appSettings }) => {
         }
       }, 0);
 
-
     const totalIncome = totalRentalRevenue + totalExtraIncome;
     const totalExpense = totalSalary + totalOtherExp + totalLeasing;
     const netProfit = totalIncome - totalExpense;
-
-    // Actual Cash in Hand: Actual Payments Received + Extra Income - Expenses
     const cashBalance = (totalPayments + totalExtraIncome) - totalExpense;
 
-    // Group payments by payment method for the breakdown
     const paymentsByMethod = fPayments.reduce((acc, r) => {
       const method = r.paymentMethod || 'Cash';
       const amount = parseFloat(r.takenAmount || r.paidAmount) || 0;
@@ -172,10 +163,7 @@ const FinancialReport = ({ appSettings }) => {
       const element = reportRef.current;
       if (!element) return;
 
-      // Add class to body to ensure CSS selectors like .is-downloading #report-document work
       document.body.classList.add('is-downloading');
-
-      // Small delay to allow the layout to recalculate
       await new Promise(resolve => setTimeout(resolve, 300));
 
       const canvas = await html2canvas(element, {
@@ -197,7 +185,6 @@ const FinancialReport = ({ appSettings }) => {
       let heightLeft = pdfHeight;
       let position = 0;
 
-      // Add pages
       pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight, undefined, 'FAST');
       heightLeft -= pageHeight;
 
@@ -220,7 +207,6 @@ const FinancialReport = ({ appSettings }) => {
   };
 
   const handleExportExcel = () => {
-    // Generate simple CSV
     const rows = [
       ['Financial Report & Analytics'],
       ['Period', periodLabel],
@@ -272,85 +258,135 @@ const FinancialReport = ({ appSettings }) => {
 
   return (
     <div className="report-container">
-
+      {/* Dynamic Action Controls */}
       <div className="report-controls">
-        <label>Month</label>
-        <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
-          <option value="All">All Months</option>
-          {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
+        <div className="control-group">
+          <div className="select-wrapper">
+            <Calendar size={18} />
+            <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
+              <option value="All">All Months</option>
+              {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
 
-        <label>Year</label>
-        <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
-          {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
+          <div className="select-wrapper">
+            <Filter size={18} />
+            <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
+              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+        </div>
 
         <div className="report-divider" />
 
-        <button className="refresh-btn-alt" onClick={() => fetchAll(false)}>
-          <RefreshCw size={16} className={refreshing ? 'spinner' : ''} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
+        <div className="report-actions-group">
+          <button className="utility-icon-btn" onClick={() => fetchAll(false)} title="Refresh Data" style={{ height: '44px' }}>
+            <RefreshCw size={16} className={refreshing ? 'spinner' : ''} />
+            <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>{refreshing ? 'Reloading...' : 'Refresh'}</span>
+          </button>
 
-        <div className="report-export-group">
-          <button className="download-btn-premium" onClick={handleExportExcel} disabled={downloading} style={{ background: '#10B981', marginRight: '8px' }}>
-            <FileText size={18} />
-            <span>Excel</span>
-          </button>
-          <button className="download-btn-premium" onClick={handleDownload} disabled={downloading}>
-            <Download size={18} />
-            <span>{downloading ? 'Preparing...' : 'PDF'}</span>
-          </button>
+          <div className="report-export-group">
+            <button className="download-btn-premium btn-excel btn-glow" onClick={handleExportExcel} disabled={downloading}>
+              <FileText size={18} />
+              <span>Export CSV</span>
+            </button>
+            <button className="download-btn-premium btn-pdf btn-glow" onClick={handleDownload} disabled={downloading}>
+              <Download size={18} />
+              <span>{downloading ? 'Preparing PDF...' : 'Download PDF'}</span>
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Main Report Document Sheet */}
       <div id="report-document" ref={reportRef}>
+        {/* Document Corporate Header */}
+        <div className="report-header">
+          <div className="report-header-left">
+            <img src={logoUrl} alt="Maggi Tools Logo" className="report-logo" />
+            <div className="report-title">
+              <h2>MAGGI TOOLS RENTALS</h2>
+              <p>Industrial Machinery, Tools &amp; Logistics ERP</p>
+            </div>
+          </div>
+          <div className="report-contact-info">
+            <strong>Maggi Tools Rentals (Pvt) Ltd</strong><br />
+            No. 458/A, Kandy Road, Kiribathgoda<br />
+            accounts@maggitools.lk · +94 11 485 9632
+          </div>
+        </div>
+        
+        <div className="report-divider-line" />
 
-
-
+        {/* Report Metadata Block */}
         <div className="report-meta-section">
-          <h3 className="report-doc-title">Financial Report &amp; Analytics</h3>
+          <h3 className="report-doc-title">Statement of Accounts</h3>
           <div className="report-meta-details">
-            <div><strong>Period:</strong> {periodLabel}</div>
-            <div><strong>Generated:</strong> {new Date().toLocaleString()}</div>
-            <div><strong>Currency:</strong> LKR</div>
+            <div>Reporting Period: <strong>{periodLabel}</strong></div>
+            <div>Generated: <strong>{new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</strong></div>
+            <div>Currency: <strong>LKR</strong></div>
           </div>
         </div>
 
+        {/* Premium High-Fidelity KPI Cards */}
         <div className="report-kpi-grid">
-          <div className="kpi-card" style={{ '--kpi-color': '#2563EB' }}>
+          <div className="kpi-card income" style={{ '--kpi-color': '#10B981' }}>
+            <div className="kpi-icon-wrapper">
+              <TrendingUp size={20} />
+            </div>
             <div className="kpi-label">Total Revenue</div>
             <div className="kpi-value">LKR {stats.totalIncome.toLocaleString()}</div>
-            <div className="kpi-sub">Rental + Extra Income</div>
+            <div className="kpi-sub">Rentals + Extra Income</div>
           </div>
-          <div className="kpi-card" style={{ '--kpi-color': '#EF4444' }}>
+
+          <div className="kpi-card expense" style={{ '--kpi-color': '#EF4444' }}>
+            <div className="kpi-icon-wrapper">
+              <TrendingDown size={20} />
+            </div>
             <div className="kpi-label">Total Outgoings</div>
             <div className="kpi-value">LKR {stats.totalExpense.toLocaleString()}</div>
-            <div className="kpi-sub">Staff, Lease, Other Expenses</div>
+            <div className="kpi-sub">Wages, Leases &amp; Expenses</div>
           </div>
-          <div className="kpi-card" style={{ '--kpi-color': '#F59E0B' }}>
-            <div className="kpi-label">Rental Revenue</div>
-            <div className="kpi-value">LKR {stats.totalRentalRevenue.toLocaleString()}</div>
-            <div className="kpi-sub">{stats.fHires.length + stats.fBookings.length} total rental entries</div>
-          </div>
-          <div className="kpi-card" style={{ '--kpi-color': '#10B981' }}>
-            <div className="kpi-label">Payments Received</div>
-            <div className="kpi-value">LKR {stats.totalPayments.toLocaleString()}</div>
-            <div className="kpi-sub">Cash actually collected</div>
-          </div>
-          <div className="kpi-card" style={{ '--kpi-color': '#8B5CF6' }}>
-            <div className="kpi-label">Cash Balance</div>
-            <div className="kpi-value">LKR {stats.cashBalance.toLocaleString()}</div>
-            <div className="kpi-sub">Actual Cash in Hand</div>
-          </div>
-          <div className={`kpi-card ${stats.netProfit >= 0 ? 'kpi-profit' : 'kpi-loss'}`}
-            style={{ '--kpi-color': stats.netProfit >= 0 ? '#10B981' : '#EF4444' }}>
+
+          <div className={`kpi-card profit ${stats.netProfit >= 0 ? '' : 'loss'}`} 
+               style={{ '--kpi-color': stats.netProfit >= 0 ? '#10B981' : '#EF4444' }}>
+            <div className="kpi-icon-wrapper">
+              {stats.netProfit >= 0 ? <ArrowUpRight size={20} /> : <ArrowDownRight size={20} />}
+            </div>
             <div className="kpi-label">Net Profit / Loss</div>
             <div className="kpi-value">LKR {stats.netProfit.toLocaleString()}</div>
-            <div className="kpi-sub">Total Income − Total Expenses</div>
+            <div className="kpi-sub">Accrued Profit Margin</div>
+          </div>
+
+          <div className="kpi-card cash" style={{ '--kpi-color': '#2563EB' }}>
+            <div className="kpi-icon-wrapper">
+              <Package size={20} />
+            </div>
+            <div className="kpi-label">Rental Revenue</div>
+            <div className="kpi-value">LKR {stats.totalRentalRevenue.toLocaleString()}</div>
+            <div className="kpi-sub">{stats.fHires.length + stats.fBookings.length} Active Work Entries</div>
+          </div>
+
+          <div className="kpi-card cash" style={{ '--kpi-color': '#8B5CF6' }}>
+            <div className="kpi-icon-wrapper">
+              <Coins size={20} />
+            </div>
+            <div className="kpi-label">Payments Received</div>
+            <div className="kpi-value">LKR {stats.totalPayments.toLocaleString()}</div>
+            <div className="kpi-sub">Total cash/cheque collected</div>
+          </div>
+
+          <div className="kpi-card cash" style={{ '--kpi-color': '#F59E0B' }}>
+            <div className="kpi-icon-wrapper">
+              <Wallet size={20} />
+            </div>
+            <div className="kpi-label">Cash Balance</div>
+            <div className="kpi-value">LKR {stats.cashBalance.toLocaleString()}</div>
+            <div className="kpi-sub">Actual Liquid Cash on Hand</div>
           </div>
         </div>
 
+        {/* Detailed Financial Breakdown Table */}
         <div className="report-section">
           <div className="report-section-title">Income &amp; Expense Breakdown</div>
           <div className="report-section-table-wrapper">
@@ -380,7 +416,7 @@ const FinancialReport = ({ appSettings }) => {
                   <td>{stats.totalIncome > 0 ? ((stats.totalExtraIncome / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
                 </tr>
                 <tr>
-                  <td><span className="cat-badge cat-revenue" style={{ background: '#8B5CF6', color: '#fff' }}>Payments Received</span></td>
+                  <td><span className="cat-badge cat-info">Payments Received</span></td>
                   <td>Info</td>
                   <td>{stats.fPayments.length}</td>
                   <td className="amount-cell amount-pos">+ {stats.totalPayments.toLocaleString()}</td>
@@ -388,12 +424,12 @@ const FinancialReport = ({ appSettings }) => {
                 </tr>
                 {Object.entries(stats.paymentsByMethod).map(([method, amount], idx) => (
                   amount > 0 ? (
-                    <tr key={`pm-${idx}`} style={{ backgroundColor: 'var(--bg-main)', fontSize: '0.9rem' }}>
-                      <td style={{ paddingLeft: '30px' }}>↳ {method}</td>
-                      <td>Info</td>
-                      <td>—</td>
-                      <td className="amount-cell amount-pos">+ {amount.toLocaleString()}</td>
-                      <td>{stats.totalPayments > 0 ? ((amount / stats.totalPayments) * 100).toFixed(1) + '%' : '—'}</td>
+                    <tr key={`pm-${idx}`} style={{ backgroundColor: 'var(--bg-main)', fontSize: '0.85rem' }}>
+                      <td style={{ paddingLeft: '32px', color: 'var(--text-dim)' }}>↳ {method}</td>
+                      <td style={{ color: 'var(--text-dim)' }}>Info</td>
+                      <td style={{ color: 'var(--text-dim)' }}>—</td>
+                      <td className="amount-cell amount-pos" style={{ opacity: 0.95 }}>+ {amount.toLocaleString()}</td>
+                      <td style={{ color: 'var(--text-dim)' }}>{stats.totalPayments > 0 ? ((amount / stats.totalPayments) * 100).toFixed(1) + '%' : '—'}</td>
                     </tr>
                   ) : null
                 ))}
@@ -407,7 +443,7 @@ const FinancialReport = ({ appSettings }) => {
                 <tr>
                   <td><span className="cat-badge cat-expense">Leasing Payments</span></td>
                   <td>Expense</td>
-                  <td>{data.tools.filter(t => t.hasLeasing).length} units</td>
+                  <td>{data.tools.filter(t => t.hasLeasing).length} Units</td>
                   <td className="amount-cell amount-neg">− {stats.totalLeasing.toLocaleString()}</td>
                   <td>{stats.totalIncome > 0 ? ((stats.totalLeasing / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
                 </tr>
@@ -419,7 +455,7 @@ const FinancialReport = ({ appSettings }) => {
                   <td>{stats.totalIncome > 0 ? ((stats.totalOtherExp / stats.totalIncome) * 100).toFixed(1) + '%' : '—'}</td>
                 </tr>
                 <tr className="total-row">
-                  <td colSpan={3}><strong>Net Profit / Loss</strong></td>
+                  <td colSpan={3}><strong>Net profit margin</strong></td>
                   <td className={`amount-cell ${stats.netProfit >= 0 ? 'amount-pos' : 'amount-neg'}`}>
                     <strong>LKR {stats.netProfit.toLocaleString()}</strong>
                   </td>
@@ -430,49 +466,57 @@ const FinancialReport = ({ appSettings }) => {
           </div>
         </div>
 
-        {stats.fHires.length > 0 && (
-          <div className="report-section">
-            <div className="report-section-title">Recent Rental Transactions</div>
-            <div className="transactions-list">
-              {stats.fHires.slice(0, 6).map((h, i) => (
-                <div key={i} className="txn-item">
-                  <div className="txn-dot" style={{ background: '#2563EB' }}></div>
-                  <div className="txn-info">
-                    <p>{h.client || 'Customer'} — {h.tool || h.vehicle || 'Tool ID'}</p>
-                    <span>{h.city || '—'} · {h.date ? new Date(h.date).toLocaleDateString() : '—'}</span>
+        {/* Split Recent Transactions Feed Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }}>
+          {stats.fHires.length > 0 && (
+            <div className="report-section" style={{ marginBottom: 0 }}>
+              <div className="report-section-title">Recent Rental Entries</div>
+              <div className="transactions-list">
+                {stats.fHires.slice(0, 6).map((h, i) => (
+                  <div key={i} className="txn-item">
+                    <div className="txn-icon-wrapper" style={{ color: 'var(--accent)' }}>
+                      <Package size={18} />
+                    </div>
+                    <div className="txn-info">
+                      <p>{h.client || 'Customer'} — {h.tool || h.vehicle || 'Equipment'}</p>
+                      <span>{h.city || 'Colombo'} · {h.date ? new Date(h.date).toLocaleDateString() : '—'}</span>
+                    </div>
+                    <div className="txn-amount amount-pos">
+                      LKR {parseFloat(h.amount || 0).toLocaleString()}
+                    </div>
                   </div>
-                  <div className="txn-amount" style={{ color: '#2563EB' }}>
-                    LKR {parseFloat(h.amount || 0).toLocaleString()}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {stats.fSalaries.length > 0 && (
-          <div className="report-section">
-            <div className="report-section-title">Staff Salary Disbursements</div>
-            <div className="transactions-list">
-              {stats.fSalaries.slice(0, 6).map((s, i) => (
-                <div key={i} className="txn-item">
-                  <div className="txn-dot" style={{ background: '#F59E0B' }}></div>
-                  <div className="txn-info">
-                    <p>{s.employee || 'Staff'} — {s.role || 'Role'}</p>
-                    <span>{s.month}</span>
+          {stats.fSalaries.length > 0 && (
+            <div className="report-section" style={{ marginBottom: 0 }}>
+              <div className="report-section-title">Staff Salary Payments</div>
+              <div className="transactions-list">
+                {stats.fSalaries.slice(0, 6).map((s, i) => (
+                  <div key={i} className="txn-item">
+                    <div className="txn-icon-wrapper" style={{ color: 'var(--danger)' }}>
+                      <Wallet size={18} />
+                    </div>
+                    <div className="txn-info">
+                      <p>{s.employee || 'Staff'} — {s.role || 'Wages'}</p>
+                      <span>{s.month}</span>
+                    </div>
+                    <div className="txn-amount amount-neg">
+                      LKR {parseFloat(s.netPay || 0).toLocaleString()}
+                    </div>
                   </div>
-                  <div className="txn-amount" style={{ color: '#EF4444' }}>
-                    LKR {parseFloat(s.netPay || 0).toLocaleString()}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
+        {/* Corporate Confidential Footer */}
         <div className="report-footer">
-          <span>{appSettings?.companyName || 'RAXWO Tool Rentals'} Management System · Confidential</span>
-          <span>Generated on {new Date().toLocaleString()}</span>
+          <span>{appSettings?.companyName || 'MAGGI TOOLS RENTALS'} Management System · CONFIDENTIAL</span>
+          <span>Generated: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</span>
         </div>
       </div>
     </div>

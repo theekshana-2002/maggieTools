@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+const fs = require('fs');
+
+const code = `import React, { useState, useEffect, useMemo } from 'react';
 import { History, User, Calendar, Clock, ArrowRight, Filter, Search, Tag, Download, RefreshCw, Activity, ShieldCheck, Database, FileText, Zap } from 'lucide-react';
 import { hireAPI, bookingAPI, invoiceAPI, extraIncomeAPI, expenseAPI } from '../services/api';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
@@ -83,7 +85,7 @@ const AuditLog = () => {
         <div className="audit-action-cell">
           <div>
             <p className="audit-ref">Modified: <strong>{log._ref}</strong></p>
-            <span className={`audit-badge badge-${log._type.replace(/\s+/g, '-').toLowerCase()}`}>
+            <span className={\`audit-badge badge-\${log._type.replace(/\\s+/g, '-').toLowerCase()}\`}>
               {log._type}
             </span>
           </div>
@@ -148,31 +150,11 @@ const AuditLog = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginLeft: 'auto' }}>
-          <button className="utility-icon-btn" onClick={fetchLogs} title="Refresh" style={{ height: '44px', width: '44px' }}>
+          <button className="utility-icon-btn" onClick={fetchLogs} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
-          <button 
-            className="add-btn btn-glow" 
-            onClick={handleExportPDF} 
-            title="Export PDF Report"
-            style={{ 
-              height: '44px', 
-              padding: '0 20px', 
-              background: 'linear-gradient(135deg, var(--accent), var(--accent-2))', 
-              color: '#fff', 
-              border: 'none', 
-              borderRadius: 'var(--r-md)', 
-              fontWeight: '800', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              boxShadow: '0 4px 14px var(--accent-soft)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-          >
+          <button className="action-icon-btn btn-print" onClick={handleExportPDF} title="Download PDF">
             <Download size={18} />
-            <span>Export Report</span>
           </button>
         </div>
       </div>
@@ -192,3 +174,7 @@ const AuditLog = () => {
 };
 
 export default AuditLog;
+`;
+
+fs.writeFileSync('frontend/src/components/AuditLog.jsx', code);
+console.log('Fixed AuditLog completely');

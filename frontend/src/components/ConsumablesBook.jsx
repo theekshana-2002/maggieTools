@@ -118,22 +118,29 @@ const ConsumablesBook = () => {
 
   return (
     <div className="book-container">
-      <div className="dashboard-header">
-        <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Inventory & Operations</p>
-          <h1>Tool Stock & Consumables</h1>
+      <div className="book-header" style={{ marginBottom: '10px' }}>
+        <div className="header-title">
+          <h2>Tool Stock & Consumables</h2>
         </div>
-        <div className="header-controls">
-           <div className="search-box">
+        <p className="header-subtitle">Inventory & Operations</p>
+      </div>
+      <div className="book-filters">
+        <div className="bf-top-row">
+          
+           <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
              <Search className="search-icon" size={18} />
              <input type="text" placeholder="Search logs..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
            </div>
-           <button className="action-icon-btn btn-refresh" onClick={fetchRecords} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+            <button className="utility-icon-btn" onClick={fetchRecords} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+          </div>
+           
            {canManage && (
              <button className="add-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
                <PlusCircle size={18} /> Add Entry
              </button>
            )}
+        
         </div>
       </div>
 

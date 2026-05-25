@@ -140,22 +140,29 @@ const QuotationBook = () => {
   return (
     <div className="book-container">
       
-      <div className="dashboard-header">
-        <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Sales & Proposals</p>
-          <h1>Service Quotations</h1>
+      <div className="book-header" style={{ marginBottom: '10px' }}>
+        <div className="header-title">
+          <h2>Service Quotations</h2>
         </div>
-        <div className="header-controls">
-           <div className="search-box">
+        <p className="header-subtitle">Sales & Proposals</p>
+      </div>
+      <div className="book-filters">
+        <div className="bf-top-row">
+          
+           <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
              <Search className="search-icon" size={18} />
              <input type="text" placeholder="Search quotes..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
            </div>
-           <button className="action-icon-btn btn-refresh" onClick={fetchQuotations} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+            <button className="utility-icon-btn" onClick={fetchQuotations} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+          </div>
+           
            {canManage && (
-             <button className="action-btn btn-primary" onClick={handleAddNew}>
+             <button className="add-btn" onClick={handleAddNew}>
                <PlusCircle size={18} /> New Quotation
              </button>
            )}
+        
         </div>
       </div>
 

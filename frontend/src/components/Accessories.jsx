@@ -95,7 +95,8 @@ const Accessories = () => {
 
       {/* ── Filter Bar ── */}
       <div className="book-filters">
-        <div className="search-box">
+        <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
           <Search className="search-icon" size={18} />
           <input
             type="text"
@@ -104,10 +105,12 @@ const Accessories = () => {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="filter-actions">
-          <button className="theme-toggle-btn" onClick={fetchData} title="Refresh">
+            <button className="utility-icon-btn" onClick={fetchData} title="Refresh">
             <RefreshCw size={18} className={loading ? 'spinner' : ''} />
           </button>
+          </div>
+        <div className="filter-actions">
+          
           <button className="add-btn" onClick={() => {
             setEditingItem(null);
             setFormData({ number: '', name: '', category: '', price: '', stock: '', unit: 'pcs', description: '' });

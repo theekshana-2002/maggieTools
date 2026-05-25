@@ -141,23 +141,29 @@ const SalaryBook = () => {
 
   return (
     <div className="book-container">
-      <div className="dashboard-header">
+            <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
         <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Payroll & Wages</p>
-          <h1>Staff Salary Book</h1>
+          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Payroll &amp; Wages</p>
+          <h1 style={{ margin: 0 }}>Staff Salary Book</h1>
         </div>
-        <div className="header-controls">
-           <div className="search-box">
-             <Calendar size={18} className="search-icon" />
-             <select value={currentMonth} onChange={e => setTargetMonth(`${e.target.value} ${currentYear}`)} style={{ border: 'none', background: 'none', fontWeight: 700, cursor: 'pointer' }}>
-               {monthNames.map(m => <option key={m} value={m}>{m}</option>)}
-             </select>
-             <select value={currentYear} onChange={e => setTargetMonth(`${currentMonth} ${e.target.value}`)} style={{ border: 'none', background: 'none', fontWeight: 700, cursor: 'pointer' }}>
-               {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-             </select>
-           </div>
-           <button className="theme-toggle-btn" onClick={handleExportPDF} title="Download Payroll Report"><Download size={18} /></button>
-           <button className="theme-toggle-btn" onClick={fetchBaseData}><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+          <div className="search-box" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '0 12px', height: '44px', background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', minWidth: '0' }}>
+            <Calendar size={18} className="search-icon" style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
+            <select value={currentMonth} onChange={e => setTargetMonth(`${e.target.value} ${currentYear}`)} style={{ border: 'none', background: 'none', fontWeight: 700, cursor: 'pointer', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', minWidth: '0' }}>
+              {monthNames.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <select value={currentYear} onChange={e => setTargetMonth(`${currentMonth} ${e.target.value}`)} style={{ border: 'none', background: 'none', fontWeight: 700, cursor: 'pointer', color: 'var(--text-main)', fontSize: '0.9rem', outline: 'none', minWidth: '0' }}>
+              {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+
+          <button className="utility-icon-btn" onClick={handleExportPDF} title="Download Payroll Report" style={{ height: '44px', width: '44px', minWidth: '44px', flexShrink: 0 }}>
+            <Download size={18} />
+          </button>
+          <button className="utility-icon-btn" onClick={fetchBaseData} title="Refresh" style={{ height: '44px', width: '44px', minWidth: '44px', flexShrink: 0 }}>
+            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
+          </button>
         </div>
       </div>
 

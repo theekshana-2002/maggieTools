@@ -45,17 +45,24 @@ const AttendanceBook = () => {
   return (
     <div className="book-container">
       {/* ── Header ── */}
-      <div className="dashboard-header">
-        <div>
-          <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-muted)' }}>Staff Operations</p>
-          <h1>Daily Attendance</h1>
+      <div className="book-header" style={{ marginBottom: '10px' }}>
+        <div className="header-title">
+          <h2>Daily Attendance</h2>
         </div>
-        <div className="header-controls">
-           <div className="search-box">
+        <p className="header-subtitle">Staff Operations</p>
+      </div>
+      <div className="book-filters">
+        <div className="bf-top-row">
+          
+           <div className="search-and-refresh" style={{ display: 'flex', gap: '8px', flex: 1 }}>
+            <div className="search-box-unified">
              <Calendar size={18} className="search-icon" />
              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ border: 'none', background: 'none', fontWeight: 700, cursor: 'pointer' }} />
            </div>
-           <button className="theme-toggle-btn" onClick={fetchData} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+            <button className="utility-icon-btn" onClick={fetchData} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
+          </div>
+           
+        
         </div>
       </div>
 

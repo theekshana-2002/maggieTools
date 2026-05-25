@@ -161,39 +161,34 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     fetchAvailable();
   }, [formData.pickupDate, formData.returnDate, initialData]);
 
-  useEffect(() => {
+  const handleCheckCustomer = async () => {
     const nic = (formData.clientNic || '').trim();
-    if (nic && nic.length >= 3) {
-      const fetchHistory = async () => {
-        setFetchingHistory(true);
-        try {
-          const res = await bookingAPI.getCustomerHistory(nic);
-          if (res.data && res.data.details) {
-            setCustomerHistory(res.data.history || []);
-            setFormData(prev => ({
-              ...prev,
-              clientNic: res.data.details.nic || prev.clientNic,
-              clientName: res.data.details.name || prev.clientName,
-              clientPhone: res.data.details.phone || prev.clientPhone,
-              customerIdFront: res.data.details.customerIdFront || prev.customerIdFront,
-              customerIdBack: res.data.details.customerIdBack || prev.customerIdBack
-            }));
-          } else {
-            setCustomerHistory(null);
-          }
-        } catch (err) {
-          setCustomerHistory(null);
-        } finally {
-          setFetchingHistory(false);
-        }
-      };
-
-      const timeoutId = setTimeout(fetchHistory, 300);
-      return () => clearTimeout(timeoutId);
-    } else {
+    if (!nic) return alert('Please enter an ID / NIC to check.');
+    
+    setFetchingHistory(true);
+    try {
+      const res = await bookingAPI.getCustomerHistory(nic);
+      if (res.data && res.data.details) {
+        setCustomerHistory(res.data.history || []);
+        setFormData(prev => ({
+          ...prev,
+          clientNic: res.data.details.nic || prev.clientNic,
+          clientName: res.data.details.name || prev.clientName,
+          clientPhone: res.data.details.phone || prev.clientPhone,
+          customerIdFront: res.data.details.customerIdFront || prev.customerIdFront,
+          customerIdBack: res.data.details.customerIdBack || prev.customerIdBack
+        }));
+      } else {
+        setCustomerHistory([]);
+        alert('Customer not found in history.');
+      }
+    } catch (err) {
       setCustomerHistory(null);
+      alert('Error fetching customer data.');
+    } finally {
+      setFetchingHistory(false);
     }
-  }, [formData.clientNic]);
+  };
 
   useEffect(() => {
     const toolsTotal = formData.items.reduce((sum, item) => sum + (item.dailyRate * (item.quantity || 1) * totalDays), 0);
@@ -406,37 +401,38 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
             <div className="form-grid-3">
               <div className="form-group">
                 <label>NIC / Passport Number</label>
-                <div style={{ position: 'relative' }}>
-                  <Autocomplete
-                    name="clientNic"
-                    value={formData.clientNic}
-                    onChange={e => {
-                      const val = e.target.value.toUpperCase();
-                      setFormData(prev => ({ ...prev, clientNic: val }));
-                      const found = clients.find(c => (c.nic || '').toUpperCase() === val);
-                      if (found) {
-                        setFormData(prev => ({
-                          ...prev,
-                          clientName: found.name || prev.clientName,
-                          clientPhone: found.contact || prev.clientPhone,
-                          customerIdFront: found.customerIdFront || prev.customerIdFront,
-                          customerIdBack: found.customerIdBack || prev.customerIdBack
-                        }));
-                      }
-                    }}
-                    options={clients.map(c => c.nic).filter(Boolean)}
-                    placeholder="Enter NIC to lookup..."
-                    className={fetchingHistory ? 'lookup-loading' : ''}
-                  />
-                  {fetchingHistory && <RefreshCw size={14} className="spinner" style={{ position: 'absolute', right: '10px', top: '12px', opacity: 0.8, color: 'var(--accent)' }} />}
-                  {!fetchingHistory && customerHistory && (
-                    <div style={{ position: 'absolute', right: '10px', top: '12px', color: 'var(--success)', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
-                        <ShieldCheck size={14} /> CUSTOMER FOUND
-                      </div>
-                    </div>
-                  )}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <Autocomplete
+                      name="clientNic"
+                      value={formData.clientNic}
+                      onChange={e => {
+                        const val = e.target.value.toUpperCase();
+                        setFormData(prev => ({ ...prev, clientNic: val }));
+                        setCustomerHistory(null);
+                      }}
+                      options={clients.map(c => c.nic).filter(Boolean)}
+                      placeholder="Enter NIC..."
+                      className={fetchingHistory ? 'lookup-loading' : ''}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCheckCustomer}
+                    disabled={fetchingHistory}
+                    className="add-btn"
+                    style={{ height: '42px', padding: '0 14px', flexShrink: 0 }}
+                  >
+                    {fetchingHistory ? <RefreshCw size={16} className="spinner" /> : <ShieldCheck size={16} />}
+                    Check
+                  </button>
                 </div>
+                {customerHistory && customerHistory.length > 0 && (
+                  <div style={{ marginTop: '8px', padding: '8px 12px', background: 'var(--danger-soft)', color: 'var(--danger)', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Overdue Balance:</span>
+                    <span>LKR {customerHistory.reduce((s, b) => s + Math.max(0, b.balanceAmount || 0), 0).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
               <div className="form-group" style={{ position: 'relative' }}>
                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1268,54 +1264,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         </div>
       </form>
 
-      {(customerHistory || fetchingHistory) && (
-        <div className="history-panel form-history-panel">
-          <div className="history-panel-header">
-            <h3 className="history-panel-title form-flex form-align-center form-gap-sm">
-              <RefreshCw size={18} className={fetchingHistory ? 'spinner' : ''} />
-              Customer History
-            </h3>
-          </div>
-
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-            {fetchingHistory ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)' }}>
-                <RefreshCw size={32} className="spinner" style={{ marginBottom: '12px', opacity: 0.2 }} />
-                <p>Fetching records...</p>
-              </div>
-            ) : customerHistory && customerHistory.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {customerHistory.map((h, i) => (
-                  <div key={i} style={{
-                    background: 'var(--bg-card)',
-                    padding: '12px',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border)'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-dim)' }}>
-                        {new Date(h.date).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                      <Package size={14} style={{ color: 'var(--text-muted)' }} />
-                      <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-main)' }}>{h.tool}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--success)' }}>LKR {h.price?.toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-dim)' }}>
-                <Info size={32} style={{ marginBottom: '12px', opacity: 0.1 }} />
-                <p>No previous records found.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 };

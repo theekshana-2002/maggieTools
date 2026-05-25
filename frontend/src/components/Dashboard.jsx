@@ -3,7 +3,7 @@ import {
   TrendingUp, Wallet, ArrowDown,
   BarChart, RefreshCw, CheckCircle, Clock, Users,
   ShieldCheck, FileText, CreditCard, Bell, ChevronRight,
-  Package, Wrench, FileBarChart
+  Package, Wrench, FileBarChart, Calendar
 } from 'lucide-react';
 import { bookingAPI, salaryAPI, paymentAPI, invoiceAPI, toolAPI, expenseAPI, extraIncomeAPI } from '../services/api';
 import Modal from './Modal';
@@ -294,22 +294,21 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
         </div>
         <p className="header-subtitle">Operations Dashboard</p>
       </div>
-      <div className="book-filters">
-        <div className="bf-top-row">
-          
-          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="period-select">
+      <div className="book-filters" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', flexWrap: 'nowrap', width: '100%', marginBottom: '24px' }}>
+        <div className="search-box-unified" style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 8px 0 12px', flex: 1, height: '44px', background: 'var(--bg-card)', border: '1.5px solid var(--border)', borderRadius: 'var(--r-md)', minWidth: '0' }}>
+          <Calendar size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
+          <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} style={{ border: 'none', background: 'none', fontWeight: 700, cursor: 'pointer', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '60%', padding: '0', minWidth: '0' }}>
             <option value="All">All Months</option>
             {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} className="period-select">
+          <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)} style={{ border: 'none', background: 'none', fontWeight: 700, cursor: 'pointer', color: 'var(--text-main)', fontSize: '0.85rem', outline: 'none', width: '40%', padding: '0', minWidth: '0' }}>
             {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={() => fetchAll(false)} className="utility-icon-btn">
-            <RefreshCw size={18} className={loading ? 'spinner' : ''} />
-            Sync
-          </button>
-        
         </div>
+
+        <button className="utility-icon-btn" onClick={() => fetchAll(false)} title="Sync Dashboard" style={{ height: '44px', width: '44px', minWidth: '44px', flexShrink: 0 }}>
+          <RefreshCw size={18} className={loading ? 'spinner' : ''} />
+        </button>
       </div>
 
       {isAdmin && hasAnyReminders && (

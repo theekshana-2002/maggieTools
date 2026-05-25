@@ -112,7 +112,7 @@ const Settings = ({ onSettingsUpdate }) => {
 
           <div className="settings-section">
             <h3 className="section-title"><ImageIcon size={18} /> Visual Identity</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '30px', flexWrap: 'wrap' }}>
               <div className="logo-preview-box">
                 {settings.logo ? (
                   <img src={settings.logo} alt="Logo" />

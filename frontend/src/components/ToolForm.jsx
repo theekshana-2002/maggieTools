@@ -9,16 +9,19 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
     model: '',
     category: 'General',
     powerSource: '',
-    status: 'Available',
-    dailyRate: 0,
+    dailyRate: '',
+    stock: 1,
     warrantyExpirationDate: '',
     nextServiceDate: '',
     lastServiceDate: '',
+    warrantyEmiNumber: '',
+    hasWarranty: false,
     hasLeasing: false,
     leasingCompany: '',
-    monthlyPremium: 0,
+    monthlyPremium: '',
     leaseDueDate: '',
-    leaseFinalDate: ''
+    leaseFinalDate: '',
+    financeEmiNumber: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -82,7 +85,7 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
             </div>
           </div>
 
-          <div className="form-grid-3" style={{ marginTop: '16px' }}>
+          <div className="form-grid-2" style={{ marginTop: '16px' }}>
             <div className="form-group">
               <label>Category</label>
               <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
@@ -98,7 +101,6 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
             <div className="form-group">
               <label htmlFor="powerSource">Power Source</label>
               <div className="select-wrapper">
-                {/* <Zap className="input-icon-left" size={15} /> */}
                 <select
                   id="powerSource"
                   value={formData.powerSource}
@@ -113,24 +115,19 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
                 </select>
               </div>
             </div>
-            <div className="form-group">
-              <label>Status</label>
-              <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
-                <option value="Available">Available</option>
-                <option value="Booked">Booked</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Repair">Under Repair</option>
-              </select>
-            </div>
           </div>
         </div>
 
         <div className="form-section" style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-glow)' }}>
-          <p className="form-section-title" style={{ color: 'var(--accent)' }}><CreditCard size={16} /> Rates</p>
-          <div className="form-grid-1">
+          <p className="form-section-title" style={{ color: 'var(--accent)' }}><CreditCard size={16} /> Rates & Quantity</p>
+          <div className="form-grid-2">
             <div className="form-group">
               <label>Daily Rate (LKR)</label>
-              <input type="number" value={formData.dailyRate} onChange={e => setFormData({ ...formData, dailyRate: Number(e.target.value) })} />
+              <input type="number" value={formData.dailyRate} onChange={e => setFormData({ ...formData, dailyRate: e.target.value === '' ? '' : Number(e.target.value) })} />
+            </div>
+            <div className="form-group">
+              <label>Quantity</label>
+              <input type="number" min="1" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value === '' ? '' : Number(e.target.value) })} />
             </div>
           </div>
         </div>
@@ -169,6 +166,10 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
                   <label>Lease Final Date</label>
                   <input type="date" value={formData.leaseFinalDate} onChange={e => setFormData({ ...formData, leaseFinalDate: e.target.value })} />
                 </div>
+              </div>
+              <div className="form-group" style={{ marginTop: '16px' }}>
+                <label>Finance / EMI Number <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(manual entry)</span></label>
+                <input type="text" placeholder="e.g. EMI-2024-001" value={formData.financeEmiNumber || ''} onChange={e => setFormData({ ...formData, financeEmiNumber: e.target.value })} />
               </div>
             </>
           )}
@@ -238,6 +239,10 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
                       setFormData({ ...formData, lastServiceDate: e.target.value })
                     }
                   />
+                </div>
+                <div className="form-group">
+                  <label>Warranty EMI Number <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(manual entry)</span></label>
+                  <input type="text" placeholder="e.g. WRT-2024-001" value={formData.warrantyEmiNumber || ''} onChange={e => setFormData({ ...formData, warrantyEmiNumber: e.target.value })} />
                 </div>
               </div>
             </>

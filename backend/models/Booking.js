@@ -14,7 +14,8 @@ const bookingSchema = new mongoose.Schema({
     tool: { type: mongoose.Schema.Types.ObjectId, ref: 'Tool' },
     toolNumber: String,
     model: String,
-    dailyRate: Number
+    dailyRate: Number,
+    quantity: { type: Number, default: 1 }
   }],
   pickupDate: { type: Date, required: true },
   returnDate: { type: Date, required: true },

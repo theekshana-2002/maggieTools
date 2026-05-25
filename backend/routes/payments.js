@@ -4,6 +4,8 @@ const Payment = require('../models/Payment');
 const Booking = require('../models/Booking');
 const Invoice = require('../models/Invoice');
 const Account = require('../models/Account');
+const Setting = require('../models/Setting');
+const { sendSMS } = require('../utils/smsService');
 const { authMiddleware, authorizeRoles } = require('../middleware/authMiddleware');
 
 // Helper to sync back to source
@@ -41,6 +43,25 @@ router.post('/', authMiddleware, authorizeRoles('Admin', 'Manager'), async (req,
     if (isBankAction && newRecord.accountId) {
       await Account.findByIdAndUpdate(newRecord.accountId, { $inc: { balance: newRecord.paidAmount || 0 } });
     }
+
+    // SEND SMS
+    try {
+      const client = await Booking.findById(newRecord.bookingId);
+      if (client && client.clientPhone) {
+        const settings = await Setting.findOne();
+        const msg = `
+--- PAYMENT RECEIPT ---
+Customer: ${newRecord.client}
+Payment Date: ${new Date(newRecord.date).toLocaleDateString()}
+Amount Paid: LKR ${(newRecord.paidAmount || newRecord.takenAmount || 0).toLocaleString()}
+Payment Method: ${newRecord.paymentMethod || 'Cash'}
+Balance Due: LKR ${(newRecord.balance || 0).toLocaleString()}
+
+Terms: Payments are non-refundable. Late returns incur daily charges.
+Thank you for your business! - ${settings?.companyName || 'RAXWO TOOL RENTALS'}`;
+        await sendSMS(client.clientPhone, msg.trim());
+      }
+    } catch (smsErr) { console.error('Payment SMS fail:', smsErr); }
 
     res.status(201).json(newRecord);
   } catch (err) {

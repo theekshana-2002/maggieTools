@@ -3,6 +3,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import { accessoryAPI } from '../services/api';
 import { Package, PlusCircle, Search, RefreshCw, Trash2, FileText, Hash } from 'lucide-react';
+import Autocomplete from './Autocomplete';
 import '../styles/books.css';
 
 const Accessories = () => {
@@ -12,7 +13,7 @@ const Accessories = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData]     = useState({
-    number: '', name: '', category: '', price: 0, stock: 0, unit: 'pcs', description: ''
+    number: '', name: '', category: '', price: '', stock: '', unit: 'pcs', description: ''
   });
 
   const fetchData = async () => {
@@ -53,7 +54,7 @@ const Accessories = () => {
       }
       setIsModalOpen(false);
       setEditingItem(null);
-      setFormData({ number: '', name: '', category: '', price: 0, stock: 0, unit: 'pcs', description: '' });
+      setFormData({ number: '', name: '', category: '', price: '', stock: '', unit: 'pcs', description: '' });
       fetchData();
     } catch (err) {
       alert('Save failed: ' + (err.response?.data?.message || err.message));
@@ -78,13 +79,17 @@ const Accessories = () => {
       {/* ── Summary ── */}
       <div className="book-summary">
         <div className="summary-item">
-          <label>Total Item Types</label>
-          <h3>{items.length}</h3>
+          <label>Total Quantity</label>
+          <h3>{items.reduce((s, i) => s + (i.stock || 0), 0)}</h3>
           <Package size={16} color="var(--accent)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
         </div>
         <div className="summary-item">
           <label>Low Stock Items</label>
           <h3 style={{ color: 'var(--danger)' }}>{items.filter(i => i.stock < 5).length}</h3>
+        </div>
+        <div className="summary-item">
+          <label>Total Item Types</label>
+          <h3>{items.length}</h3>
         </div>
       </div>
 
@@ -105,7 +110,7 @@ const Accessories = () => {
           </button>
           <button className="add-btn" onClick={() => {
             setEditingItem(null);
-            setFormData({ number: '', name: '', category: '', price: 0, stock: 0, unit: 'pcs', description: '' });
+            setFormData({ number: '', name: '', category: '', price: '', stock: '', unit: 'pcs', description: '' });
             setIsModalOpen(true);
           }}>
             <PlusCircle size={18} /> Add Accessory
@@ -140,7 +145,7 @@ const Accessories = () => {
 
       {/* ── Form Modal ── */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingItem ? 'Edit Accessory' : 'New Accessory'}>
-        <form onSubmit={handleSubmit} className="hire-form" style={{ padding: '20px' }}>
+        <form onSubmit={handleSubmit} className="hire-form" style={{ padding: '20px', overflowY: 'auto', maxHeight: 'calc(100vh - 120px)' }}>
 
           {/* Accessory ID */}
           <div className="form-group">
@@ -169,7 +174,13 @@ const Accessories = () => {
           <div className="form-grid-2">
             <div className="form-group">
               <label>Category</label>
-              <input type="text" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} placeholder="e.g. Drill Bits" />
+              <Autocomplete
+                name="category"
+                value={formData.category}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                options={[...new Set(items.map(i => i.category).filter(Boolean))]}
+                placeholder="e.g. Drill Bits"
+              />
             </div>
             <div className="form-group">
               <label>Unit</label>
@@ -180,11 +191,11 @@ const Accessories = () => {
           <div className="form-grid-2">
             <div className="form-group">
               <label>Price (LKR) *</label>
-              <input type="number" required value={formData.price} onChange={e => setFormData({ ...formData, price: Number(e.target.value) })} />
+              <input type="number" required value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value === '' ? '' : Number(e.target.value) })} />
             </div>
             <div className="form-group">
               <label>Current Stock *</label>
-              <input type="number" required value={formData.stock} onChange={e => setFormData({ ...formData, stock: Number(e.target.value) })} />
+              <input type="number" required value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value === '' ? '' : Number(e.target.value) })} />
             </div>
           </div>
 

@@ -5,13 +5,15 @@ const toolSchema = new mongoose.Schema({
   model: { type: String },
   category: { type: String, default: 'General' }, 
   powerSource: { type: String, enum: ['Electric', 'Battery', 'Petrol', 'Manual'], default: 'Electric' },
-  status: { type: String, enum: ['Available', 'Booked', 'Maintenance', 'Repair'], default: 'Available' },
+  status: { type: String, enum: ['Available', 'Booked', 'Maintenance', 'Repair', 'Maintaining', 'Under Repair', 'Unavailable'], default: 'Available' },
   dailyRate: { type: Number, default: 0 },
+  stock: { type: Number, default: 1 },
   
   // Maintenance & Warranty
   warrantyExpirationDate: { type: Date },
   lastServiceDate: { type: Date },
   nextServiceDate: { type: Date },
+  warrantyEmiNumber: { type: String },
 
   // Ownership/Leasing (if applicable)
   hasLeasing: { type: Boolean, default: false },
@@ -19,6 +21,7 @@ const toolSchema = new mongoose.Schema({
   monthlyPremium: { type: Number, default: 0 },
   leaseDueDate: { type: Number }, // Day of month (1-31)
   leaseFinalDate: { type: Date },
+  financeEmiNumber: { type: String },
   leasePayments: [{
     year: Number,
     month: Number,

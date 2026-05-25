@@ -105,6 +105,13 @@ const Tools = () => {
     }
   };
 
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      await toolAPI.update(id, { status: newStatus });
+      fetchTools();
+    } catch (err) { alert('Failed to update tool status.'); }
+  };
+
   const fetchTools = async () => {
     setLoading(true);
     try {
@@ -118,9 +125,27 @@ const Tools = () => {
         'CATEGORY': <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{t.category}</span>,
         'DAILY RATE': <strong style={{ color: 'var(--accent)' }}>LKR {(t.dailyRate || 0).toLocaleString()}</strong>,
         'STATUS': (
-          <span className={`status-badge ${t.status === 'Available' ? 'status-completed' : t.status === 'Booked' ? 'status-active' : t.status === 'Cancelled' ? 'status-cancelled' : ''}`}>
-            {t.status || 'Available'}
-          </span>
+          <select
+            value={t.status || 'Available'}
+            onChange={e => handleStatusChange(t._id, e.target.value)}
+            onClick={e => e.stopPropagation()}
+            style={{
+              border: 'none',
+              borderRadius: '8px',
+              padding: '5px 10px',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              background: t.status === 'Available' ? 'var(--success-soft)' : t.status === 'Booked' ? 'var(--accent-soft)' : t.status === 'Maintaining' ? '#fef9c3' : '#fee2e2',
+              color: t.status === 'Available' ? 'var(--success)' : t.status === 'Booked' ? 'var(--accent)' : t.status === 'Maintaining' ? '#a16207' : 'var(--danger)'
+            }}
+          >
+            <option value="Available">Available</option>
+            <option value="Booked">Booked</option>
+            <option value="Maintaining">Maintaining</option>
+            <option value="Under Repair">Under Repair</option>
+            <option value="Unavailable">Unavailable</option>
+          </select>
         ),
         'ACTION': (
           <div className="table-actions" onClick={e => e.stopPropagation()}>
@@ -164,7 +189,7 @@ const Tools = () => {
           </div>
           <button className="theme-toggle-btn" onClick={fetchTools} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
           {canManage && (
-            <button className="refresh-btn" onClick={() => { setSelectedRecord(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
+            <button className="refresh-btn add-tool-btn" onClick={() => { setSelectedRecord(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
               <PlusCircle size={18} /> Add Tool
             </button>
           )}
@@ -173,19 +198,19 @@ const Tools = () => {
 
       <div className="book-summary">
         <div className="summary-item">
-          <label>Total Inventory</label>
-          <h3>{toolRecords.length} Units</h3>
+          <label>Total Quantity</label>
+          <h3>{toolRecords.reduce((s, t) => s + (t.rawData?.stock || 0), 0)}</h3>
           <Package size={16} color="var(--accent)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
         </div>
         <div className="summary-item">
-          <label>Available Now</label>
-          <h3 style={{ color: 'var(--success)' }}>{toolRecords.filter(t => t.rawData?.status === 'Available').length}</h3>
-          <CheckCircle size={16} color="var(--success)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
+          <label>Currently Booked</label>
+          <h3 style={{ color: 'var(--accent)' }}>{toolRecords.filter(t => t.rawData?.status === 'Booked').length}</h3>
+          <AlertCircle size={16} color="var(--accent)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
         </div>
         <div className="summary-item">
-          <label>On Lease</label>
-          <h3 style={{ color: 'var(--accent)' }}>{toolRecords.filter(t => t.rawData?.hasLeasing).length}</h3>
-          <CreditCard size={16} color="var(--accent)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
+          <label>Available Now</label>
+          <h3 style={{ color: 'var(--success)' }}>{toolRecords.reduce((s, t) => s + (t.rawData?.status === 'Available' ? (t.rawData?.stock || 1) : 0), 0)}</h3>
+          <CheckCircle size={16} color="var(--success)" style={{ position: 'absolute', top: '20px', right: '20px', opacity: 0.2 }} />
         </div>
       </div>
 

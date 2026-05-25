@@ -139,6 +139,7 @@ const ComplianceBook = () => {
           </span>
         ),
         number: <strong style={{ color: 'var(--text-main)' }}>{t.number}</strong>,
+        emi: <span style={{ color: 'var(--text-dim)' }}>{type === 'warranty' ? (t.warrantyEmiNumber || '—') : (t.financeEmiNumber || '—')}</span>,
         action: (
           <button onClick={() => handleRenewClick(t, type)} className="refresh-btn" style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto' }}>
             <RefreshCw size={12} /> Update
@@ -146,6 +147,17 @@ const ComplianceBook = () => {
         )
       }));
   };
+
+  // Group Leasing Tools by financeEmiNumber
+  const leasingGroups = React.useMemo(() => {
+    const groups = {};
+    filteredTools.filter(t => t.hasLeasing).forEach(t => {
+      const emi = t.financeEmiNumber || 'Individual Tools';
+      if (!groups[emi]) groups[emi] = [];
+      groups[emi].push(t);
+    });
+    return groups;
+  }, [filteredTools]);
 
   return (
     <div className="book-container">
@@ -195,8 +207,13 @@ const ComplianceBook = () => {
               <span className="status-badge status-confirmed">{getDocData(activeTab).length} Tools</span>
             </div>
             <DataTable 
-              columns={['DUE DATE', 'TOOL ID / SERIAL', 'ACTION']}
-              data={getDocData(activeTab)}
+              columns={['DUE DATE', 'TOOL ID / SERIAL', 'EMI NO.', 'ACTION']}
+              data={getDocData(activeTab).map(d => ({
+                'DUE DATE': d.renewalDate,
+                'TOOL ID / SERIAL': d.number,
+                'EMI NO.': d.emi,
+                'ACTION': d.action
+              }))}
               loading={loading}
             />
           </div>
@@ -227,42 +244,52 @@ const ComplianceBook = () => {
              </div>
 
              {/* Leasing Grid */}
-             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-               {filteredTools.filter(t => t.hasLeasing).map(t => (
-                  <div key={t._id} className="compliance-card" style={{ marginBottom: '24px' }}>
-                    <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
-                      <div>
-                        <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>{t.number}</p>
-                        <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent)' }}>{t.leasingCompany || 'Corporate Leasing'} · {fmt(t.monthlyPremium)}/mo</p>
-                      </div>
-                      <span className="status-badge status-confirmed">
-                        {(t.leasePayments || []).filter(lp => lp.year === leasingYear && lp.paid).length}/12 Months Paid
-                      </span>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+               {Object.entries(leasingGroups).map(([emi, groupTools]) => (
+                  <div key={emi}>
+                    <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <h3 style={{ margin: 0, color: 'var(--text-main)' }}>EMI Group: <span style={{ color: 'var(--accent)' }}>{emi}</span></h3>
+                      <span className="status-badge" style={{ background: 'var(--bg-card)' }}>{groupTools.length} Tool{groupTools.length !== 1 && 's'}</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px', padding: '24px' }}>
-                      {MONTH_NAMES.map((m, idx) => {
-                        const month = idx + 1;
-                        const isFuture = leasingYear === now.getFullYear() && month > (now.getMonth() + 1);
-                        const entry = (t.leasePayments || []).find(lp => lp.year === leasingYear && lp.month === month);
-                        const isPaid = entry?.paid || false;
-                        const toggling = togglingId === `${t._id}-${leasingYear}-${month}`;
-                        
-                        return (
-                          <button key={m} disabled={isFuture || !canManage || toggling} onClick={() => handleLeaseToggle(t._id, leasingYear, month, !isPaid)}
-                            className={`leasing-month-btn ${isPaid ? 'paid' : 'unpaid'} ${isFuture ? 'future' : ''}`}
-                            style={{
-                              padding: '16px 8px', borderRadius: '16px', justifyContent: 'center', flexDirection: 'column', height: 'auto', gap: '6px',
-                              background: isFuture ? 'transparent' : isPaid ? 'var(--success-soft)' : 'var(--danger-soft)',
-                              color: isFuture ? 'var(--text-dim)' : isPaid ? 'var(--success)' : 'var(--danger)',
-                              border: isFuture ? '1px dashed var(--border)' : `1px solid ${isPaid ? 'var(--success-soft)' : 'var(--danger-soft)'}`,
-                              opacity: isFuture ? 0.4 : 1, transition: 'all 0.3s ease',
-                              cursor: isFuture ? 'default' : 'pointer'
-                            }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>{m}</span>
-                            {isPaid ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                          </button>
-                        );
-                      })}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {groupTools.map(t => (
+                        <div key={t._id} className="compliance-card" style={{ marginBottom: '0' }}>
+                          <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)' }}>
+                            <div>
+                              <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>{t.number}</p>
+                              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--accent)' }}>{t.leasingCompany || 'Corporate Leasing'} · {fmt(t.monthlyPremium)}/mo</p>
+                            </div>
+                            <span className="status-badge status-confirmed">
+                              {(t.leasePayments || []).filter(lp => lp.year === leasingYear && lp.paid).length}/12 Months Paid
+                            </span>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px', padding: '24px' }}>
+                            {MONTH_NAMES.map((m, idx) => {
+                              const month = idx + 1;
+                              const isFuture = leasingYear === now.getFullYear() && month > (now.getMonth() + 1);
+                              const entry = (t.leasePayments || []).find(lp => lp.year === leasingYear && lp.month === month);
+                              const isPaid = entry?.paid || false;
+                              const toggling = togglingId === `${t._id}-${leasingYear}-${month}`;
+                              
+                              return (
+                                <button key={m} disabled={isFuture || !canManage || toggling} onClick={() => handleLeaseToggle(t._id, leasingYear, month, !isPaid)}
+                                  className={`leasing-month-btn ${isPaid ? 'paid' : 'unpaid'} ${isFuture ? 'future' : ''}`}
+                                  style={{
+                                    padding: '16px 8px', borderRadius: '16px', justifyContent: 'center', flexDirection: 'column', height: 'auto', gap: '6px',
+                                    background: isFuture ? 'transparent' : isPaid ? 'var(--success-soft)' : 'var(--danger-soft)',
+                                    color: isFuture ? 'var(--text-dim)' : isPaid ? 'var(--success)' : 'var(--danger)',
+                                    border: isFuture ? '1px dashed var(--border)' : `1px solid ${isPaid ? 'var(--success-soft)' : 'var(--danger-soft)'}`,
+                                    opacity: isFuture ? 0.4 : 1, transition: 'all 0.3s ease',
+                                    cursor: isFuture ? 'default' : 'pointer'
+                                  }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>{m}</span>
+                                  {isPaid ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                ))}

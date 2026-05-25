@@ -10,8 +10,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   const [clients, setClients] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [allAccessories, setAllAccessories] = useState([]);
-  const [accSearch, setAccSearch] = useState('');
-  const [toolSearch, setToolSearch] = useState('');
+  const [unifiedSearch, setUnifiedSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
   const [loadingTools, setLoadingTools] = useState(false);
 
@@ -32,9 +31,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     bookingType: 'General',
     items: [], // [{ tool, toolNumber, model, category, dailyRate }]
     bookingAccessories: [], // { accessoryId, name, quantity, price }
-    discount: 0,
-    advancePayment: 0,
-    transportCharge: 0,
+    discount: '',
+    advancePayment: '',
+    transportCharge: '',
+    deposit: '',
     paymentMethod: 'Cash',
     customerIdFront: '',
     customerIdBack: '',
@@ -196,7 +196,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   }, [formData.clientNic]);
 
   useEffect(() => {
-    const toolsTotal = formData.items.reduce((sum, item) => sum + (item.dailyRate * totalDays), 0);
+    const toolsTotal = formData.items.reduce((sum, item) => sum + (item.dailyRate * (item.quantity || 1) * totalDays), 0);
     const accTotal = formData.bookingAccessories.reduce((sum, acc) => sum + (acc.price * acc.quantity), 0);
     const transport = Number(formData.transportCharge || 0);
     const totalAmount = (toolsTotal + accTotal + transport) - (formData.discount || 0);
@@ -227,14 +227,16 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
       toolNumber: tool.number,
       model: tool.model,
       category: tool.category,
-      dailyRate: tool.dailyRate || 0
+      dailyRate: tool.dailyRate || 0,
+      quantity: 1,
+      stock: tool.stock || 1
     };
 
     setFormData({
       ...formData,
       items: [...formData.items, newItem]
     });
-    setToolSearch('');
+    setUnifiedSearch('');
   };
 
   const removeItem = (index) => {
@@ -257,10 +259,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     } else {
       setFormData({
         ...formData,
-        bookingAccessories: [...formData.bookingAccessories, { accessoryId: acc._id, number: acc.number, name: acc.name, quantity: 1, price: acc.price }]
+        bookingAccessories: [...formData.bookingAccessories, { accessoryId: acc._id, number: acc.number, name: acc.name, quantity: 1, price: acc.price, stock: acc.stock || 0 }]
       });
     }
-    setAccSearch(''); // Clear search after adding
+    setUnifiedSearch(''); // Clear search after adding
   };
 
   const removeAccessory = (index) => {
@@ -411,6 +413,16 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                     onChange={e => {
                       const val = e.target.value.toUpperCase();
                       setFormData(prev => ({ ...prev, clientNic: val }));
+                      const found = clients.find(c => (c.nic || '').toUpperCase() === val);
+                      if (found) {
+                        setFormData(prev => ({
+                          ...prev,
+                          clientName: found.name || prev.clientName,
+                          clientPhone: found.contact || prev.clientPhone,
+                          customerIdFront: found.customerIdFront || prev.customerIdFront,
+                          customerIdBack: found.customerIdBack || prev.customerIdBack
+                        }));
+                      }
                     }}
                     options={clients.map(c => c.nic).filter(Boolean)}
                     placeholder="Enter NIC to lookup..."
@@ -462,14 +474,25 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
               </div>
               <div className="form-group">
                 <label>Phone Number</label>
-                <input
-                  type="text"
+                <Autocomplete
                   name="clientPhone"
                   value={formData.clientPhone || ''}
-                  onChange={e => setFormData(prev => ({ ...prev, clientPhone: e.target.value }))}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFormData(prev => ({ ...prev, clientPhone: val }));
+                    const found = clients.find(c => c.contact === val);
+                    if (found) {
+                      setFormData(prev => ({
+                        ...prev,
+                        clientName: found.name || prev.clientName,
+                        clientNic: found.nic || prev.clientNic,
+                        customerIdFront: found.customerIdFront || prev.customerIdFront,
+                        customerIdBack: found.customerIdBack || prev.customerIdBack
+                      }));
+                    }
+                  }}
+                  options={clients.map(c => c.contact).filter(Boolean)}
                   placeholder="07x xxxxxxx"
-                  autoComplete="off"
-                  data-lpignore="true"
                 />
               </div>
             </div>
@@ -544,47 +567,51 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
               style={{ marginBottom: "16px", position: "relative" }}
             >
               <Autocomplete
-                name="toolSearch"
-                value={toolSearch}
+                name="unifiedSearch"
+                value={unifiedSearch}
                 onChange={(e) => {
                   const val = e.target.value;
-                  setToolSearch(val);
+                  setUnifiedSearch(val);
 
-                  // Check if the value matches any tool's full description
-                  const found = availableTools.find(
-                    (t) =>
-                      `${t.number} - ${t.model} (${t.status || "Available"})` === val ||
-                      t.number === val
-                  );
-
-                  if (found) {
-                    if (
-                      found.status &&
-                      found.status !== "Available" &&
-                      found.status !== "Active" &&
-                      !initialData
-                    ) {
-                      alert(
-                        `Warning: This tool is currently ${found.status}. Please check availability dates.`
-                      );
+                  if (val.startsWith('[TOOL]')) {
+                    const match = val.match(/\[TOOL\] (.*?) -/);
+                    if (match && match[1]) {
+                      const tNum = match[1].trim();
+                      const found = availableTools.find(t => t.number === tNum);
+                      if (found) {
+                        if (found.status && found.status !== "Available" && found.status !== "Active" && !initialData) {
+                          alert(`Warning: This tool is currently ${found.status}. Please check availability dates.`);
+                        }
+                        addTool(found.number);
+                      }
                     }
-
-                    addTool(found.number);
-                    setToolSearch("");
+                  } else if (val.startsWith('[PART]')) {
+                    const match = val.match(/\[PART\] (.*?) -/);
+                    if (match && match[1]) {
+                      const aNum = match[1].trim();
+                      addAccessory(aNum);
+                    }
+                  } else {
+                    // Fallback for typing manually
+                    const foundTool = availableTools.find(t => t.number === val);
+                    if (foundTool) { addTool(foundTool.number); return; }
+                    const foundAcc = allAccessories.find(a => a.number === val || a.name === val);
+                    if (foundAcc) { addAccessory(val); return; }
                   }
                 }}
-                options={availableTools.map(
-                  (t) => `${t.number} - ${t.model} (${t.status || "Available"})`
-                )}
-                placeholder="Search by Tool ID, Model or Category..."
+                options={[
+                  ...availableTools.map(t => `[TOOL] ${t.number} - ${t.model} (${t.stock || 1} available)`),
+                  ...allAccessories.map(a => `[PART] ${a.number || 'No ID'} - ${a.name} (${a.stock || 0} available)`)
+                ]}
+                placeholder="Search Tools & Accessories by ID or Name..."
                 className="full-width-autocomplete"
               />
 
               {/* Clear Search Button */}
-              {toolSearch && (
+              {unifiedSearch && (
                 <button
                   type="button"
-                  onClick={() => setToolSearch("")}
+                  onClick={() => setUnifiedSearch("")}
                   title="Clear Search"
                   style={{
                     position: "absolute",
@@ -666,10 +693,23 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Quantity <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({item.stock || 1} available)</span></label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={item.stock || 1}
+                    value={item.quantity || 1}
+                    onChange={(e) =>
+                      handleItemChange(index, "quantity", Number(e.target.value))
+                    }
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Subtotal</label>
                   <input
                     type="text"
-                    value={`LKR ${(item.dailyRate * totalDays).toLocaleString()}`}
+                    value={`LKR ${(item.dailyRate * (item.quantity || 1) * totalDays).toLocaleString()}`}
                     readOnly
                     className="input-highlight-blue"
                   />
@@ -770,25 +810,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
           </div> */}
           {/* ///////////////////////////////////////////////////////////////select////////////////// */}
           <div className="form-section">
-            <p className="form-section-title"><Package size={16} /> Parts & Accessories</p>
-            <div className="accessory-selector" style={{ marginBottom: '16px' }}>
-              <Autocomplete
-                name="accSearch"
-                value={accSearch}
-                onChange={e => {
-                  const val = e.target.value;
-                  setAccSearch(val);
-                  const found = allAccessories.find(a => a.name === val || a.number === val || `${a.number || 'No ID'} - ${a.name}` === val);
-                  if (found) {
-                    addAccessory(val);
-                  }
-                }}
-                options={allAccessories.map(a => `${a.number || 'No ID'} - ${a.name}`)}
-                placeholder="Search by ID or name..."
-                className="full-width-autocomplete"
-              />
-            </div>
-
+            <p className="form-section-title"><Package size={16} /> Selected Parts & Accessories</p>
             {allAccessories.length > 0 ? (
               <div className="quick-acc-grid" style={{
                 display: 'flex',
@@ -871,7 +893,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                     </div>
                     <div className="accessory-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <div className="qty-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-side)', padding: '4px 8px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-dim)' }}>QTY:</span>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-dim)' }}>QTY <span style={{ color: 'var(--text-muted)' }}>({acc.stock || 0} left)</span>:</span>
                         <input
                           type="number"
                           value={acc.quantity}
@@ -887,6 +909,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                             padding: 0
                           }}
                           min="1"
+                          max={acc.stock || 0}
                         />
                       </div>
                       <div className="accessory-subtotal" style={{ minWidth: '100px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent)' }}>

@@ -219,6 +219,48 @@ const FinancialReport = ({ appSettings }) => {
     }
   };
 
+  const handleExportExcel = () => {
+    // Generate simple CSV
+    const rows = [
+      ['Financial Report & Analytics'],
+      ['Period', periodLabel],
+      ['Generated', new Date().toLocaleString()],
+      ['Currency', 'LKR'],
+      [],
+      ['Summary'],
+      ['Total Revenue', stats.totalIncome],
+      ['Total Outgoings', stats.totalExpense],
+      ['Rental Revenue', stats.totalRentalRevenue],
+      ['Payments Received', stats.totalPayments],
+      ['Cash Balance', stats.cashBalance],
+      ['Net Profit / Loss', stats.netProfit],
+      [],
+      ['Income & Expense Breakdown'],
+      ['Category', 'Type', 'Amount (LKR)', '% of Revenue'],
+      ['Rental Revenue', 'Income', stats.totalRentalRevenue, stats.totalIncome > 0 ? ((stats.totalRentalRevenue / stats.totalIncome) * 100).toFixed(1) + '%' : ''],
+      ['Extra Income', 'Income', stats.totalExtraIncome, stats.totalIncome > 0 ? ((stats.totalExtraIncome / stats.totalIncome) * 100).toFixed(1) + '%' : ''],
+      ['Payments Received', 'Info', stats.totalPayments, ''],
+      ...Object.entries(stats.paymentsByMethod).filter(([_, amt]) => amt > 0).map(([m, amt]) => [
+        `  -> ${m}`, 'Info', amt, stats.totalPayments > 0 ? ((amt / stats.totalPayments) * 100).toFixed(1) + '%' : ''
+      ]),
+      ['Staff Wages', 'Expense', -stats.totalSalary, stats.totalIncome > 0 ? ((stats.totalSalary / stats.totalIncome) * 100).toFixed(1) + '%' : ''],
+      ['Leasing Payments', 'Expense', -stats.totalLeasing, stats.totalIncome > 0 ? ((stats.totalLeasing / stats.totalIncome) * 100).toFixed(1) + '%' : ''],
+      ['Other Expenses', 'Expense', -stats.totalOtherExp, stats.totalIncome > 0 ? ((stats.totalOtherExp / stats.totalIncome) * 100).toFixed(1) + '%' : ''],
+      ['Net Profit / Loss', '', stats.netProfit, stats.totalIncome > 0 ? ((stats.netProfit / stats.totalIncome) * 100).toFixed(1) + '%' : '']
+    ];
+
+    let csvContent = "data:text/csv;charset=utf-8," 
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Financial_Report_${selectedMonth === 'All' ? selectedYear : `${selectedMonth}_${selectedYear}`}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return (
       <div className="report-loading">
@@ -250,30 +292,21 @@ const FinancialReport = ({ appSettings }) => {
           {refreshing ? 'Refreshing...' : 'Refresh'}
         </button>
 
-        <button className="download-btn-premium" onClick={handleDownload} disabled={downloading}>
-          <Download size={18} />
-          <span>{downloading ? 'Preparing PDF...' : 'Download Full Report'}</span>
-        </button>
+        <div className="report-export-group">
+          <button className="download-btn-premium" onClick={handleExportExcel} disabled={downloading} style={{ background: '#10B981', marginRight: '8px' }}>
+            <FileText size={18} />
+            <span>Excel</span>
+          </button>
+          <button className="download-btn-premium" onClick={handleDownload} disabled={downloading}>
+            <Download size={18} />
+            <span>{downloading ? 'Preparing...' : 'PDF'}</span>
+          </button>
+        </div>
       </div>
 
       <div id="report-document" ref={reportRef}>
 
-        <div className="report-header">
-          <div className="report-header-left">
-            <img src={appSettings?.logo || logoUrl} alt="Logo" className="report-logo" />
-            <div className="report-title">
-              <h2>{appSettings?.companyName || 'RAXWO Tool Rentals'}</h2>
-              <p>{appSettings?.tagline || 'Premium Tool Rental & Equipment Management'}</p>
-            </div>
-          </div>
-          <div className="report-contact-info">
-            <p>{appSettings?.address || '123 Main Street, Colombo'}</p>
-            <p>Phone: {appSettings?.phone || '+94 77 123 4567'}</p>
-            <p>Email: {appSettings?.email || 'info@raxwo.com'}</p>
-          </div>
-        </div>
 
-        <div className="report-divider-line"></div>
 
         <div className="report-meta-section">
           <h3 className="report-doc-title">Financial Report &amp; Analytics</h3>

@@ -457,11 +457,6 @@ const BookingBook = () => {
           </div>
 
           <div className="bf-action-btns">
-            {canManage && (
-              <button className="add-btn" onClick={() => setAddClientOpen(true)}>
-                <UserPlus size={18} /> Add Customer
-              </button>
-            )}
             <button className="utility-icon-btn" onClick={handleProcessFollowups} title="Process 14-Day SMS Follow-ups">
               <Send size={18} />
             </button>
@@ -513,9 +508,21 @@ const BookingBook = () => {
                 <span className="cpi-stat-value accent">{clientDetails.summary.totalBookings}</span>
               </div>
               <div className="cpi-stat">
-                <span className="cpi-stat-label">Outstanding</span>
+                <span className="cpi-stat-label">Total Paid</span>
+                <span className="cpi-stat-value success">
+                  LKR {((clientDetails.summary.totalRevenue || 0) - (clientDetails.summary.totalOutstanding || 0)).toLocaleString()}
+                </span>
+              </div>
+              <div className="cpi-stat">
+                <span className="cpi-stat-label">Balance Due</span>
                 <span className={`cpi-stat-value ${clientDetails.summary.totalOutstanding > 0 ? 'danger' : 'success'}`}>
-                  LKR {clientDetails.summary.totalOutstanding.toLocaleString()}
+                  LKR {(clientDetails.summary.totalOutstanding || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="cpi-stat">
+                <span className="cpi-stat-label">Deposit Held</span>
+                <span className="cpi-stat-value accent">
+                  LKR {(clientDetails.summary.totalDeposit || 0).toLocaleString()}
                 </span>
               </div>
             </div>
@@ -543,14 +550,35 @@ const BookingBook = () => {
             TOTAL: <strong style={{ color: 'var(--accent)' }}>LKR {r.displayTotal}</strong>,
             BALANCE: <strong style={{ color: (r.balanceAmount || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {Math.max(0, r.balanceAmount || 0).toLocaleString()}</strong>,
             STATUS: (
-              <span
-                className={`status-badge status-${(r.displayStatus || 'Confirmed').toLowerCase()}`}
-                onClick={(e) => handleStatusCycle(e, r)}
-                style={{ cursor: canManage ? 'pointer' : 'default', userSelect: 'none' }}
-                title={canManage ? "Click to cycle status" : ""}
+              <select
+                value={r.displayStatus || 'Confirmed'}
+                onChange={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await bookingAPI.update(r._id, { status: e.target.value });
+                    fetchBookings();
+                  } catch(err) { alert('Failed to update status.'); }
+                }}
+                onClick={e => e.stopPropagation()}
+                style={{
+                  border: 'none', borderRadius: '8px', padding: '5px 10px',
+                  fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                  background: r.displayStatus === 'Paid' || r.displayStatus === 'Paid & Returned' ? 'var(--success-soft)'
+                    : r.displayStatus === 'Unpaid & Returned' || r.displayStatus === 'Returned' ? '#e0f2fe'
+                    : r.displayStatus === 'Unpaid' ? '#fee2e2' : 'var(--bg-side)',
+                  color: r.displayStatus === 'Paid' || r.displayStatus === 'Paid & Returned' ? 'var(--success)'
+                    : r.displayStatus === 'Unpaid & Returned' || r.displayStatus === 'Returned' ? '#0369a1'
+                    : r.displayStatus === 'Unpaid' ? 'var(--danger)' : 'var(--text-main)'
+                }}
               >
-                {r.displayStatus}
-              </span>
+                <option value="Paid">Paid</option>
+                <option value="Unpaid">Unpaid</option>
+                <option value="Returned">Returned</option>
+                <option value="Paid & Returned">Paid &amp; Returned</option>
+                <option value="Unpaid & Returned">Unpaid &amp; Returned</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
             ),
             ACTION: (
               <div className="table-actions" onClick={e => e.stopPropagation()}>

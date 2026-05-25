@@ -1,14 +1,12 @@
 import React from 'react';
 import { 
   LayoutDashboard, 
-  Truck, 
   Users, 
   CreditCard, 
   Contact,
   LogOut,
   UserCircle,
   FileBarChart,
-  Car,
   FileText,
   FileCheck,
   Wallet,
@@ -18,25 +16,27 @@ import {
   Package,
   Wrench,
   Clock,
-  Box,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import './Sidebar.css';
-import logo from '../logo.png';
 
 const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen, isCollapsed, onClose, onToggleCollapse, appSettings }) => {
   const menuCategories = [
     {
       title: 'Operations',
+      collapsible: true,
       items: [
         { id: 'dashboard',  label: 'Main Dashboard',     icon: LayoutDashboard },
         { id: 'bookings',   label: 'Rentals & Bookings', icon: FileCheck },
+        { id: 'invoices',   label: 'Invoices & Payments',  icon: FileText },
         { id: 'quotations', label: 'Price Quotes',       icon: FileCheck },
-        { id: 'invoices',   label: 'Customer Invoices',  icon: FileText },
       ]
     },
     {
       title: 'Inventory',
+      collapsible: false,
       items: [
         { id: 'inventory',  label: 'Combined Inventory', icon: Package },
         { id: 'compliance', label: 'Service & Maint.',   icon: Wrench },
@@ -44,17 +44,19 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     },
     {
       title: 'Finance',
+      collapsible: true,
       items: [
-        { id: 'payments',   label: 'Payment History',    icon: CreditCard },
-        { id: 'accounts',   label: 'Bank Accounts',      icon: Wallet },
-        { id: 'cheques',    label: 'Cheque Ledger',      icon: FileText },
+
+        { id: 'accounts',    label: 'Bank Accounts',     icon: Wallet },
+        { id: 'cheques',     label: 'Cheque Ledger',     icon: FileText },
         { id: 'expenses',    label: 'Other Expenses',    icon: TrendingDown },
         { id: 'extraIncome', label: 'Extra Income',      icon: Wallet },
-        { id: 'reports',    label: 'Financial Reports',  icon: FileBarChart },
+        { id: 'reports',     label: 'Financial Reports', icon: FileBarChart },
       ]
     },
     {
       title: 'Staff & CRM',
+      collapsible: true,
       items: [
         { id: 'employees',  label: 'Our Team',           icon: UserCircle },
         { id: 'salaries',   label: 'Staff Salaries',     icon: Contact },
@@ -63,12 +65,27 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     },
     {
       title: 'System',
+      collapsible: false,
       items: [
-        { id: 'audit',      label: 'Audit Trail',        icon: Clock },
-        { id: 'settings',   label: 'Settings',           icon: SettingsIcon },
+        { id: 'audit',     label: 'Audit Trail', icon: Clock },
+        { id: 'settings',  label: 'Settings',    icon: SettingsIcon },
       ]
     }
   ];
+
+  const [openCategories, setOpenCategories] = React.useState(() => {
+    const initial = {};
+    menuCategories.forEach(cat => {
+      // Open if it contains the active tab, otherwise closed
+      const hasActive = cat.items.some(item => item.id === activeTab);
+      initial[cat.title] = hasActive || !cat.collapsible;
+    });
+    return initial;
+  });
+
+  const toggleCategory = (title) => {
+    setOpenCategories(prev => ({ ...prev, [title]: !prev[title] }));
+  };
 
   const filteredCategories = menuCategories.map(cat => ({
     ...cat,
@@ -120,37 +137,59 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
 
       {isCollapsed && (
         <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
-            <div className="profile-initials" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
-                {(userName || 'A')[0].toUpperCase()}
-            </div>
+          <div className="profile-initials" style={{ width: '40px', height: '40px', fontSize: '0.9rem' }}>
+            {(userName || 'A')[0].toUpperCase()}
+          </div>
         </div>
       )}
 
       <nav className="sidebar-nav">
-        {filteredCategories.map((category, catIdx) => (
-          <div key={catIdx} className="sidebar-category">
-            {!isCollapsed && <p className="category-title">{category.title}</p>}
-            {category.items.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
-                  title={isCollapsed ? item.label : ''}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    if (window.innerWidth <= 1024) onClose();
+        {filteredCategories.map((category, catIdx) => {
+          const isExpanded = !category.collapsible || openCategories[category.title] !== false;
+          return (
+            <div key={catIdx} className="sidebar-category">
+              {!isCollapsed && (
+                <div
+                  className="category-title"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: category.collapsible ? 'pointer' : 'default',
+                    userSelect: 'none'
                   }}
+                  onClick={() => category.collapsible && toggleCategory(category.title)}
                 >
-                  <div className="nav-icon-box">
-                    <Icon size={18} />
-                  </div>
-                  {!isCollapsed && <span>{item.label}</span>}
-                </button>
-              );
-            })}
-          </div>
-        ))}
+                  <span>{category.title}</span>
+                  {category.collapsible && (
+                    isExpanded
+                      ? <ChevronDown size={13} style={{ opacity: 0.5 }} />
+                      : <ChevronRight size={13} style={{ opacity: 0.5 }} />
+                  )}
+                </div>
+              )}
+              {(isCollapsed || isExpanded) && category.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                    title={isCollapsed ? item.label : ''}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      if (window.innerWidth <= 1024) onClose();
+                    }}
+                  >
+                    <div className="nav-icon-box">
+                      <Icon size={18} />
+                    </div>
+                    {!isCollapsed && <span>{item.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
       </nav>
       
       <div className="sidebar-footer">

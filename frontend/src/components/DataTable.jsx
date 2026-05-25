@@ -157,7 +157,7 @@ const DataTable = ({ columns, data, emptyMessage, loading, onRowClick }) => {
                     }
                     
                     return (
-                      <td key={colIndex}>
+                      <td key={colIndex} data-label={col}>
                         {value !== undefined && value !== null ? value : '—'}
                       </td>
                     );

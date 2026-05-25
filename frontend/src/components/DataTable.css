@@ -125,35 +125,87 @@
   color: var(--text-muted);
 }
 
-/* ── Mobile Optimization ── */
+/* ── Mobile Optimization (Premium Card Layout) ── */
 @media (max-width: 768px) {
-  .data-table th, 
-  .data-table td {
-    padding: 14px 16px;
-    font-size: 0.85rem;
+  .data-table-root {
+    overflow-x: hidden;
   }
   
-  .data-table-root { position: relative; }
-
-  .data-table-root::after {
-    content: 'Swipe for more →';
-    position: absolute;
-    bottom: 8px;
-    right: 16px;
-    font-size: 0.65rem;
-    font-weight: 800;
-    color: var(--accent);
-    background: var(--bg-card);
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1px solid var(--accent-soft);
-    opacity: 0.6;
-    pointer-events: none;
-    animation: pulseSwipe 2s infinite;
+  .data-table {
+    min-width: unset;
+    display: block;
+    width: 100%;
   }
 
-  @keyframes pulseSwipe {
-    0%, 100% { opacity: 0.4; transform: translateX(0); }
-    50% { opacity: 0.8; transform: translateX(4px); }
+  .data-table thead {
+    display: none;
+  }
+
+  .data-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    background: transparent;
+  }
+
+  .data-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    padding: 6px;
+  }
+
+  .data-table tbody tr:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .data-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 0.9rem;
+    text-align: right;
+  }
+
+  .data-table td::before {
+    content: attr(data-label);
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: left;
+    margin-right: 16px;
+  }
+
+  .data-table td:last-child {
+    border-bottom: none;
+    justify-content: center;
+    background: var(--bg-glass);
+    border-radius: 0 0 calc(var(--r-xl) - 8px) calc(var(--r-xl) - 8px);
+    margin: -6px -6px;
+    padding: 16px;
+    margin-top: 6px;
+  }
+  
+  .data-table td:last-child::before {
+    display: none;
+  }
+
+  /* Empty state */
+  .empty-row {
+    display: block !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 }
+

@@ -22,14 +22,35 @@ async function buildSMSMessage(templateField, bookingData) {
     const itemsList = Array.isArray(bookingData.items) ? bookingData.items : [];
     const toolNo = itemsList.map(it => it.toolNumber).join(' / ') || 'Tool';
 
-    return template
-      .replace(/\{clientName\}/g, bookingData.clientName || 'Customer')
-      .replace(/\{toolNo\}/g, toolNo)
-      .replace(/\{pickupDate\}/g, new Date(bookingData.pickupDate).toLocaleDateString())
-      .replace(/\{returnDate\}/g, new Date(bookingData.returnDate).toLocaleDateString())
-      .replace(/\{totalAmount\}/g, (bookingData.totalAmount || 0).toLocaleString())
-      .replace(/\{balanceAmount\}/g, (bookingData.balanceAmount || 0).toLocaleString())
-      .replace(/\{companyName\}/g, settings?.companyName || 'RAXWO TOOL RENTALS');
+    const accList = Array.isArray(bookingData.accessories) ? bookingData.accessories : [];
+    const accStr = accList.map(a => `${a.name} (x${a.quantity})`).join(', ');
+
+    const detailedBill = `
+--- RAXWO BOOKING BILL ---
+Customer: ${bookingData.clientName || 'Customer'}
+Phone: ${bookingData.clientPhone || 'N/A'}
+NIC: ${bookingData.clientNic || 'N/A'}
+Location: ${bookingData.pickupLocation || 'N/A'}
+Date: ${new Date(bookingData.pickupDate).toLocaleDateString()} to ${new Date(bookingData.returnDate).toLocaleDateString()}
+
+Items Booked:
+${toolNo}
+${accStr ? 'Accessories: ' + accStr : ''}
+
+Total Price: LKR ${(bookingData.totalAmount || 0).toLocaleString()}
+Advance Paid: LKR ${(bookingData.advancePayment || 0).toLocaleString()}
+Balance Due: LKR ${(bookingData.balanceAmount || 0).toLocaleString()}
+
+Terms & Conditions apply.
+Thank you for choosing ${settings?.companyName || 'RAXWO TOOL RENTALS'}!
+    `.trim();
+
+    // If template has {detailedBill}, use it. Else append it.
+    if (template.includes('{detailedBill}')) {
+      return template.replace(/\{detailedBill\}/g, detailedBill);
+    }
+    
+    return detailedBill;
   } catch (err) {
     console.error('Failed to build SMS from template:', err.message);
     return null;
@@ -165,16 +186,15 @@ router.post('/', authMiddleware, async (req, res) => {
     // Double check availability
     const start = new Date(pickupDate);
     const end = new Date(returnDate);
-    const overlapping = await Booking.findOne({
-      tool,
-      status: { $ne: 'Cancelled' },
-      $or: [
-        { pickupDate: { $lt: end }, returnDate: { $gt: start } }
-      ]
-    });
+    const toolDoc = await Tool.findById(tool);
+    if (!toolDoc) {
+      return res.status(404).json({ message: 'Tool not found' });
+    }
 
-    if (overlapping) {
-      return res.status(400).json({ message: 'Tool is already booked for these dates' });
+    // Instead of strict overlapping, check if the requested tool stock is enough
+    const requestedQty = (req.body.items && req.body.items.length > 0) ? (req.body.items[0].quantity || 1) : 1;
+    if (toolDoc.stock < requestedQty && toolDoc.status !== 'Available') {
+      return res.status(400).json({ message: 'Not enough stock available for this tool.' });
     }
 
     const bookingSeq = await getNextSequence('bookingId');
@@ -200,11 +220,15 @@ router.post('/', authMiddleware, async (req, res) => {
     const newBooking = await booking.save();
     console.log(`✅ Booking Saved: ${newBooking._id}`);
 
-    // 1. Update Tool Status
+    // 1. Update Tool Stock & Status
     if (newBooking.items && newBooking.items.length > 0) {
       for (const item of newBooking.items) {
         try {
-          await Tool.findByIdAndUpdate(item.tool, { status: 'Booked' });
+          const qty = Number(item.quantity) || 1;
+          const updatedTool = await Tool.findByIdAndUpdate(item.tool, { $inc: { stock: -qty } }, { new: true });
+          if (updatedTool && updatedTool.stock <= 0) {
+            await Tool.findByIdAndUpdate(item.tool, { status: 'Booked' });
+          }
         } catch (tErr) { console.error('Tool status update fail:', tErr.message); }
       }
     }

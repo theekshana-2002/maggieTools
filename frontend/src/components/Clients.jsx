@@ -103,7 +103,7 @@ const Clients = () => {
            <button className="theme-toggle-btn" onClick={fetchRecords} title="Refresh"><RefreshCw size={18} className={loading ? 'spinner' : ''} /></button>
            {canManage && (
              <button className="refresh-btn" onClick={() => { setEditingItem(null); setIsModalOpen(true); }} style={{ height: '48px', padding: '0 24px' }}>
-               <PlusCircle size={18} /> Add Client
+               <PlusCircle size={18} /> Add Customer
              </button>
            )}
         </div>
@@ -138,7 +138,7 @@ const Clients = () => {
         <RecordDetails data={selectedRecord} type="client" />
       </Modal>
 
-      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? 'Edit Client' : 'Add New Client'}>
+      <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingItem(null); }} title={editingItem ? 'Edit Customer' : 'Add New Customer'}>
         <ClientForm onSubmit={async (d) => { if (editingItem) await clientAPI.update(editingItem._id, d); else await clientAPI.create(d); setIsModalOpen(false); fetchRecords(); }} onCancel={() => setIsModalOpen(false)} initialData={editingItem} />
       </Modal>
     </div>

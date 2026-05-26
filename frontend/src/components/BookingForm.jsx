@@ -3,6 +3,7 @@ import { toolAPI, bookingAPI, employeeAPI, clientAPI, accessoryAPI, accountAPI }
 import { Calendar, Package, MapPin, Hash, Info, User, Phone, Wallet, ShieldCheck, RefreshCw, TrendingUp, Plus, Trash2, FileText } from 'lucide-react';
 import Autocomplete from './Autocomplete';
 import '../styles/forms.css';
+import { calculateBookingCosts } from '../utils/bookingCalculations';
 
 const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   const [availableTools, setAvailableTools] = useState([]);
@@ -91,6 +92,14 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
       if (formattedData.pickupDate) formattedData.pickupDate = new Date(formattedData.pickupDate).toISOString().split('T')[0];
       if (formattedData.returnDate) formattedData.returnDate = new Date(formattedData.returnDate).toISOString().split('T')[0];
 
+      if (formattedData.securityDeposit != null && formattedData.deposit === '') {
+        formattedData.deposit = formattedData.securityDeposit;
+      }
+      formattedData.items = (formattedData.items || []).map((it) => ({
+        ...it,
+        quantity: it.quantity || 1
+      }));
+
       setFormData(sanitizeMoneyFields(formattedData));
     } else {
       setFormData({ ...defaults });
@@ -98,7 +107,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   }, [initialData]);
 
   const [totalDays, setTotalDays] = useState(1);
-  const [costs, setCosts] = useState({ baseAmount: 0, totalAmount: 0, balanceAmount: 0 });
+  const [costs, setCosts] = useState({ baseAmount: 0, totalAmount: 0, balanceAmount: 0, toolsTotal: 0, accessoriesTotal: 0 });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -274,16 +283,13 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   };
 
   useEffect(() => {
-    const toolsTotal = formData.items.reduce((sum, item) => sum + ((Number(item.dailyRate) || 0) * (item.quantity || 1) * totalDays), 0);
-    const accTotal = formData.bookingAccessories.reduce((sum, acc) => sum + (acc.price * acc.quantity), 0);
-    const transport = Number(formData.transportCharge) || 0;
-    const totalAmount = (toolsTotal + accTotal + transport) - (Number(formData.discount) || 0);
-    const balanceAmount = totalAmount - (Number(formData.advancePayment) || 0);
-
+    const calc = calculateBookingCosts(formData, totalDays);
     setCosts({
-      baseAmount: (toolsTotal + accTotal + transport),
-      totalAmount,
-      balanceAmount
+      baseAmount: calc.baseAmount,
+      totalAmount: calc.totalAmount,
+      balanceAmount: calc.balanceAmount,
+      toolsTotal: calc.toolsTotal,
+      accessoriesTotal: calc.accessoriesTotal
     });
   }, [formData.items, formData.bookingAccessories, totalDays, formData.advancePayment, formData.discount, formData.transportCharge]);
 
@@ -398,33 +404,46 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         alert('Target Bank Account is required for Bank Transfers.');
         return;
       }
-      if (formData.items.length === 0) {
-        alert('Please select at least one tool.');
+      const hasTools = formData.items.length > 0;
+      const hasAccessories = formData.bookingAccessories.length > 0;
+      if (!hasTools && !hasAccessories) {
+        alert('Please select at least one tool or accessory.');
         return;
       }
 
-      // Create one consolidated booking object
+      const calc = calculateBookingCosts(formData, totalDays);
+
       const finalBooking = {
         ...formData,
-        tool: formData.items[0]?.tool, // Add top-level tool for backend availability check & legacy support
-        totalAmount: costs.totalAmount,
-        balanceAmount: costs.balanceAmount,
-        totalDays: totalDays,
-        // Map UI accessories to backend schema
+        ...(formData.items[0]?.tool ? { tool: formData.items[0].tool } : {}),
+        baseAmount: calc.baseAmount,
+        totalAmount: calc.totalAmount,
+        balanceAmount: calc.balanceAmount,
+        totalDays,
+        securityDeposit: Number(formData.deposit) || 0,
+        extraCharges: Number(formData.extraCharges) || 0,
         accessories: formData.bookingAccessories.map(a => ({
           accessory: a.accessoryId,
           name: a.name,
-          quantity: Number(a.quantity),
-          price: Number(a.price)
+          quantity: Number(a.quantity) || 1,
+          price: Number(a.price) || 0
         })),
-        // Ensure items array is preserved
         items: formData.items.map(it => ({
           tool: it.tool,
           toolNumber: it.toolNumber,
           model: it.model,
-          dailyRate: Number(it.dailyRate) || 0
+          category: it.category,
+          dailyRate: Number(it.dailyRate) || 0,
+          quantity: Number(it.quantity) || 1
         }))
       };
+      delete finalBooking.deposit;
+      delete finalBooking.bookingAccessories;
+
+      if (!hasTools) {
+        delete finalBooking.tool;
+        finalBooking.items = [];
+      }
 
       // Sanitize ObjectIds to prevent BSON casting errors
       if (!finalBooking.accountId) delete finalBooking.accountId;
@@ -615,7 +634,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
 
             {!loadingTools && availableTools.length > 0 && (
               <div className="tool-selector tool-selector-wide" style={{ marginBottom: '16px' }}>
-                <label className="tool-search-label">Select tools *</label>
+                <label className="tool-search-label">Select tools {formData.bookingAccessories.length === 0 ? '*' : '(optional)'}</label>
                 <Autocomplete
                   name="toolSearch"
                   value={toolSearch}
@@ -1137,23 +1156,13 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
             >
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                 <span>Tool Rentals ({totalDays} days)</span>
-                <span>
-                  LKR{" "}
-                  {formData.items
-                    .reduce((sum, item) => sum + item.dailyRate * totalDays, 0)
-                    .toLocaleString()}
-                </span>
+                <span>LKR {(costs.toolsTotal || 0).toLocaleString()}</span>
               </div>
 
               {formData.bookingAccessories.length > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                   <span>Parts & Accessories</span>
-                  <span>
-                    LKR{" "}
-                    {formData.bookingAccessories
-                      .reduce((sum, acc) => sum + acc.price * acc.quantity, 0)
-                      .toLocaleString()}
-                  </span>
+                  <span>LKR {(costs.accessoriesTotal || 0).toLocaleString()}</span>
                 </div>
               )}
 

@@ -1,5 +1,11 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
+
+function isValidObjectId(id) {
+  if (id == null || id === '') return false;
+  return mongoose.Types.ObjectId.isValid(String(id));
+}
 const Booking = require('../models/Booking');
 const Tool = require('../models/Tool');
 const Accessory = require('../models/Accessory');
@@ -12,50 +18,96 @@ const { sendSMS } = require('../utils/smsService');
 const Account = require('../models/Account');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
-// Helper: Build SMS from template with placeholder replacement
-async function buildSMSMessage(templateField, bookingData) {
-  try {
-    const settings = await Setting.findOne();
-    const template = settings?.[templateField] || {detailedBill};
+function buildDetailedBillMessage(bookingData, settings) {
+  const itemsList = Array.isArray(bookingData.items) ? bookingData.items : [];
+  const accList = Array.isArray(bookingData.accessories) ? bookingData.accessories : [];
+  const toolNo =
+    itemsList.map((it) => it.toolNumber).filter(Boolean).join(' / ') ||
+    accList.map((a) => a.name).filter(Boolean).join(' / ') ||
+    'Rental';
+  const accStr = accList.map((a) => `${a.name} (x${a.quantity})`).join(', ');
+  const fmt = (v) => (v != null && v !== '' ? `LKR ${Number(v).toLocaleString()}` : '-');
 
-    const itemsList = Array.isArray(bookingData.items) ? bookingData.items : [];
-    const toolNo = itemsList.map(it => it.toolNumber).join(' / ') || 'Tool';
-
-    const accList = Array.isArray(bookingData.accessories) ? bookingData.accessories : [];
-    const accStr = accList.map(a => `${a.name} (x${a.quantity})`).join(', ');
-
-    const detailedBill = `
+  return `
 --- MAGGI TOOLS BOOKING BILL ---
 Customer: ${bookingData.clientName || 'Customer'}
 Phone: ${bookingData.clientPhone || 'N/A'}
 NIC: ${bookingData.clientNic || 'N/A'}
-Pickup Location: ${bookingData.pickupLocation || 'N/A'}
-Return Location: ${bookingData.returnLocation || 'N/A'}
+Pickup: ${bookingData.pickupLocation || 'N/A'}
+Return: ${bookingData.returnLocation || 'N/A'}
 Date: ${new Date(bookingData.pickupDate).toLocaleDateString()} to ${new Date(bookingData.returnDate).toLocaleDateString()}
 ${bookingData.notes ? `Notes: ${bookingData.notes}` : ''}
 
 Items Booked:
 ${toolNo}
-${accStr ? 'Accessories: ' + accStr : ''}
+${accStr ? `Accessories: ${accStr}` : ''}
 
-Total Price: LKR ${(bookingData.totalAmount || 0).toLocaleString()}
-Advance Paid: LKR ${(bookingData.advancePayment || 0).toLocaleString()}
-Balance Due: LKR ${(bookingData.balanceAmount || 0).toLocaleString()}
+Transport: ${fmt(bookingData.transportCharge)}
+Other Charges: ${fmt(bookingData.extraCharges)}
+Deposit: ${fmt(bookingData.securityDeposit ?? bookingData.deposit)}
+Discount: ${fmt(bookingData.discount)}
+--------------------
+Total Price: ${fmt(bookingData.totalAmount)}
+Paid: ${fmt(bookingData.advancePayment)}
+Balance Due: ${fmt(bookingData.balanceAmount)}
 
-Terms & Conditions apply.
 Thank you for choosing ${settings?.companyName || 'MAGGI TOOLS RENTALS'}!
-    `.trim();
+  `.trim();
+}
 
-    // If template has {detailedBill}, use it. Else append it.
-    if (template.includes('{detailedBill}')) {
+// Always builds the full bill SMS (optional settings wrapper with {detailedBill})
+async function buildSMSMessage(templateField, bookingData) {
+  try {
+    const settings = await Setting.findOne();
+    const detailedBill = buildDetailedBillMessage(bookingData, settings);
+    const template = settings?.[templateField];
+
+    if (typeof template === 'string' && template.includes('{detailedBill}')) {
       return template.replace(/\{detailedBill\}/g, detailedBill);
     }
-    
+
     return detailedBill;
   } catch (err) {
     console.error('Failed to build SMS from template:', err.message);
     return null;
   }
+}
+
+function calcBookingTotals(body) {
+  const pickup = new Date(body.pickupDate);
+  const ret = new Date(body.returnDate);
+  let totalDays = Number(body.totalDays) || 1;
+  if (!isNaN(pickup) && !isNaN(ret)) {
+    const diff = Math.floor((ret - pickup) / (1000 * 60 * 60 * 24)) + 1;
+    if (diff > 0) totalDays = diff;
+  }
+
+  const items = Array.isArray(body.items) ? body.items : [];
+  const accessories = Array.isArray(body.accessories) ? body.accessories : [];
+
+  const toolsTotal = items.reduce(
+    (sum, it) => sum + (Number(it.dailyRate) || 0) * (Number(it.quantity) || 1) * totalDays,
+    0
+  );
+  const accTotal = accessories.reduce(
+    (sum, a) => sum + (Number(a.price) || 0) * (Number(a.quantity) || 1),
+    0
+  );
+
+  const transport = Number(body.transportCharge) || 0;
+  const discount = Number(body.discount) || 0;
+  const advance = Number(body.advancePayment) || 0;
+  const subtotal = toolsTotal + accTotal + transport;
+  const totalAmount = Math.max(0, subtotal - discount);
+  const balanceAmount = Math.max(0, totalAmount - advance);
+
+  return {
+    totalDays,
+    baseAmount: subtotal,
+    totalAmount,
+    balanceAmount,
+    dailyRate: items.length === 1 ? Number(items[0].dailyRate) || 0 : 0
+  };
 }
 
 async function getNextSequence(name) {
@@ -201,38 +253,57 @@ router.get('/available-tools', authMiddleware, async (req, res) => {
 
 // Create a new booking
 router.post('/', authMiddleware, async (req, res) => {
-  const { tool, pickupDate, returnDate } = req.body;
-  
+  const { pickupDate, returnDate } = req.body;
+  const items = Array.isArray(req.body.items) ? req.body.items : [];
+  const accessories = Array.isArray(req.body.accessories) ? req.body.accessories : [];
+
   try {
-    // Double check availability
-    const start = new Date(pickupDate);
-    const end = new Date(returnDate);
-    const toolDoc = await Tool.findById(tool);
-    if (!toolDoc) {
-      return res.status(404).json({ message: 'Tool not found' });
+    if (items.length === 0 && accessories.length === 0) {
+      return res.status(400).json({ message: 'Please select at least one tool or accessory.' });
     }
 
-    // Instead of strict overlapping, check if the requested tool stock is enough
-    const requestedQty = (req.body.items && req.body.items.length > 0) ? (req.body.items[0].quantity || 1) : 1;
-    if (toolDoc.stock < requestedQty && toolDoc.status !== 'Available') {
-      return res.status(400).json({ message: 'Not enough stock available for this tool.' });
+    const validItems = items.filter((it) => isValidObjectId(it.tool));
+
+    if (validItems.length > 0) {
+      const toolId = validItems[0].tool;
+      const toolDoc = await Tool.findById(toolId);
+      if (!toolDoc) {
+        return res.status(404).json({ message: 'Tool not found' });
+      }
+      const requestedQty = validItems[0].quantity || 1;
+      if (toolDoc.stock < requestedQty && toolDoc.status !== 'Available') {
+        return res.status(400).json({ message: 'Not enough stock available for this tool.' });
+      }
     }
 
     const bookingSeq = await getNextSequence('bookingId');
     const bookingId = `BK-${bookingSeq.toString().padStart(4, '0')}`;
 
-    const booking = new Booking(req.body);
+    const totals = calcBookingTotals({ ...req.body, items: validItems, accessories });
+    const bookingPayload = {
+      ...req.body,
+      items: validItems,
+      accessories,
+      ...totals,
+      securityDeposit: Number(req.body.securityDeposit ?? req.body.deposit) || 0
+    };
+    if (validItems.length === 0) {
+      delete bookingPayload.tool;
+    }
+
+    const booking = new Booking(bookingPayload);
     booking.bookingId = bookingId;
-    
-    // Ensure tool IDs are strings, not objects (fixes BSON errors during population)
-    if (req.body.items && req.body.items.length > 0) {
-      const firstTool = req.body.items[0].tool;
+
+    if (validItems.length > 0) {
+      const firstTool = validItems[0].tool;
       booking.tool = typeof firstTool === 'object' ? firstTool._id : firstTool;
-      
-      booking.items = req.body.items.map(it => ({
+      booking.items = validItems.map((it) => ({
         ...it,
         tool: typeof it.tool === 'object' ? it.tool._id : it.tool
       }));
+    } else {
+      booking.tool = undefined;
+      booking.items = [];
     }
 
     booking.updatedBy = req.user.id;
@@ -307,16 +378,17 @@ async function processBookingSideEffects(newBooking) {
       const itemsList = Array.isArray(newBooking.items) ? newBooking.items : [];
       const toolsDesc = itemsList.map(it => `${it.toolNumber} (${it.model})`).join(', ');
       const toolsNo = itemsList.map(it => it.toolNumber).join(' / ');
-      const tNo = toolsNo || 'Tool';
+      const accOnlyLabel = accList.map(a => a.name).filter(Boolean).join(' / ') || 'Accessories';
+      const tNo = toolsNo || accOnlyLabel;
 
       const invoiceData = {
         date: new Date(),
         clientName: newBooking.clientName,
         clientPhone: newBooking.clientPhone || '',
         clientNic: newBooking.clientNic || '',
-        toolNo: toolsNo || 'Tool',
-        toolType: itemsList.length > 1 ? 'Multiple Tools' : (itemsList[0]?.category || 'Tool'),
-        jobDescription: `Tool Rental: ${new Date(newBooking.pickupDate).toLocaleDateString()} - ${new Date(newBooking.returnDate).toLocaleDateString()}\nTools: ${toolsDesc}${accDesc ? `\nAccessories: ${accDesc}` : ''}`,
+        toolNo: tNo,
+        toolType: itemsList.length > 1 ? 'Multiple Tools' : (itemsList[0]?.category || (accList.length ? 'Accessories' : 'Tool')),
+        jobDescription: `Rental: ${new Date(newBooking.pickupDate).toLocaleDateString()} - ${new Date(newBooking.returnDate).toLocaleDateString()}${toolsDesc ? `\nTools: ${toolsDesc}` : ''}${accDesc ? `\nAccessories: ${accDesc}` : ''}`,
         totalUnits: newBooking.totalDays || 1,
         unitType: 'Days',
         ratePerUnit: itemsList.length === 1 ? itemsList[0].dailyRate : 0,
@@ -390,7 +462,10 @@ async function processBookingSideEffects(newBooking) {
       const payStatus = advAmt >= totalAmt ? 'Paid' : advAmt > 0 ? 'Partial' : 'Pending';
 
       const itemsList = Array.isArray(newBooking.items) ? newBooking.items : [];
-      const tNo = itemsList.map(it => it.toolNumber).join(' / ') || 'Tool';
+      const accListPay = Array.isArray(newBooking.accessories) ? newBooking.accessories : [];
+      const tNo = itemsList.map(it => it.toolNumber).join(' / ')
+        || accListPay.map(a => a.name).filter(Boolean).join(' / ')
+        || 'Accessories';
 
       const paymentData = {
         date: newBooking.pickupDate || new Date(),
@@ -455,8 +530,13 @@ router.post('/bulk', authMiddleware, async (req, res) => {
       try {
         const bData = bookings[i];
         const toolCode = bookings.length > 1 ? `-${String.fromCharCode(65 + i)}` : '';
-        
-        const booking = new Booking(bData);
+        const totals = calcBookingTotals(bData);
+
+        const booking = new Booking({
+          ...bData,
+          ...totals,
+          securityDeposit: Number(bData.securityDeposit ?? bData.deposit) || 0
+        });
         booking.bookingId = `${commonId}${toolCode}`;
         
         // Harden IDs and add audit fields
@@ -509,10 +589,15 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-    if (req.body.pickupDate || req.body.returnDate || req.body.tool) {
+    const updateItems = Array.isArray(req.body.items) ? req.body.items.filter((it) => isValidObjectId(it.tool)) : null;
+    const toolIdForOverlap = updateItems?.length
+      ? updateItems[0].tool
+      : (isValidObjectId(req.body.tool) ? req.body.tool : null);
+
+    if ((req.body.pickupDate || req.body.returnDate) && toolIdForOverlap) {
         const start = new Date(req.body.pickupDate || booking.pickupDate);
         const end = new Date(req.body.returnDate || booking.returnDate);
-        const toolId = req.body.tool || booking.tool;
+        const toolId = toolIdForOverlap;
 
         const overlapping = await Booking.findOne({
             _id: { $ne: booking._id },
@@ -528,30 +613,45 @@ router.put('/:id', authMiddleware, async (req, res) => {
         }
     }
 
-    // Harden IDs in items array if present
     if (req.body.items && Array.isArray(req.body.items)) {
-      req.body.items = req.body.items.map(it => ({
-        ...it,
-        tool: typeof it.tool === 'object' ? it.tool._id : it.tool
-      }));
-      
-      // Sync top-level tool for legacy support
+      req.body.items = req.body.items
+        .map((it) => ({
+          ...it,
+          tool: typeof it.tool === 'object' ? it.tool._id : it.tool
+        }))
+        .filter((it) => isValidObjectId(it.tool));
+
       if (req.body.items.length > 0) {
-        const firstTool = req.body.items[0].tool;
-        req.body.tool = typeof firstTool === 'object' ? firstTool._id : firstTool;
+        req.body.tool = req.body.items[0].tool;
+      } else {
+        delete req.body.tool;
       }
-    } else if (req.body.tool) {
+    } else if (isValidObjectId(req.body.tool)) {
       req.body.tool = typeof req.body.tool === 'object' ? req.body.tool._id : req.body.tool;
+    } else {
+      delete req.body.tool;
     }
 
     // Sanitize accountId
     if (req.body.accountId === '') req.body.accountId = null;
 
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body, updatedBy: req.user.id, updatedByName: req.user.name },
-      { new: true }
-    );
+    const totals = calcBookingTotals({ ...booking.toObject(), ...req.body });
+    const updatePayload = {
+      ...req.body,
+      ...totals,
+      securityDeposit: Number(req.body.securityDeposit ?? req.body.deposit ?? booking.securityDeposit) || 0,
+      updatedBy: req.user.id,
+      updatedByName: req.user.name
+    };
+
+    const hasToolItems = Array.isArray(updatePayload.items) && updatePayload.items.length > 0;
+    const updatedBooking = hasToolItems
+      ? await Booking.findByIdAndUpdate(req.params.id, updatePayload, { new: true })
+      : await Booking.findByIdAndUpdate(
+          req.params.id,
+          { $set: { ...updatePayload, items: [] }, $unset: { tool: 1 } },
+          { new: true }
+        );
     
     // Auto-update linked invoice and client
     await processBookingSideEffects(updatedBooking.toObject());
@@ -646,16 +746,26 @@ router.post('/:id/remind', authMiddleware, async (req, res) => {
     if (!b) return res.status(404).json({ message: 'Booking not found' });
     
     if (b.clientPhone) {
-      // Use custom message from request body if provided, otherwise use follow-up template
-      let msg = req.body.customMessage;
+      const bookingObj = b.toObject();
+      const custom =
+        (req.body.customMessage || req.body.message || req.body.smsText || '').trim();
+
+      // Always prefer the exact text from the UI preview
+      let msg = custom;
       if (!msg) {
-        msg = await buildSMSMessage('smsFollowupTemplate', b.toObject());
+        const settings = await Setting.findOne();
+        msg = buildDetailedBillMessage(bookingObj, settings);
       }
       if (!msg) {
-        msg = `Reminder: Dear ${b.clientName}, your rental is due on ${new Date(b.returnDate).toLocaleDateString()}.`;
+        return res.status(400).json({ message: 'SMS message is empty.' });
       }
+
+      console.log(`[SMS] Sending bill (${msg.length} chars) to ${b.clientPhone}`);
       const result = await sendSMS(b.clientPhone, msg);
-      return res.json(result);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error || 'Failed to send SMS', ...result });
+      }
+      return res.json({ ...result, messageLength: msg.length });
     }
     res.status(400).json({ message: 'No phone number found' });
   } catch (err) {

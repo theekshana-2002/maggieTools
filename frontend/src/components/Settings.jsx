@@ -181,7 +181,7 @@ const Settings = ({ onSettingsUpdate }) => {
           <div className="settings-section">
             <h3 className="section-title"><MessageSquare size={18} /> Automated Message Templates (SMS)</h3>
             <p className="upload-hint" style={{ marginBottom: '15px' }}>
-              Available placeholders: <code>{`{clientName}`}</code>, <code>{`{toolNo}`}</code>, <code>{`{pickupDate}`}</code>, <code>{`{returnDate}`}</code>, <code>{`{totalAmount}`}</code>, <code>{`{balanceAmount}`}</code>, <code>{`{companyName}`}</code>
+              Booking SMS always sends the full bill. To add a short intro line, include <code>{`{detailedBill}`}</code> in your template (the full bill replaces that placeholder).
             </p>
             
             <div className="form-group">

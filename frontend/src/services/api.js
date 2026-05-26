@@ -230,7 +230,7 @@ export const bookingAPI     = {
   bulkCreate: (bookings) => 
     api.post(`bookings/bulk`, { bookings }),
   sendReminder: (id, customMessage) =>
-    api.post(`bookings/${id}/remind`, { customMessage }),
+    api.post(`bookings/${id}/remind`, { customMessage: String(customMessage || '') }),
   getClientDetails: (clientName) =>
     api.get(`bookings/client-details/${encodeURIComponent(clientName)}`),
   processFollowups: () =>

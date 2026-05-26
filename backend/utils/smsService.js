@@ -31,15 +31,23 @@ const sendSMS = async (to, message) => {
       return { success: false, error: 'SMS credentials missing' };
     }
 
-    const response = await axios.get('https://www.smslenz.lk/api/send-sms', {
-      params: {
-        user_id: userId,
-        api_key: apiKey,
-        sender_id: senderId,
-        contact: formattedPhone,
-        message: message
-      }
+    // POST avoids URL length limits that truncate long bill messages on GET
+    const payload = new URLSearchParams({
+      user_id: userId,
+      api_key: apiKey,
+      sender_id: senderId,
+      contact: formattedPhone,
+      message: String(message)
     });
+
+    const response = await axios.post(
+      'https://www.smslenz.lk/api/send-sms',
+      payload.toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 30000
+      }
+    );
 
     console.log(`DEBUG: SMSlenz Request Params:`, { userId, senderId, contact: formattedPhone });
 

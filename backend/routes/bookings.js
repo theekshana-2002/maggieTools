@@ -15,58 +15,29 @@ const Payment = require('../models/Payment');
 const Client = require('../models/Client');
 const Setting = require('../models/Setting');
 const { sendSMS } = require('../utils/smsService');
+const {
+  buildDetailedBillMessage,
+  applySmsTemplate,
+  resolveBookingTemplate
+} = require('../utils/smsTemplate');
 const Account = require('../models/Account');
 const { authMiddleware } = require('../middleware/authMiddleware');
 
-function buildDetailedBillMessage(bookingData, settings) {
-  const itemsList = Array.isArray(bookingData.items) ? bookingData.items : [];
-  const accList = Array.isArray(bookingData.accessories) ? bookingData.accessories : [];
-  const toolNo =
-    itemsList.map((it) => it.toolNumber).filter(Boolean).join(' / ') ||
-    accList.map((a) => a.name).filter(Boolean).join(' / ') ||
-    'Rental';
-  const accStr = accList.map((a) => `${a.name} (x${a.quantity})`).join(', ');
-  const fmt = (v) => (v != null && v !== '' ? `LKR ${Number(v).toLocaleString()}` : '-');
-
-  return `
---- MAGGI TOOLS BOOKING BILL ---
-Customer: ${bookingData.clientName || 'Customer'}
-Phone: ${bookingData.clientPhone || 'N/A'}
-NIC: ${bookingData.clientNic || 'N/A'}
-Pickup: ${bookingData.pickupLocation || 'N/A'}
-Return: ${bookingData.returnLocation || 'N/A'}
-Date: ${new Date(bookingData.pickupDate).toLocaleDateString()} to ${new Date(bookingData.returnDate).toLocaleDateString()}
-${bookingData.notes ? `Notes: ${bookingData.notes}` : ''}
-
-Items Booked:
-${toolNo}
-${accStr ? `Accessories: ${accStr}` : ''}
-
-Transport: ${fmt(bookingData.transportCharge)}
-Other Charges: ${fmt(bookingData.extraCharges)}
-Deposit: ${fmt(bookingData.securityDeposit ?? bookingData.deposit)}
-Discount: ${fmt(bookingData.discount)}
---------------------
-Total Price: ${fmt(bookingData.totalAmount)}
-Paid: ${fmt(bookingData.advancePayment)}
-Balance Due: ${fmt(bookingData.balanceAmount)}
-
-Thank you for choosing ${settings?.companyName || 'MAGGI TOOLS RENTALS'}!
-  `.trim();
-}
-
-// Always builds the full bill SMS (optional settings wrapper with {detailedBill})
 async function buildSMSMessage(templateField, bookingData) {
   try {
     const settings = await Setting.findOne();
-    const detailedBill = buildDetailedBillMessage(bookingData, settings);
-    const template = settings?.[templateField];
 
-    if (typeof template === 'string' && template.includes('{detailedBill}')) {
-      return template.replace(/\{detailedBill\}/g, detailedBill);
+    if (templateField === 'smsBookingTemplate') {
+      const template = resolveBookingTemplate(settings);
+      return applySmsTemplate(template, bookingData, settings);
     }
 
-    return detailedBill;
+    const template = settings?.[templateField];
+    if (typeof template === 'string' && template.trim()) {
+      return applySmsTemplate(template.trim(), bookingData, settings);
+    }
+
+    return buildDetailedBillMessage(bookingData, settings);
   } catch (err) {
     console.error('Failed to build SMS from template:', err.message);
     return null;
@@ -359,6 +330,8 @@ router.post('/', authMiddleware, async (req, res) => {
     const sideEffects = await processBookingSideEffects(newBooking.toObject());
     const responseObj = newBooking.toObject();
     responseObj.generatedSms = sideEffects?.generatedSms;
+    responseObj.smsSent = sideEffects?.smsSent ?? false;
+    responseObj.smsError = sideEffects?.smsError ?? null;
     res.status(201).json(responseObj);
 
   } catch (err) {
@@ -500,10 +473,19 @@ async function processBookingSideEffects(newBooking) {
       
       
       let generatedSms = '';
+      let smsSent = false;
+      let smsError = null;
+
       if (newBooking.clientPhone) {
         generatedSms = await buildSMSMessage('smsBookingTemplate', newBooking);
+        if (generatedSms) {
+          const result = await sendSMS(newBooking.clientPhone, generatedSms);
+          smsSent = !!result.success;
+          if (!result.success) smsError = result.error || 'SMS send failed';
+        }
       }
-      return { generatedSms };
+
+      return { generatedSms, smsSent, smsError };
 
 
     } catch (payErr) {
@@ -561,6 +543,8 @@ router.post('/bulk', authMiddleware, async (req, res) => {
         const sideEffects = await processBookingSideEffects(saved.toObject());
         const obj = saved.toObject();
         obj.generatedSms = sideEffects?.generatedSms;
+        obj.smsSent = sideEffects?.smsSent ?? false;
+        obj.smsError = sideEffects?.smsError ?? null;
         results.push(obj);
 
       } catch (itemErr) {
@@ -750,11 +734,9 @@ router.post('/:id/remind', authMiddleware, async (req, res) => {
       const custom =
         (req.body.customMessage || req.body.message || req.body.smsText || '').trim();
 
-      // Always prefer the exact text from the UI preview
       let msg = custom;
       if (!msg) {
-        const settings = await Setting.findOne();
-        msg = buildDetailedBillMessage(bookingObj, settings);
+        msg = await buildSMSMessage('smsBookingTemplate', bookingObj);
       }
       if (!msg) {
         return res.status(400).json({ message: 'SMS message is empty.' });

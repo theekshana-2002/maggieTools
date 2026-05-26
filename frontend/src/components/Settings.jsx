@@ -1,7 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../services/api';
-import { Settings as SettingsIcon, Save, Image as ImageIcon, Phone, MapPin, Mail, Hash, Globe, MessageSquare } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Image as ImageIcon, Phone, MapPin, Globe, MessageSquare, RotateCcw, Eye } from 'lucide-react';
+import {
+  DEFAULT_SMS_BOOKING_TEMPLATE,
+  SMS_PLACEHOLDER_GROUPS,
+  resolveBookingTemplate,
+  previewSmsTemplate,
+  isLegacyShortTemplate
+} from '../utils/smsTemplate';
 import '../styles/books.css';
+import './Settings.css';
 
 const Settings = ({ onSettingsUpdate }) => {
   const [settings, setSettings] = useState({
@@ -18,6 +26,7 @@ const Settings = ({ onSettingsUpdate }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
+  const smsTextareaRef = useRef(null);
 
   useEffect(() => {
     fetchSettings();
@@ -26,7 +35,16 @@ const Settings = ({ onSettingsUpdate }) => {
   const fetchSettings = async () => {
     try {
       const res = await api.get('settings');
-      setSettings(res.data);
+      const data = res.data || {};
+      setSettings({
+        ...data,
+        smsBookingTemplate: resolveBookingTemplate(
+          data.smsBookingTemplate,
+          data.companyName || 'MAGGI TOOLS RENTALS'
+        ),
+        smsFollowupTemplate: data.smsFollowupTemplate || '',
+        followupDays: data.followupDays ?? 14
+      });
     } catch (err) {
       console.error('Fetch settings error:', err);
     } finally {
@@ -34,11 +52,52 @@ const Settings = ({ onSettingsUpdate }) => {
     }
   };
 
+  const smsPreview = useMemo(
+    () => previewSmsTemplate(settings.smsBookingTemplate, settings.companyName || 'MAGGI TOOLS RENTALS'),
+    [settings.smsBookingTemplate, settings.companyName]
+  );
+
+  const insertPlaceholder = (token) => {
+    const el = smsTextareaRef.current;
+    const current = settings.smsBookingTemplate || '';
+    if (!el) {
+      setSettings({ ...settings, smsBookingTemplate: current + token });
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? start;
+    const next = current.slice(0, start) + token + current.slice(end);
+    setSettings({ ...settings, smsBookingTemplate: next });
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + token.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const resetBookingTemplate = () => {
+    const tpl = DEFAULT_SMS_BOOKING_TEMPLATE.replace(
+      /\{companyName\}/g,
+      settings.companyName || 'MAGGI TOOLS RENTALS'
+    );
+    setSettings({ ...settings, smsBookingTemplate: tpl });
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put('settings', settings);
+      const payload = {
+        ...settings,
+        smsBookingTemplate: (settings.smsBookingTemplate || '').trim()
+      };
+      if (isLegacyShortTemplate(payload.smsBookingTemplate)) {
+        payload.smsBookingTemplate = resolveBookingTemplate(
+          '',
+          settings.companyName || 'MAGGI TOOLS RENTALS'
+        );
+      }
+      await api.put('settings', payload);
       if (onSettingsUpdate) onSettingsUpdate();
       alert('Settings updated successfully!');
     } catch (err) {
@@ -80,7 +139,7 @@ const Settings = ({ onSettingsUpdate }) => {
           <SettingsIcon size={24} />
           <h2>System Configuration</h2>
         </div>
-        <p className="header-subtitle">Manage your company branding and administrative details</p>
+        <p className="header-subtitle">Manage your company branding and SMS message templates</p>
       </div>
 
       <div className="premium-card">
@@ -90,21 +149,21 @@ const Settings = ({ onSettingsUpdate }) => {
             <div className="form-grid-2">
               <div className="form-group">
                 <label>Company Name</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="premium-input"
-                  value={settings.companyName} 
-                  onChange={e => setSettings({ ...settings, companyName: e.target.value })} 
-                  required 
+                  value={settings.companyName}
+                  onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
+                  required
                 />
               </div>
               <div className="form-group">
                 <label>Registration Number</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="premium-input"
-                  value={settings.regNo} 
-                  onChange={e => setSettings({ ...settings, regNo: e.target.value })} 
+                  value={settings.regNo}
+                  onChange={(e) => setSettings({ ...settings, regNo: e.target.value })}
                 />
               </div>
             </div>
@@ -134,11 +193,11 @@ const Settings = ({ onSettingsUpdate }) => {
             <h3 className="section-title"><Globe size={18} /> Location & Contact</h3>
             <div className="form-group">
               <label>Business Address</label>
-              <textarea 
+              <textarea
                 className="premium-input"
-                rows="3" 
-                value={settings.address} 
-                onChange={e => setSettings({ ...settings, address: e.target.value })}
+                rows="3"
+                value={settings.address}
+                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                 required
               />
             </div>
@@ -146,22 +205,23 @@ const Settings = ({ onSettingsUpdate }) => {
             <div className="form-grid-2" style={{ marginTop: '20px' }}>
               <div className="form-group">
                 <label>Official Email</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   className="premium-input"
-                  value={settings.email} 
-                  onChange={e => setSettings({ ...settings, email: e.target.value })}
+                  value={settings.email}
+                  onChange={(e) => setSettings({ ...settings, email: e.target.value })}
                 />
               </div>
               <div className="form-group">
                 <label>Contact Numbers</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input 
-                    type="text" 
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
                     className="premium-input"
-                    value={phoneInput} 
-                    onChange={e => setPhoneInput(e.target.value)} 
-                    placeholder="+94 ..." 
+                    style={{ flex: '1 1 140px' }}
+                    value={phoneInput}
+                    onChange={(e) => setPhoneInput(e.target.value)}
+                    placeholder="+94 ..."
                   />
                   <button type="button" className="add-btn btn-glow" onClick={addPhone}>Add</button>
                 </div>
@@ -178,50 +238,102 @@ const Settings = ({ onSettingsUpdate }) => {
             </div>
           </div>
 
-          <div className="settings-section">
-            <h3 className="section-title"><MessageSquare size={18} /> Automated Message Templates (SMS)</h3>
-            <p className="upload-hint" style={{ marginBottom: '15px' }}>
-              Booking SMS always sends the full bill. To add a short intro line, include <code>{`{detailedBill}`}</code> in your template (the full bill replaces that placeholder).
+          <div className="settings-section sms-settings-section">
+            <h3 className="section-title"><MessageSquare size={18} /> Booking SMS Template</h3>
+            <p className="upload-hint" style={{ marginBottom: '16px' }}>
+              This message is sent automatically when you confirm a booking. Tap a placeholder below to insert it into the template.
             </p>
-            
-            <div className="form-group">
-              <label>Booking Confirmation SMS</label>
-              <textarea 
-                className="premium-input"
-                rows="3" 
-                value={settings.smsBookingTemplate || ''} 
-                onChange={e => setSettings({ ...settings, smsBookingTemplate: e.target.value })}
-                placeholder="Message sent to customer upon new tool booking..."
-              />
+
+            <div className="sms-placeholder-groups" style={{ marginBottom: '16px' }}>
+              {SMS_PLACEHOLDER_GROUPS.map((group) => (
+                <div key={group.title}>
+                  <p className="sms-placeholder-group-title">{group.title}</p>
+                  <div className="sms-placeholder-chips">
+                    {group.keys.map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        className="sms-placeholder-chip"
+                        onClick={() => insertPlaceholder(key)}
+                      >
+                        {key}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-            
-            <div className="form-group" style={{ marginTop: '20px' }}>
+
+            <div className="sms-template-editor">
+              <div className="sms-template-panel">
+                <label>Template (editable)</label>
+                <textarea
+                  ref={smsTextareaRef}
+                  className="sms-template-textarea"
+                  value={settings.smsBookingTemplate || ''}
+                  onChange={(e) => setSettings({ ...settings, smsBookingTemplate: e.target.value })}
+                  spellCheck={false}
+                />
+                <div className="sms-settings-actions">
+                  <button type="button" className="sms-reset-btn" onClick={resetBookingTemplate}>
+                    <RotateCcw size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />
+                    Reset to default bill
+                  </button>
+                </div>
+              </div>
+
+              <div className="sms-template-panel">
+                <label><Eye size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />Preview (sample data)</label>
+                <div className="sms-preview-box" aria-live="polite">
+                  {smsPreview || '—'}
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '28px' }}>
               <label>Follow-up / Reminder SMS</label>
-              <textarea 
-                className="premium-input"
-                rows="3" 
-                value={settings.smsFollowupTemplate || ''} 
-                onChange={e => setSettings({ ...settings, smsFollowupTemplate: e.target.value })}
-                placeholder="Message sent when a tool is overdue..."
+              <textarea
+                className="premium-input sms-followup-textarea"
+                rows="4"
+                value={settings.smsFollowupTemplate || ''}
+                onChange={(e) => setSettings({ ...settings, smsFollowupTemplate: e.target.value })}
+                placeholder="Reminder for overdue rentals. Use the same placeholders as above."
               />
             </div>
 
             <div className="form-group" style={{ marginTop: '20px' }}>
               <label>Auto Follow-up Delay (Days)</label>
-              <input 
+              <input
                 type="number"
                 className="premium-input"
                 style={{ maxWidth: '150px' }}
-                value={settings.followupDays || 14} 
-                onChange={e => setSettings({ ...settings, followupDays: Number(e.target.value) })}
+                value={settings.followupDays || 14}
+                onChange={(e) => setSettings({ ...settings, followupDays: Number(e.target.value) })}
                 min="1"
               />
-              <p className="upload-hint">Number of days after the booking date to automatically process follow-ups.</p>
+              <p className="upload-hint">Days after pickup to send automatic follow-up reminders.</p>
             </div>
           </div>
 
-          <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid var(--border-soft)', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="submit-btn btn-glow" disabled={saving} style={{ padding: '16px 40px', fontSize: '1rem', background: 'linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%)' }}>
+          <div
+            style={{
+              marginTop: '40px',
+              paddingTop: '20px',
+              borderTop: '1px solid var(--border-soft)',
+              display: 'flex',
+              justifyContent: 'flex-end'
+            }}
+          >
+            <button
+              type="submit"
+              className="submit-btn btn-glow"
+              disabled={saving}
+              style={{
+                padding: '16px 40px',
+                fontSize: '1rem',
+                background: 'linear-gradient(135deg, var(--accent) 0%, #1d4ed8 100%)'
+              }}
+            >
               <Save size={20} /> {saving ? 'Saving...' : 'Save All Changes'}
             </button>
           </div>

@@ -10,68 +10,11 @@ import { generatePDFReport } from '../utils/reportGenerator';
 import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import InvoiceForm from './InvoiceForm';
-import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, MessageCircle, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send } from 'lucide-react';
+import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
-import { buildSmsBuilderFromRecord, formatSmsFromBuilder } from '../utils/bookingCalculations';
-
-const SMS_POLICIES_DEFAULT = 'Thank you for choosing MAGGI TOOLS RENTALS!';
 
 const BookingBook = () => {
-  const [smsBuilder, setSmsBuilder] = useState({
-    transport: '',
-    otherCharges: '',
-    discount: '',
-    deposit: '',
-    advancePaid: '',
-    totalPrice: '',
-    balanceDue: '',
-    policies: SMS_POLICIES_DEFAULT
-  });
-
-  const applySmsBuilder = (record, builder) => {
-    const full = { policies: SMS_POLICIES_DEFAULT, ...builder };
-    setSmsBuilder(full);
-    if (record) {
-      setCustomSmsText(formatSmsFromBuilder(full, record));
-    }
-  };
-
-  const initSmsBuilder = (record) => {
-    if (!record) return;
-    applySmsBuilder(record, buildSmsBuilderFromRecord(record));
-  };
-
-  const updateSmsField = (field, value) => {
-    const nb = { ...smsBuilder, [field]: value };
-    setSmsBuilder(nb);
-    if (smsRecord) setCustomSmsText(formatSmsFromBuilder(nb, smsRecord));
-  };
-
-  const renderSmsPriceFields = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginBottom: '15px' }}>
-      {[
-        { key: 'transport', label: 'Transport' },
-        { key: 'otherCharges', label: 'Other Charges' },
-        { key: 'deposit', label: 'Deposit' },
-        { key: 'discount', label: 'Discount' },
-        { key: 'totalPrice', label: 'Total Price' },
-        { key: 'advancePaid', label: 'Paid' },
-        { key: 'balanceDue', label: 'Balance' }
-      ].map(({ key, label }) => (
-        <div key={key}>
-          <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>{label}</label>
-          <input
-            type="number"
-            placeholder={label}
-            value={smsBuilder[key]}
-            onChange={(e) => updateSmsField(key, e.target.value)}
-            style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }}
-          />
-        </div>
-      ))}
-    </div>
-  );
   const userRole = localStorage.getItem('raxwo_user_role');
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
@@ -102,11 +45,6 @@ const BookingBook = () => {
   // Add client modal
   const [addClientOpen, setAddClientOpen] = useState(false);
   const [newClient, setNewClient] = useState({ name: '', contact: '', nic: '' });
-
-  // Custom SMS modal
-  const [smsModalOpen, setSmsModalOpen] = useState(false);
-  const [smsRecord, setSmsRecord] = useState(null);
-  const [customSmsText, setCustomSmsText] = useState('');
 
   // Auto Invoice Modal
   const [autoInvoiceModalOpen, setAutoInvoiceModalOpen] = useState(false);
@@ -342,26 +280,11 @@ const BookingBook = () => {
   const handleNotify = async (e, record) => {
     e.stopPropagation();
     if (!record.clientPhone) return alert('No phone number found for this customer.');
-    setSmsRecord(record);
-    initSmsBuilder(record);
-    setSmsModalOpen(true);
-  };
-
-  const handleSmsSubmit = async () => {
-    if (!smsRecord) return;
-    const msg =
-      (customSmsText || '').trim() ||
-      formatSmsFromBuilder({ policies: SMS_POLICIES_DEFAULT, ...smsBuilder }, smsRecord);
-    if (!msg) {
-      alert('SMS message is empty. Please check the preview text.');
-      return;
-    }
+    if (!window.confirm(`Resend booking SMS to ${record.clientName}?`)) return;
     setLoading(true);
     try {
-      await bookingAPI.sendReminder(smsRecord._id, msg);
-      setSuccess(`SMS sent to ${smsRecord.clientName}`);
-      setSmsModalOpen(false);
-      setAutoInvoiceModalOpen(false);
+      await bookingAPI.sendReminder(record._id);
+      setSuccess(`SMS sent to ${record.clientName}`);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       const errMsg = err.response?.data?.message || 'Failed to send SMS.';
@@ -422,34 +345,52 @@ const BookingBook = () => {
       let createdBookingId = null;
       if (Array.isArray(formData)) {
         const res = await bookingAPI.bulkCreate(formData);
-        setSuccess(`${formData.length} tools booked successfully.`);
-        const firstBooking = res.data?.bookings ? res.data.bookings[0] : res.data?.[0];
+        const list = res.data?.bookings || res.data || [];
+        const smsCount = list.filter((b) => b.smsSent).length;
+        let msg = `${formData.length} booking(s) created successfully.`;
+        if (smsCount > 0) msg += ` ${smsCount} confirmation SMS sent.`;
+        setSuccess(msg);
+        const firstBooking = list[0];
         if (firstBooking) {
-            setAutoInvoice(firstBooking.invoiceDetails);
-            setSmsRecord(firstBooking);
-            initSmsBuilder(firstBooking);
-            setAutoInvoiceModalOpen(true);
+          try {
+            const invRes = await api.get('invoices');
+            const invoices = invRes.data || [];
+            const generatedInvoice = invoices.find((inv) => inv.bookingId === firstBooking._id);
+            if (generatedInvoice) {
+              setAutoInvoice(generatedInvoice);
+              setAutoInvoiceModalOpen(true);
+            }
+          } catch (err) {
+            console.error('Failed to fetch auto-invoice', err);
+          }
         }
       } else if (editingItem && editingItem._id) {
         await bookingAPI.update(editingItem._id, formData);
         setSuccess('Booking updated successfully.');
       } else {
         const res = await bookingAPI.create(formData);
-        setSuccess('Booking created successfully.');
         const booking = res.data;
         createdBookingId = booking?._id;
-        if (booking) {
-          setSmsRecord(booking);
-          initSmsBuilder(booking);
-          setAutoInvoiceModalOpen(true);
+        let msg = 'Booking created successfully.';
+        if (booking?.clientPhone) {
+          if (booking.smsSent) {
+            msg += ' Confirmation SMS sent to customer.';
+          } else if (booking.smsError) {
+            msg += ` SMS could not be sent: ${booking.smsError}`;
+          }
+        }
+        setSuccess(msg);
+        if (createdBookingId) {
           try {
             const invRes = await api.get('invoices');
             const invoices = invRes.data || [];
             const generatedInvoice = invoices.find((inv) => inv.bookingId === createdBookingId);
-            setAutoInvoice(generatedInvoice || null);
+            if (generatedInvoice) {
+              setAutoInvoice(generatedInvoice);
+              setAutoInvoiceModalOpen(true);
+            }
           } catch (err) {
             console.error('Failed to fetch auto-invoice', err);
-            setAutoInvoice(null);
           }
         }
       }
@@ -805,66 +746,10 @@ const BookingBook = () => {
         </form>
       </Modal>
 
-      {/* ── Custom SMS Modal ── */}
-      <Modal isOpen={smsModalOpen} onClose={() => setSmsModalOpen(false)} title="Send SMS Reminder">
-        <div className="hire-form" style={{ padding: '20px' }}>
-          <div className="form-group">
-            <label>Customer</label>
-            <input type="text" readOnly value={smsRecord?.clientName || ''} style={{ background: 'var(--bg-main)' }} />
-          </div>
-          <div className="form-group">
-            <label>Live SMS Preview</label>
-            
-           {renderSmsPriceFields()}
-           <div style={{ marginBottom: '15px' }}>
-             <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Policies / Footer Note</label>
-             <input type="text" value={smsBuilder.policies} onChange={(e) => updateSmsField('policies', e.target.value)} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
-           </div>
-           
-            <textarea 
-              rows={8} 
-              value={customSmsText}
-              onChange={e => setCustomSmsText(e.target.value)}
-              style={{ fontFamily: 'monospace', fontSize: '0.85rem', width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }}
-            />
-          </div>
-          <div className="modal-actions" style={{ marginTop: '20px' }}>
-            <button className="cancel-btn" onClick={() => setSmsModalOpen(false)}>Cancel</button>
-            <button className="submit-btn" onClick={handleSmsSubmit} disabled={loading} style={{ background: 'var(--accent)', color: '#fff' }}>
-              {loading ? 'Sending...' : 'Send SMS'}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
       {/* ── Auto Invoice Modal ── */}
-      <Modal isOpen={autoInvoiceModalOpen} onClose={() => { setAutoInvoiceModalOpen(false); setAutoInvoice(null); }} title="Generate Professional Bill" wide={true}>
+      <Modal isOpen={autoInvoiceModalOpen} onClose={() => { setAutoInvoiceModalOpen(false); setAutoInvoice(null); }} title="Professional Bill" wide={true}>
         <div style={{ marginBottom: '15px', background: 'var(--success-soft)', color: 'var(--success)', padding: '10px 15px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-          <CheckCircle size={18} /> Booking successful! Review and send the SMS to the customer below.
-        </div>
-        
-        <div className="hire-form" style={{ marginBottom: '20px', padding: '15px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '8px' }}>
-           <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', color: 'var(--text-main)' }}>Send SMS Notification</h4>
-           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-             
-           {renderSmsPriceFields()}
-           <div style={{ marginBottom: '15px' }}>
-             <label style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>Policies / Footer Note</label>
-             <input type="text" value={smsBuilder.policies} onChange={(e) => updateSmsField('policies', e.target.value)} style={{ padding: '8px', width: '100%', borderRadius: '4px', border: '1px solid var(--border)' }} />
-           </div>
-           
-             <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-               <textarea 
-                 value={customSmsText} 
-                 onChange={e => setCustomSmsText(e.target.value)}
-                 rows={8} 
-                 style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid var(--border)', fontFamily: 'monospace', fontSize: '0.85rem' }}
-               />
-               <button type="button" className="submit-btn" onClick={handleSmsSubmit} disabled={loading} style={{ whiteSpace: 'nowrap', padding: '0 20px', height: '42px', background: 'var(--accent)', color: '#fff' }}>
-                  {loading ? 'Sending...' : 'Send SMS'}
-               </button>
-             </div>
-           </div>
+          <CheckCircle size={18} /> Booking confirmed. Confirmation SMS was sent using your Settings template.
         </div>
         {autoInvoice && (
           <InvoiceForm

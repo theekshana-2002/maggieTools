@@ -8,11 +8,8 @@ const settingSchema = new mongoose.Schema({
   regNo: { type: String, default: '73330' },
   logo: { type: String }, // Base64 or URL
   currency: { type: String, default: 'LKR' },
-  // SMS Message Templates — use placeholders: {clientName}, {toolNo}, {pickupDate}, {returnDate}, {totalAmount}, {balanceAmount}, {companyName}
-  smsBookingTemplate: {
-    type: String,
-    default: 'Dear {clientName}, Thank you for choosing {companyName}. You have rented {toolNo} from {pickupDate} to {returnDate}. Total: LKR {totalAmount}.'
-  },
+  // Full bill SMS sent on booking confirm — editable in Settings
+  smsBookingTemplate: { type: String, default: '' },
   smsFollowupTemplate: {
     type: String,
     default: 'Dear {clientName}, This is a reminder from {companyName}. Your rental of {toolNo} was due on {returnDate}. Outstanding balance: LKR {balanceAmount}. Please arrange return/payment at your earliest convenience.'

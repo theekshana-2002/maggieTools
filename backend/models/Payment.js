@@ -28,6 +28,8 @@ const PaymentSchema = new mongoose.Schema({
   hireId:         { type: mongoose.Schema.Types.ObjectId, ref: 'Hire' },
   bookingId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
   invoiceId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }
+  ,
+  invoiceNo:      { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Payment', PaymentSchema);

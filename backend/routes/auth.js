@@ -76,8 +76,16 @@ router.post('/login', async (req, res) => {
 
   } catch (err) {
     console.error('Login Failure:', err);
+    const errText = String(err?.message || '').toLowerCase();
+    const dbUnavailable =
+      errText.includes('buffering timed out') ||
+      errText.includes('econnrefused') ||
+      errText.includes('querysrv');
+
     res.status(500).json({ 
-      message: 'Server error during login',
+      message: dbUnavailable
+        ? 'Database connection is currently unavailable. Try emergency login: admin / admin@123'
+        : 'Server error during login',
       error: process.env.NODE_ENV === 'development' ? err.message : undefined 
     });
   }

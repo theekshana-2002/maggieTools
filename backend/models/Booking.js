@@ -2,6 +2,9 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
   bookingId: { type: String, sparse: true },
+  // Link to the generated invoice (used in booking list UI)
+  invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+  invoiceNo: { type: String, default: '' },
   clientName: { type: String, required: true },
   clientPhone: { type: String },
   clientNic: { type: String },

@@ -36,7 +36,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     },
     {
       title: 'Inventory',
-      collapsible: false,
+      collapsible: true,
       items: [
         { id: 'inventory',  label: 'Combined Inventory', icon: Package },
         { id: 'compliance', label: 'Service & Maint.',   icon: Wrench },
@@ -65,7 +65,7 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout, role, userName, isOpen
     },
     {
       title: 'System',
-      collapsible: false,
+      collapsible: true,
       items: [
         { id: 'audit',     label: 'Audit Trail', icon: Clock },
         { id: 'settings',  label: 'Settings',    icon: SettingsIcon },

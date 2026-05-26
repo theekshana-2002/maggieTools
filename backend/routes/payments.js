@@ -25,8 +25,34 @@ async function syncBackToSource(payment) {
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const records = await Payment.find().sort({ date: -1 });
-    res.json(records);
+    // Keep this route fast: use `.lean()` and only backfill invoiceNo when missing.
+    const records = await Payment.find().sort({ date: -1 }).lean();
+
+    const isMissingInvoiceNo = (v) => {
+      if (v === null || v === undefined) return true;
+      const s = String(v).trim();
+      return s === '' || s === '-' || s === '—';
+    };
+
+    const recordsNeedingInvoiceNo = records.filter((p) => isMissingInvoiceNo(p.invoiceNo));
+    const invoiceIds = recordsNeedingInvoiceNo.map((p) => p.invoiceId).filter(Boolean);
+
+    let invMap = new Map();
+    if (invoiceIds.length) {
+      const invoices = await Invoice.find({ _id: { $in: invoiceIds } })
+        .select('invoiceNo _id')
+        .lean();
+      invMap = new Map(invoices.map((inv) => [String(inv._id), inv]));
+    }
+
+    const normalized = records.map((p) => {
+      if (!isMissingInvoiceNo(p.invoiceNo)) return p;
+      const inv = p.invoiceId ? invMap.get(String(p.invoiceId)) : null;
+      if (inv) p.invoiceNo = inv.invoiceNo || '';
+      return p;
+    });
+
+    res.json(normalized);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

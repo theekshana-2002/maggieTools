@@ -114,7 +114,14 @@ const wrapAPI = (endpoint, storageKey) => {
         setFallback(storageKey, res.data);
         return res;
       } catch (err) {
-        if (!err.response) {
+        const isTimeout =
+          err?.code === 'ECONNABORTED' ||
+          err?.code === 'ETIMEDOUT' ||
+          String(err?.message || '').toLowerCase().includes('timeout');
+
+        // Only use localStorage fallback when we're truly offline.
+        // For timeouts we must throw to avoid showing stale invoice numbers / paid states.
+        if (!err.response && !isTimeout) {
           console.warn(`Backend offline for ${cleanPath}, using localStorage fallback.`);
           return { data: getFallback(storageKey) };
         }

@@ -10,10 +10,19 @@ import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import '../styles/forms.css';
 import '../styles/books.css';
 
+const toNum = (v) => {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  const cleaned = String(v).replace(/[^0-9.-]/g, '');
+  const n = Number(cleaned);
+  return isNaN(n) ? 0 : n;
+};
+const fmtMoney = (v) => `LKR ${toNum(v).toLocaleString()}`;
+
 const InvoiceBook = ({ initialTab }) => {
   const userRole = localStorage.getItem('raxwo_user_role');
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
+  const canManage = isDev || ['Admin', 'Manager'].includes((userRole || '').trim());
 
   const [activeTab, setActiveTab] = useState(initialTab || 'Summaries');
 
@@ -110,8 +119,8 @@ const InvoiceBook = ({ initialTab }) => {
       if (!summaryMap[cName]) summaryMap[cName] = { clientName: cName, totalInvoices: 0, totalBilled: 0, advancePayments: 0, totalPaid: 0, openBalance: 0 };
       
       summaryMap[cName].totalInvoices += 1;
-      const total = inv.totalAmount || 0;
-      const balance = inv.balanceAmount !== undefined ? inv.balanceAmount : total;
+      const total = toNum(inv.totalAmount);
+      const balance = inv.balanceAmount !== undefined ? toNum(inv.balanceAmount) : total;
       
       summaryMap[cName].totalBilled += total;
       summaryMap[cName].openBalance += balance;
@@ -122,7 +131,7 @@ const InvoiceBook = ({ initialTab }) => {
       const cName = pay.client || 'Unknown';
       if (!summaryMap[cName]) summaryMap[cName] = { clientName: cName, totalInvoices: 0, totalBilled: 0, advancePayments: 0, totalPaid: 0, openBalance: 0 };
       
-      const amt = pay.takenAmount || pay.paidAmount || 0;
+      const amt = toNum(pay.takenAmount) || toNum(pay.paidAmount);
       summaryMap[cName].totalPaid += amt;
       // If it's labeled as advance or open balance is zero, we could try to guess, but let's just show Total Paid
       if (pay.type === 'Advance' || (pay.notes && pay.notes.toLowerCase().includes('advance'))) {
@@ -156,17 +165,19 @@ const InvoiceBook = ({ initialTab }) => {
   // 2. All Invoices
   const formattedInvoices = useMemo(() => {
     return invoices.map(inv => {
-      const total = inv.totalAmount || 0;
-      const balance = inv.balanceAmount !== undefined ? inv.balanceAmount : total;
+      const total = toNum(inv.totalAmount);
+      const balance = inv.balanceAmount !== undefined ? toNum(inv.balanceAmount) : total;
+      const invStatus = (inv.status || '').toString().trim().toLowerCase();
+      const isPaid = invStatus === 'paid';
       return {
         ...inv,
         rawData: inv,
         invoiceNo_disp: <strong style={{ color: 'var(--text-main)' }}>{inv.invoiceNo}</strong>,
         date_disp: new Date(inv.date).toLocaleDateString(),
-        TOTAL: <strong style={{ color: 'var(--accent)' }}>LKR {total.toLocaleString()}</strong>,
-        BALANCE: <strong style={{ color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {balance.toLocaleString()}</strong>,
+        TOTAL: <strong style={{ color: 'var(--accent)' }}>{fmtMoney(total)}</strong>,
+        BALANCE: <strong style={{ color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>{fmtMoney(balance)}</strong>,
         status_disp: (
-          <span className={`status-badge ${inv.status === 'Paid' ? 'status-completed' : inv.status === 'Cancelled' ? 'status-cancelled' : 'status-active'}`}>
+          <span className={`status-badge ${isPaid ? 'status-completed' : invStatus === 'cancelled' ? 'status-cancelled' : 'status-active'}`}>
             {inv.status || 'Draft'}
           </span>
         ),
@@ -182,16 +193,19 @@ const InvoiceBook = ({ initialTab }) => {
             <button className="action-icon-btn btn-details" style={{ background: '#64748b', color:'#fff' }} onClick={() => generateInvoicePDF(inv, 'print')} title="Direct Print">
                <Printer />
             </button>
+            <button
+              className="action-icon-btn btn-msg"
+              onClick={() => handleMarkAsPaid(inv._id)}
+              title="Mark as Paid"
+              style={{ display: isPaid ? 'none' : undefined }}
+            >
+              <CheckCircle />
+            </button>
             {canManage && (
               <>
                 <button className="action-icon-btn btn-details" onClick={() => { setEditingItem(inv); setShowModal(true); }} title="Edit Invoice">
                   <FileText />
                 </button>
-                {inv.status !== 'Paid' && (
-                  <button className="action-icon-btn btn-msg" onClick={() => handleMarkAsPaid(inv._id)} title="Mark as Paid">
-                    <CheckCircle />
-                  </button>
-                )}
                 <button className="action-icon-btn btn-delete" onClick={() => handleDeleteInvoice(inv._id)} title="Delete Invoice">
                   <Trash2 />
                 </button>
@@ -214,10 +228,11 @@ const InvoiceBook = ({ initialTab }) => {
         rawData: pay,
         date_disp: pay.date ? new Date(pay.date).toLocaleDateString() : '—',
         CLIENT: pay.client || '—',
+        'INV#': <strong style={{ color: 'var(--text-dim)' }}>{pay.invoiceNo || '—'}</strong>,
         TOOL: pay.tool || pay.vehicle || '—',
-        HIRE_AMT: `LKR ${(pay.hireAmount || 0).toLocaleString()}`,
-        PAID: <strong style={{ color: 'var(--success)' }}>LKR ${(pay.takenAmount || 0).toLocaleString()}</strong>,
-        BALANCE: `LKR ${(pay.balance || 0).toLocaleString()}`,
+        HIRE_AMT: fmtMoney(pay.hireAmount),
+        PAID: <strong style={{ color: 'var(--success)' }}>{fmtMoney(pay.takenAmount)}</strong>,
+        BALANCE: fmtMoney(pay.balance),
         status_disp: (
           <span className={`status-badge ${pay.status === 'Paid' ? 'status-completed' : 'status-active'}`}>
             {pay.status || 'Pending'}
@@ -295,9 +310,9 @@ const InvoiceBook = ({ initialTab }) => {
       
       {/* ── Tabs ── */}
       <div className="tab-switcher" style={{ marginTop: '20px' }}>
-        <button className={activeTab === 'Summaries' ? 'active-tab' : ''} onClick={() => setActiveTab('Summaries')}>Customer Summaries</button>
         <button className={activeTab === 'Invoices' ? 'active-tab' : ''} onClick={() => setActiveTab('Invoices')}>All Invoices</button>
         <button className={activeTab === 'Payments' ? 'active-tab' : ''} onClick={() => setActiveTab('Payments')}>Payment History</button>
+        <button className={activeTab === 'Summaries' ? 'active-tab' : ''} onClick={() => setActiveTab('Summaries')}>Customer Summaries</button>
       </div>
  
       {successMsg && <div className="success-banner" style={{ margin: '0 20px 20px' }}>{successMsg}</div>}
@@ -320,37 +335,40 @@ const InvoiceBook = ({ initialTab }) => {
           />
         )}
         {activeTab === 'Invoices' && (
-          <DataTable 
-            columns={['INV#', 'DATE', 'CLIENT', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION']}
-            data={formattedInvoices.map(r => ({
-               'INV#': r.invoiceNo_disp,
-               'DATE': r.date_disp,
-               'CLIENT': r.clientName,
-               'TOTAL': r.TOTAL,
-               'BALANCE': r.BALANCE,
-               'STATUS': r.status_disp,
-               'ACTION': r.action
-            }))}
-            loading={loading}
-            
-          />
+          <>
+            <DataTable
+              columns={['INV#', 'DATE', 'CLIENT', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION']}
+              data={formattedInvoices.map((r) => ({
+                'INV#': r.invoiceNo_disp,
+                'DATE': r.date_disp,
+                'CLIENT': r.clientName,
+                'TOTAL': r.TOTAL,
+                'BALANCE': r.BALANCE,
+                'STATUS': r.status_disp,
+                'ACTION': r.action
+              }))}
+              loading={loading}
+            />
+          </>
         )}
         {activeTab === 'Payments' && (
-          <DataTable 
-            columns={['DATE', 'CLIENT', 'TOOL', 'HIRE AMT', 'PAID', 'BALANCE', 'STATUS', 'ACTION']}
-            data={formattedPayments.map(r => ({
-               'DATE': r.date_disp,
-               'CLIENT': r.CLIENT,
-               'TOOL': r.TOOL,
-               'HIRE AMT': r.HIRE_AMT,
-               'PAID': r.PAID,
-               'BALANCE': r.BALANCE,
-               'STATUS': r.status_disp,
-               'ACTION': r.action
-            }))}
-            loading={loading}
-            
-          />
+          <>
+            <DataTable
+              columns={['DATE', 'CLIENT', 'INV#', 'TOOL', 'HIRE AMT', 'PAID', 'BALANCE', 'STATUS', 'ACTION']}
+              data={formattedPayments.map((r) => ({
+                'DATE': r.date_disp,
+                'CLIENT': r.CLIENT,
+                'INV#': r['INV#'],
+                'TOOL': r.TOOL,
+                'HIRE AMT': r.HIRE_AMT,
+                'PAID': r.PAID,
+                'BALANCE': r.BALANCE,
+                'STATUS': r.status_disp,
+                'ACTION': r.action
+              }))}
+              loading={loading}
+            />
+          </>
         )}
       </div>
 
@@ -379,9 +397,10 @@ const InvoiceBook = ({ initialTab }) => {
           />
           <h4 style={{ marginTop: '20px' }}>Payments</h4>
           <DataTable 
-            columns={['DATE', 'TOOL', 'PAID', 'BALANCE', 'STATUS']}
+            columns={['DATE', 'INV#', 'TOOL', 'PAID', 'BALANCE', 'STATUS']}
             data={formattedPayments.filter(p => p.CLIENT === selectedClientName).map(r => ({
                'DATE': r.date_disp,
+               'INV#': r['INV#'],
                'TOOL': r.TOOL,
                'PAID': r.PAID,
                'BALANCE': r.BALANCE,

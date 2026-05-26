@@ -77,7 +77,7 @@ const BookingBook = ({ setActiveTab }) => {
     setViewModalOpen(true);
   };
 
-  const tableColumns = ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION'];
+  const tableColumns = ['INV#', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION'];
 
   useEffect(() => { 
     fetchBookings(); 
@@ -112,6 +112,7 @@ const BookingBook = ({ setActiveTab }) => {
           ...item,
           rawData: item,
           displayId: item.bookingId || `BK-${(index + 1).toString().padStart(3, '0')}`,
+          displayInvoiceNo: item.invoiceNo || '',
           clientName: item.clientName,
           displayTool: toolsLabel,
           displayPickup: new Date(item.pickupDate).toLocaleDateString(),
@@ -149,6 +150,8 @@ const BookingBook = ({ setActiveTab }) => {
       const matchSearch =
         r.clientName?.toLowerCase().includes(search) ||
         r.displayTool?.toLowerCase().includes(search) ||
+        r.invoiceNo?.toLowerCase().includes(search) ||
+        r.displayInvoiceNo?.toLowerCase().includes(search) ||
         r.bookingId?.toLowerCase().includes(search) ||
         (r.items && r.items.some(it => it.toolNumber?.toLowerCase().includes(search)));
 
@@ -274,6 +277,29 @@ const BookingBook = ({ setActiveTab }) => {
         fetchBookings();
         setTimeout(() => setSuccess(null), 3000);
       } catch (err) { setError('Could not delete record.'); }
+    }
+  };
+
+  const handleMarkAsPaid = async (record) => {
+    const invoiceId = record?.invoiceId || record?.rawData?.invoiceId;
+    const balance = Number(record?.balanceAmount || record?.rawData?.balanceAmount || 0);
+
+    if (!invoiceId) return alert('No linked invoice found for this booking.');
+    if (balance <= 0) return alert('This booking is already paid.');
+    if (!window.confirm('Mark this booking as fully paid? This will update the balance to zero.')) return;
+
+    setLoading(true);
+    try {
+      await invoiceAPI.pay(invoiceId);
+      setSuccess('Booking marked as Paid!');
+      fetchBookings();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to update invoice status.';
+      setError(errMsg);
+      alert(errMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -409,7 +435,7 @@ const BookingBook = ({ setActiveTab }) => {
   };
 
   const handleExportPDF = () => {
-    generateGenericReportPDF('Tool Reservations Report', ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'STATUS'], filteredRecords);
+    generateGenericReportPDF('Tool Reservations Report', ['INV#', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'STATUS'], filteredRecords);
   };
 
   // Filtered suggestions for autocomplete dropdown
@@ -504,7 +530,7 @@ const BookingBook = ({ setActiveTab }) => {
         {/* ─ Row 2: Status & Payment Tabs ─ */}
         <div className="bf-tabs-row">
           <div className="tab-switcher" style={{ margin: 0 }}>
-            {['All', 'Confirmed', 'Active', 'Returned', 'Cancelled'].map(s => (
+            {['All', 'Confirmed', 'Active', 'Returned', 'Cancelled', 'Completed'].map(s => (
               <button key={s} onClick={() => setStatusFilter(s)} className={statusFilter === s ? 'active-tab' : ''}>
                 {s}
               </button>
@@ -568,7 +594,7 @@ const BookingBook = ({ setActiveTab }) => {
           columns={tableColumns}
           data={filteredRecords.map(r => ({
             ...r,
-            ID: <span style={{ fontWeight: 800, color: 'var(--text-dim)' }}>{r.displayId}</span>,
+            'INV#': <span style={{ fontWeight: 800, color: 'var(--text-dim)' }}>{r.displayInvoiceNo || '—'}</span>,
             CUSTOMER: <strong style={{ color: 'var(--text-main)' }}>{r.clientName || '—'}</strong>,
             TOOL: <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{r.displayTool}</span>,
             PICKUP: r.displayPickup,
@@ -577,34 +603,49 @@ const BookingBook = ({ setActiveTab }) => {
             TOTAL: <strong style={{ color: 'var(--accent)' }}>LKR {r.displayTotal}</strong>,
             BALANCE: <strong style={{ color: (r.balanceAmount || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>LKR {Math.max(0, r.balanceAmount || 0).toLocaleString()}</strong>,
             STATUS: (
-              <select
-                value={r.displayStatus || 'Confirmed'}
-                onChange={async (e) => {
-                  e.stopPropagation();
-                  try {
-                    await bookingAPI.update(r._id, { status: e.target.value });
-                    fetchBookings();
-                  } catch(err) { alert('Failed to update status.'); }
-                }}
-                onClick={e => e.stopPropagation()}
-                style={{
-                  border: 'none', borderRadius: '8px', padding: '5px 10px',
-                  fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
-                  background: r.displayStatus === 'Active' ? '#fef08a'
-                    : r.displayStatus === 'Returned' ? 'var(--success-soft)'
-                    : r.displayStatus === 'Cancelled' ? '#fee2e2' : 'var(--bg-side)',
-                  color: r.displayStatus === 'Active' ? '#854d0e'
-                    : r.displayStatus === 'Returned' ? 'var(--success)'
-                    : r.displayStatus === 'Cancelled' ? 'var(--danger)' : 'var(--text-main)'
-                }}
-              >
-                <option value="Confirmed">Confirmed</option>
-                <option value="Active">Active</option>
-                <option value="Returned">Returned</option>
-                <option value="Cancelled">Cancelled</option>
-                
-                
-              </select>
+              Number(r.balanceAmount || 0) <= 0 ? (
+                <span
+                  className="status-badge status-paid"
+                  style={{
+                    background: 'var(--success-soft)',
+                    color: 'var(--success)',
+                    fontWeight: 800,
+                    borderRadius: '999px',
+                    padding: '6px 12px',
+                    display: 'inline-block'
+                  }}
+                >
+                  Paid
+                </span>
+              ) : (
+                <select
+                  value={r.displayStatus || 'Confirmed'}
+                  onChange={async (e) => {
+                    e.stopPropagation();
+                    try {
+                      await bookingAPI.update(r._id, { status: e.target.value });
+                      fetchBookings();
+                    } catch (err) { alert('Failed to update status.'); }
+                  }}
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    border: 'none', borderRadius: '8px', padding: '5px 10px',
+                    fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                    background: r.displayStatus === 'Active' ? '#fef08a'
+                      : r.displayStatus === 'Returned' ? 'var(--success-soft)'
+                      : r.displayStatus === 'Cancelled' ? '#fee2e2' : 'var(--bg-side)',
+                    color: r.displayStatus === 'Active' ? '#854d0e'
+                      : r.displayStatus === 'Returned' ? 'var(--success)'
+                      : r.displayStatus === 'Cancelled' ? 'var(--danger)' : 'var(--text-main)'
+                  }}
+                >
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Active">Active</option>
+                  <option value="Returned">Returned</option>
+                  <option value="Cancelled">Cancelled</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              )
             ),
             ACTION: (
               <div className="table-actions booking-record-actions" onClick={e => e.stopPropagation()}>
@@ -617,8 +658,23 @@ const BookingBook = ({ setActiveTab }) => {
                   <Eye size={18} strokeWidth={2.5} />
                   <span>View</span>
                 </button>
-                {canManage && (
+                {(canManage || (r.invoiceId && Number(r.balanceAmount || 0) > 0)) && (
                   <div className="booking-btn-icon-row">
+                    {r.invoiceId && Number(r.balanceAmount || 0) > 0 && (
+                      <button
+                        type="button"
+                        className="action-icon-btn btn-paid"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsPaid(r);
+                        }}
+                        title="Mark as Paid"
+                      >
+                        <CheckCircle />
+                      </button>
+                    )}
+                    {canManage && (
+                      <>
                     <button
                       type="button"
                       className="action-icon-btn btn-print"
@@ -667,6 +723,8 @@ const BookingBook = ({ setActiveTab }) => {
                     <button type="button" className="action-icon-btn btn-delete" onClick={(e) => { e.stopPropagation(); handleDelete(r._id); }} title="Delete">
                       <Trash2 />
                     </button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

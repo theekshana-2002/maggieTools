@@ -133,6 +133,9 @@ button:active { transform: scale(0.96) !important; }
 .btn-msg     { background: rgba(16,185,129,0.07) !important; color: #10B981 !important; border-color: rgba(16,185,129,0.15) !important; }
 .btn-msg:hover { background: #10B981 !important; color: #fff !important; box-shadow: 0 5px 14px rgba(16,185,129,0.3) !important; }
 
+.btn-paid    { background: rgba(16,185,129,0.12) !important; color: #059669 !important; border-color: rgba(16,185,129,0.25) !important; }
+.btn-paid:hover { background: #10B981 !important; color: #fff !important; box-shadow: 0 5px 14px rgba(16,185,129,0.3) !important; }
+
 .btn-bell    { background: rgba(245,158,11,0.07) !important; color: #F59E0B !important; border-color: rgba(245,158,11,0.15) !important; }
 .btn-bell:hover { background: #F59E0B !important; color: #fff !important; box-shadow: 0 5px 14px rgba(245,158,11,0.3) !important; }
 

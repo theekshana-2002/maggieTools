@@ -147,8 +147,37 @@ router.get('/insights', authMiddleware, async (req, res) => {
 // Get all bookings
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const bookings = await Booking.find().populate('tool').sort({ createdAt: -1 });
-    res.json(bookings);
+    // Keep this route fast: no heavy populate; use `.lean()` and only backfill invoiceNo when missing.
+    const bookings = await Booking.find().sort({ createdAt: -1 }).lean();
+
+    const isMissingInvoiceNo = (v) => {
+      if (v === null || v === undefined) return true;
+      const s = String(v).trim();
+      return s === '' || s === '-' || s === '—';
+    };
+
+    const bookingsNeedingInvoice = bookings.filter((b) => isMissingInvoiceNo(b.invoiceNo));
+    const bookingIds = bookingsNeedingInvoice.map((b) => b._id).filter(Boolean);
+
+    let invMap = new Map();
+    if (bookingIds.length) {
+      const invoices = await Invoice.find({ bookingId: { $in: bookingIds } })
+        .select('bookingId invoiceNo _id')
+        .lean();
+      invMap = new Map(invoices.map((inv) => [String(inv.bookingId), inv]));
+    }
+
+    const normalized = bookings.map((b) => {
+      if (!isMissingInvoiceNo(b.invoiceNo)) return b;
+      const inv = invMap.get(String(b._id));
+      if (inv) {
+        b.invoiceId = inv._id;
+        b.invoiceNo = inv.invoiceNo || '';
+      }
+      return b;
+    });
+
+    res.json(normalized);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -382,6 +411,9 @@ async function processBookingSideEffects(newBooking, options = {}) {
         remarks: `Auto-updated from booking ${newBooking.bookingId}`
       };
 
+      let linkedInvoiceId = existingInvoice?._id;
+      let linkedInvoiceNo = existingInvoice?.invoiceNo;
+
       if (existingInvoice) {
         await Invoice.findByIdAndUpdate(existingInvoice._id, invoiceData);
         console.log('DEBUG: Existing invoice updated:', existingInvoice.invoiceNo);
@@ -392,7 +424,17 @@ async function processBookingSideEffects(newBooking, options = {}) {
         invoiceData.status = 'Draft';
         const newInvoice = new Invoice(invoiceData);
         await newInvoice.save();
+        linkedInvoiceId = newInvoice._id;
+        linkedInvoiceNo = newInvoice.invoiceNo || invoiceData.invoiceNo;
         console.log('DEBUG: New invoice created:', invoiceData.invoiceNo);
+      }
+
+      // Keep booking record linked to the invoice number for the UI
+      if (linkedInvoiceId && linkedInvoiceNo) {
+        await Booking.findByIdAndUpdate(newBooking._id, {
+          invoiceId: linkedInvoiceId,
+          invoiceNo: linkedInvoiceNo
+        });
       }
     } catch (invErr) {
       console.error('Failed to sync invoice:', invErr);

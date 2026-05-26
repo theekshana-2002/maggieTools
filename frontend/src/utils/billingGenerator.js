@@ -19,6 +19,22 @@ const THEME = {
   text: [30, 41, 59]
 };
 
+const normalizeLogoForJsPDF = (logo) => {
+  try {
+    if (!logo || typeof logo !== 'string') return null;
+    // Expect settings.logo from Settings.jsx to be a data URL
+    const match = logo.match(/^data:image\/(png|jpeg|jpg|webp);base64,/i);
+    if (!match) {
+      return { data: logo, format: 'PNG' };
+    }
+    const ext = match[1].toLowerCase();
+    const format = ext === 'jpeg' || ext === 'jpg' ? 'JPEG' : 'PNG';
+    return { data: logo, format };
+  } catch {
+    return null;
+  }
+};
+
 // New: Draw the exact detailed criss-cross woven side pattern from the image
 const drawSidePattern = (doc) => {
   const pageHeight = doc.internal.pageSize.height;
@@ -142,9 +158,12 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.width;
 
-    // Add Logo
+    // Add Logo (supports PNG/JPEG data URLs)
     try {
-      doc.addImage(activeLogo, 'PNG', 15, 20, 35, 35);
+      const normalized = normalizeLogoForJsPDF(activeLogo);
+      if (normalized?.data) {
+        doc.addImage(normalized.data, normalized.format, 15, 20, 35, 35);
+      }
     } catch (e) {
       console.warn("Logo skipped or format invalid");
     }
@@ -197,12 +216,20 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     drawDynamicHeader(doc, 'Tool Rental Invoice');
 
     // Meta Info
-    doc.setFontSize(10);
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(15, 80, 105, 26, 4, 4, 'FD');
+
     doc.setFont('helvetica', 'bold');
-    doc.text(`INVOICE NO: ${invoice.invoiceNo || 'DRAFT'}`, 15, 85);
+    doc.setFontSize(9.5);
+    doc.setTextColor(...THEME.primary);
+    doc.text(`INVOICE: ${invoice.invoiceNo || 'DRAFT'}`, 20, 92);
+
     doc.setFont('helvetica', 'normal');
-    doc.text(`BILLING DATE: ${safeDate(invoice.date).toUpperCase()}`, 15, 91);
-    doc.text(`STATUS: ${(invoice.status || 'DRAFT').toUpperCase()}`, 15, 97);
+    doc.setFontSize(8.5);
+    doc.setTextColor(...THEME.text);
+    doc.text(`DATE: ${safeDate(invoice.date).toUpperCase()}`, 20, 98);
+    doc.text(`STATUS: ${(invoice.status || 'DRAFT').toUpperCase()}`, 80, 98);
 
     // Client Box
     doc.setFillColor(...THEME.light);

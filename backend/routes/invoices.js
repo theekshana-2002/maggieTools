@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Invoice = require('../models/Invoice');
+const Booking = require('../models/Booking');
 const Counter = require('../models/Counter');
 const Accessory = require('../models/Accessory');
 const Payment = require('../models/Payment');
@@ -29,7 +30,8 @@ async function syncToPaymentBook(invoice) {
         status: invoice.status === 'Paid' ? 'Paid' : 'Pending',
         paymentMethod: invoice.paymentMethod || 'Cash',
         accountId: invoice.accountId,
-        invoiceId: invoice._id
+        invoiceId: invoice._id,
+        invoiceNo: invoice.invoiceNo
     };
 
     await Payment.findOneAndUpdate(
@@ -37,6 +39,23 @@ async function syncToPaymentBook(invoice) {
         paymentData,
         { upsert: true, new: true }
     );
+}
+
+async function syncBookingInvoiceFromInvoice(invoice) {
+  if (!invoice.bookingId) return;
+  const payload = {
+    invoiceId: invoice._id,
+    invoiceNo: invoice.invoiceNo
+  };
+
+  // When invoice is paid, booking should reflect the cleared balance
+  if (invoice.status === 'Paid') {
+    payload.advancePayment = invoice.totalAmount || 0;
+    payload.balanceAmount = 0;
+    payload.status = 'Completed';
+  }
+
+  await Booking.findByIdAndUpdate(invoice.bookingId, payload, { new: false });
 }
 
 // Get all invoices
@@ -68,6 +87,7 @@ router.post('/', async (req, res) => {
 
     // Sync to Payment Book
     await syncToPaymentBook(saved);
+    await syncBookingInvoiceFromInvoice(saved);
 
     // Deduct stock for accessories
     if (req.body.accessories && Array.isArray(req.body.accessories)) {
@@ -93,7 +113,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
       updatedByName: req.user.name
     };
     const updated = await Invoice.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    if (updated) await syncToPaymentBook(updated);
+    if (updated) {
+      await syncToPaymentBook(updated);
+      await syncBookingInvoiceFromInvoice(updated);
+    }
     res.json(updated);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -116,6 +139,7 @@ router.post('/:id/pay', authMiddleware, async (req, res) => {
 
     const saved = await invoice.save();
     await syncToPaymentBook(saved);
+    await syncBookingInvoiceFromInvoice(saved);
 
     // Update bank balance if Bank Transfer
     if (saved.paymentMethod === 'Bank Transfer' && saved.accountId && totalToPay > 0) {

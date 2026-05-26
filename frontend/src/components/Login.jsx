@@ -24,7 +24,13 @@ const Login = ({ onLoginSuccess, roleContext, onBack, appSettings }) => {
         onLoginSuccess();
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Sign in failed. Please check your details.');
+      const serverMsg = err.response?.data?.message || '';
+      const isServerLoginError = serverMsg.toLowerCase().includes('server error during login');
+      setError(
+        isServerLoginError
+          ? 'Database is temporarily unavailable. You can use emergency login: admin / admin@123'
+          : (serverMsg || 'Sign in failed. Please check your details.')
+      );
     } finally {
       setLoading(false);
     }

@@ -144,15 +144,15 @@ const App = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard key="dashboard" role={userRole} name={userName} setActiveTab={setActiveTab} />;
       case 'inventory': return <InventoryDashboard />;
-      case 'bookings': return <BookingBook />;
+      case 'bookings': return <BookingBook setActiveTab={setActiveTab} />;
       case 'tool-reg': return <ToolRegistration onComplete={() => setActiveTab('inventory')} />;
       case 'salaries': return <SalaryBook />;
-      case 'payments': return <PaymentBook />;
+      case 'payments':
+      case 'invoices': return <InvoiceBook initialTab={activeTab === 'payments' ? 'Payments' : 'Summaries'} />;
       case 'clients': return <Clients />;
       case 'compliance': return <ComplianceBook />;
       case 'employees': return <Employees />;
       case 'reports': return <FinancialReport appSettings={appSettings} />;
-      case 'invoices': return <InvoiceBook />;
       case 'quotations': return <QuotationBook />;
       case 'attendance': return <AttendanceBook />;
       case 'extraIncome': return <ExtraIncome />;

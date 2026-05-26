@@ -10,11 +10,11 @@ import { generatePDFReport } from '../utils/reportGenerator';
 import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import InvoiceForm from './InvoiceForm';
-import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign } from 'lucide-react';
+import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send, MessageCircle } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 
-const BookingBook = () => {
+const BookingBook = ({ setActiveTab }) => {
   const userRole = localStorage.getItem('raxwo_user_role');
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
@@ -590,19 +590,18 @@ const BookingBook = () => {
                 style={{
                   border: 'none', borderRadius: '8px', padding: '5px 10px',
                   fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
-                  background: r.displayStatus === 'Paid' || r.displayStatus === 'Paid & Returned' ? 'var(--success-soft)'
-                    : r.displayStatus === 'Unpaid & Returned' || r.displayStatus === 'Returned' ? '#e0f2fe'
-                    : r.displayStatus === 'Unpaid' ? '#fee2e2' : 'var(--bg-side)',
-                  color: r.displayStatus === 'Paid' || r.displayStatus === 'Paid & Returned' ? 'var(--success)'
-                    : r.displayStatus === 'Unpaid & Returned' || r.displayStatus === 'Returned' ? '#0369a1'
-                    : r.displayStatus === 'Unpaid' ? 'var(--danger)' : 'var(--text-main)'
+                  background: r.displayStatus === 'Active' ? '#fef08a'
+                    : r.displayStatus === 'Returned' ? 'var(--success-soft)'
+                    : r.displayStatus === 'Cancelled' ? '#fee2e2' : 'var(--bg-side)',
+                  color: r.displayStatus === 'Active' ? '#854d0e'
+                    : r.displayStatus === 'Returned' ? 'var(--success)'
+                    : r.displayStatus === 'Cancelled' ? 'var(--danger)' : 'var(--text-main)'
                 }}
               >
-                <option value="Paid">Paid</option>
-                <option value="Unpaid">Unpaid</option>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Active">Active</option>
                 <option value="Returned">Returned</option>
-                <option value="Paid & Returned">Paid &amp; Returned</option>
-                <option value="Unpaid & Returned">Unpaid &amp; Returned</option>
+                <option value="Cancelled">Cancelled</option>
                 
                 
               </select>
@@ -758,6 +757,9 @@ const BookingBook = () => {
               await api.put(`/invoices/${autoInvoice._id}`, d);
               setAutoInvoiceModalOpen(false);
               generateInvoicePDF(d, 'print');
+              if (setActiveTab) {
+                setActiveTab('invoices');
+              }
             }}
             onCancel={() => setAutoInvoiceModalOpen(false)}
           />

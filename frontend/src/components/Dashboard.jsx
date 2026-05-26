@@ -259,7 +259,7 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
           { id: 1, title: 'Total Revenue', value: fmt(revenue), subtext: `From ${fBookings.length} rentals`, icon: TrendingUp, color: 'var(--accent)', tab: 'reports' },
           { id: 2, title: 'Operational Cost', value: fmt(cost), subtext: 'Staff, Maint, Expenses', icon: ArrowDown, color: 'var(--danger)', tab: 'expenses' },
           { id: 3, title: 'Net Profit', value: fmt(profit), subtext: 'Estimated earnings', icon: BarChart, color: profit >= 0 ? 'var(--success)' : 'var(--danger)', tab: 'reports' },
-          { id: 4, title: 'Pending Dues', value: fmt(pending), subtext: 'To be collected', icon: Clock, color: 'var(--warning)', tab: 'bookings' },
+          { id: 4, title: 'Pending Dues', value: fmt(pending), subtext: 'To be collected', icon: Clock, color: 'var(--warning)', tab: 'invoices' },
         ];
       }
 
@@ -335,6 +335,10 @@ const Dashboard = ({ role = 'User', name = 'Guest', setActiveTab }) => {
           <button className="pill-action-btn btn-emerald" onClick={() => setActiveTab('tool-reg')}>
             <div className="pill-icon-box"><Wrench size={24} /></div>
             <div className="pill-text-box">Register Tool</div>
+          </button>
+          <button className="pill-action-btn btn-blue" onClick={() => setActiveTab('invoices')} style={{ borderLeft: '3px solid #6366F1' }}>
+            <div className="pill-icon-box" style={{ background: 'rgba(99,102,241,0.1)', color: '#6366F1' }}><FileText size={24} /></div>
+            <div className="pill-text-box">Billing Book</div>
           </button>
           <button className="pill-action-btn btn-white" onClick={() => setActiveTab('reports')}>
             <div className="pill-icon-box"><FileBarChart size={24} /></div>

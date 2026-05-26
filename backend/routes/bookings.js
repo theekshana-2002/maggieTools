@@ -327,7 +327,7 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // 3. Handle Other Side Effects (Invoice, SMS, etc)
     
-    const sideEffects = await processBookingSideEffects(newBooking.toObject());
+    const sideEffects = await processBookingSideEffects(newBooking.toObject(), { isNew: true });
     const responseObj = newBooking.toObject();
     responseObj.generatedSms = sideEffects?.generatedSms;
     responseObj.smsSent = sideEffects?.smsSent ?? false;
@@ -340,7 +340,8 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Helper for booking side effects
-async function processBookingSideEffects(newBooking) {
+async function processBookingSideEffects(newBooking, options = {}) {
+    const { isNew = false, oldStatus = null } = options;
     // 1. Auto-generate or Update invoice
     try {
       const existingInvoice = await Invoice.findOne({ bookingId: newBooking._id });
@@ -471,25 +472,33 @@ async function processBookingSideEffects(newBooking) {
       // 4. Accessory Stock update now handled explicitly in routes (POST/PUT)
       // 5. Send Confirmation SMS using customizable template
       
-      
       let generatedSms = '';
       let smsSent = false;
       let smsError = null;
 
-      if (newBooking.clientPhone) {
-        generatedSms = await buildSMSMessage('smsBookingTemplate', newBooking);
-        if (generatedSms) {
-          const result = await sendSMS(newBooking.clientPhone, generatedSms);
-          smsSent = !!result.success;
-          if (!result.success) smsError = result.error || 'SMS send failed';
+      const shouldSendSms = isNew || (oldStatus !== 'Confirmed' && newBooking.status === 'Confirmed');
+
+      if (shouldSendSms) {
+        try {
+          if (newBooking.clientPhone) {
+            generatedSms = await buildSMSMessage('smsBookingTemplate', newBooking);
+            if (generatedSms) {
+              const result = await sendSMS(newBooking.clientPhone, generatedSms);
+              smsSent = !!result.success;
+              if (!result.success) smsError = result.error || 'SMS send failed';
+            }
+          }
+        } catch (smsErr) {
+          console.error('❌ SMS dispatch side-effect failed:', smsErr.message);
+          smsError = smsErr.message;
         }
       }
 
       return { generatedSms, smsSent, smsError };
 
-
     } catch (payErr) {
       console.error('Failed to create payment record:', payErr.message);
+      return { generatedSms: '', smsSent: false, smsError: payErr.message };
     }
 }
 
@@ -540,7 +549,7 @@ router.post('/bulk', authMiddleware, async (req, res) => {
         // Process side effects (invoice, client, payment, stock)
         // We await this to ensure sequential processing
         
-        const sideEffects = await processBookingSideEffects(saved.toObject());
+        const sideEffects = await processBookingSideEffects(saved.toObject(), { isNew: true });
         const obj = saved.toObject();
         obj.generatedSms = sideEffects?.generatedSms;
         obj.smsSent = sideEffects?.smsSent ?? false;
@@ -638,7 +647,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         );
     
     // Auto-update linked invoice and client
-    await processBookingSideEffects(updatedBooking.toObject());
+    await processBookingSideEffects(updatedBooking.toObject(), { oldStatus: booking.status });
     
     res.json(updatedBooking);
   } catch (err) {

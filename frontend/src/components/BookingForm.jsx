@@ -20,6 +20,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
 
   const [customerHistory, setCustomerHistory] = useState(null);
   const [fetchingHistory, setFetchingHistory] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const MONEY_FIELDS = ['discount', 'advancePayment', 'transportCharge', 'deposit'];
 
   const sanitizeMoneyFields = (data) => {
@@ -387,6 +388,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     try {
       if (!formData.pickupDate) {
         alert('Pickup Date is required.');
@@ -450,7 +452,12 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
 
       // Notify parent - parent will handle the API call
       if (onSubmit) {
-        await onSubmit(finalBooking);
+        setIsSubmitting(true);
+        try {
+          await onSubmit(finalBooking);
+        } finally {
+          setIsSubmitting(false);
+        }
       }
     } catch (err) {
       console.error('Submission Preparation Error:', err);
@@ -1261,9 +1268,9 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
             <strong>LKR {costs.totalAmount.toLocaleString()}</strong>
           </div>
           <div className="modal-actions">
-            <button type="button" className="cancel-btn" onClick={onCancel}>Cancel</button>
-            <button type="submit" className="submit-btn">
-              {initialData ? 'Update Booking' : 'Confirm Multi-Tool Booking'}
+            <button type="button" className="cancel-btn" onClick={onCancel} disabled={isSubmitting}>Cancel</button>
+            <button type="submit" className="submit-btn" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : (initialData ? 'Update Booking' : 'Confirm Multi-Tool Booking')}
             </button>
           </div>
         </div>

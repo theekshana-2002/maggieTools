@@ -100,6 +100,10 @@ function applySmsTemplate(template, bookingData, settings, precomputed = {}) {
   };
 
   let result = template;
+  if (!result.includes('{detailedBill}') && !result.includes('{balanceAmount}') && !result.includes('BOOKING BILL')) {
+    result = result + '\n\n{detailedBill}';
+  }
+
   Object.entries(replacements).forEach(([key, val]) => {
     result = result.split(key).join(val);
   });
@@ -109,7 +113,7 @@ function applySmsTemplate(template, bookingData, settings, precomputed = {}) {
     result = result.replace(/\{detailedBill\}/g, bill);
   }
 
-  return result.replace(/\n{3,}/g, '\n\n').trim();
+  return result.replace(/LKR\s+LKR/gi, 'LKR').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function resolveBookingTemplate(settings) {

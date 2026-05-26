@@ -5,7 +5,7 @@ import PaymentForm from './PaymentForm';
 import RecordDetails from './RecordDetails';
 import { paymentAPI, toolAPI } from '../services/api';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
-import { Download, Search, PlusCircle, RefreshCw, FileText, Trash2 } from 'lucide-react';
+import { Download, Search, PlusCircle, RefreshCw, FileText, Trash2, Eye } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import ToolFilter from './ToolFilter';
@@ -83,7 +83,7 @@ const PaymentBook = () => {
     'ACTION': (
       <div className="table-actions" onClick={e => e.stopPropagation()}>
         
-            <button className="action-icon-btn btn-details" onClick={(e) => { e.stopPropagation(); setSelectedRecord(pay.rawData || pay); setIsDetailsOpen(true); }} title="View Details">
+            <button className="action-icon-btn btn-details" onClick={(e) => { e.stopPropagation(); setSelectedRecord(item); setViewModalOpen(true); }} title="View Details">
               <Eye />
             </button>
             {canManage && (

@@ -10,12 +10,18 @@ import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import '../styles/forms.css';
 import '../styles/books.css';
 
-const InvoiceBook = () => {
+const InvoiceBook = ({ initialTab }) => {
   const userRole = localStorage.getItem('raxwo_user_role');
   const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   const canManage = isDev || ['Admin', 'Manager'].includes(userRole);
 
-  const [activeTab, setActiveTab] = useState('Summaries');
+  const [activeTab, setActiveTab] = useState(initialTab || 'Summaries');
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [invoices, setInvoices] = useState([]);
   const [payments, setPayments] = useState([]);
   const [clients, setClients] = useState([]);

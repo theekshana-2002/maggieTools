@@ -10,15 +10,28 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
   const [clients, setClients] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [allAccessories, setAllAccessories] = useState([]);
-  const [unifiedSearch, setUnifiedSearch] = useState('');
+  const [toolSearch, setToolSearch] = useState('');
+  const [accSearch, setAccSearch] = useState('');
   const [selectedClient, setSelectedClient] = useState(null);
   const [loadingTools, setLoadingTools] = useState(false);
 
-  const [showAddClient, setShowAddClient] = useState(false);
-  const [newClient, setNewClient] = useState({ name: '', contact: '', nic: '' });
+  const [isNewCustomer, setIsNewCustomer] = useState(false);
 
   const [customerHistory, setCustomerHistory] = useState(null);
   const [fetchingHistory, setFetchingHistory] = useState(false);
+  const MONEY_FIELDS = ['discount', 'advancePayment', 'transportCharge', 'deposit'];
+
+  const sanitizeMoneyFields = (data) => {
+    const next = { ...data };
+    MONEY_FIELDS.forEach((key) => {
+      const v = next[key];
+      if (v === 0 || v === '0' || v === null || v === undefined) {
+        next[key] = '';
+      }
+    });
+    return next;
+  };
+
   const defaults = {
     clientNic: '',
     clientName: '',
@@ -41,7 +54,9 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     accountId: ''
   };
 
-  const [formData, setFormData] = useState({ ...defaults, ...initialData });
+  const [formData, setFormData] = useState(() =>
+    sanitizeMoneyFields({ ...defaults, ...(initialData || {}) })
+  );
 
   useEffect(() => {
     if (initialData) {
@@ -76,9 +91,9 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
       if (formattedData.pickupDate) formattedData.pickupDate = new Date(formattedData.pickupDate).toISOString().split('T')[0];
       if (formattedData.returnDate) formattedData.returnDate = new Date(formattedData.returnDate).toISOString().split('T')[0];
 
-      setFormData(formattedData);
+      setFormData(sanitizeMoneyFields(formattedData));
     } else {
-      setFormData(defaults);
+      setFormData({ ...defaults });
     }
   }, [initialData]);
 
@@ -123,34 +138,54 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     const fetchAvailable = async () => {
       setLoadingTools(true);
       try {
-        console.log('DEBUG: Fetching tools for suggestions...');
-        const res = await (formData.pickupDate && formData.returnDate
-          ? bookingAPI.getAvailableTools(formData.pickupDate, formData.returnDate)
-          : toolAPI.get());
+        const allRes = await toolAPI.get();
+        let tools = Array.isArray(allRes.data) ? allRes.data : (allRes.data?.tools || []);
 
-        let tools = Array.isArray(res.data) ? res.data : (res.data.tools || []);
+        const blocked = ['Maintenance', 'Repair', 'Maintaining', 'Under Repair', 'Unavailable'];
+        tools = tools.filter(t => !blocked.includes(t.status));
 
-        // Fallback to local storage if API returns empty but we have local data
+        if (formData.pickupDate && formData.returnDate) {
+          try {
+            const availRes = await bookingAPI.getAvailableTools(formData.pickupDate, formData.returnDate);
+            const avail = Array.isArray(availRes.data) ? availRes.data : [];
+            if (avail.length > 0) {
+              tools = avail;
+            }
+          } catch (availErr) {
+            console.warn('Available-tools API failed, using full inventory:', availErr.message);
+          }
+        }
+
         if (tools.length === 0) {
           const local = localStorage.getItem('raxwo_tools');
-          if (local) {
-            console.log('DEBUG: Using local storage fallback for tools');
-            tools = JSON.parse(local);
+          if (local) tools = JSON.parse(local);
+        }
+
+        if (initialData?.items?.length) {
+          initialData.items.forEach((it) => {
+            const id = typeof it.tool === 'object' ? it.tool?._id : it.tool;
+            if (id && !tools.find(t => String(t._id) === String(id))) {
+              tools = [{
+                _id: id,
+                number: it.toolNumber,
+                model: it.model,
+                category: it.category,
+                dailyRate: it.dailyRate,
+                stock: it.stock || 1,
+                status: 'Available'
+              }, ...tools];
+            }
+          });
+        } else if (initialData?.tool) {
+          const currentTool = typeof initialData.tool === 'object' ? initialData.tool : null;
+          if (currentTool?._id && !tools.find(t => String(t._id) === String(currentTool._id))) {
+            tools = [currentTool, ...tools];
           }
         }
 
-        console.log(`DEBUG: Found ${tools.length} tools for suggestions`);
         setAvailableTools(tools);
-
-        if (initialData && initialData.tool) {
-          const currentTool = initialData.tool;
-          if (!tools.find(t => t._id === currentTool._id)) {
-            setAvailableTools(prev => [currentTool, ...prev]);
-          }
-        }
       } catch (err) {
         console.error('RAXWO: Tool fetch failed', err);
-        // Emergency fallback
         const local = localStorage.getItem('raxwo_tools');
         if (local) setAvailableTools(JSON.parse(local));
       } finally {
@@ -166,10 +201,12 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     if (!nic) return alert('Please enter an ID / NIC to check.');
     
     setFetchingHistory(true);
+    setIsNewCustomer(false);
     try {
       const res = await bookingAPI.getCustomerHistory(nic);
       if (res.data && res.data.details) {
         setCustomerHistory(res.data.history || []);
+        setIsNewCustomer(false);
         setFormData(prev => ({
           ...prev,
           clientNic: res.data.details.nic || prev.clientNic,
@@ -180,22 +217,68 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         }));
       } else {
         setCustomerHistory([]);
-        alert('Customer not found in history.');
+        setIsNewCustomer(true);
       }
     } catch (err) {
-      setCustomerHistory(null);
-      alert('Error fetching customer data.');
+      if (err.response?.status === 404) {
+        setCustomerHistory([]);
+        setIsNewCustomer(true);
+        setFormData(prev => ({
+          ...prev,
+          clientNic: nic,
+          clientName: '',
+          clientPhone: ''
+        }));
+      } else {
+        setCustomerHistory(null);
+        setIsNewCustomer(false);
+        alert('Error fetching customer data.');
+      }
     } finally {
       setFetchingHistory(false);
     }
   };
 
+  const emptyNum = (val) => {
+    if (val === '' || val == null || val === undefined) return '';
+    if (val === 0 || val === '0') return '';
+    return val;
+  };
+  const onNumField = (field) => (e) => {
+    const raw = e.target.value;
+    if (raw === '') {
+      setFormData(prev => ({ ...prev, [field]: '' }));
+      return;
+    }
+    const num = Number(raw);
+    setFormData(prev => ({ ...prev, [field]: Number.isNaN(num) ? '' : num }));
+  };
+
+  const toolIdMatch = (a, b) => String(a) === String(b);
+
+  const addToolById = (tool) => {
+    if (!tool) return;
+    setFormData(prev => {
+      if (prev.items.some(item => toolIdMatch(item.tool, tool._id))) return prev;
+      const newItem = {
+        tool: tool._id,
+        toolNumber: tool.number,
+        model: tool.model,
+        category: tool.category,
+        dailyRate: tool.dailyRate || '',
+        quantity: 1,
+        stock: tool.stock || 1
+      };
+      return { ...prev, items: [...prev.items, newItem] };
+    });
+  };
+
   useEffect(() => {
-    const toolsTotal = formData.items.reduce((sum, item) => sum + (item.dailyRate * (item.quantity || 1) * totalDays), 0);
+    const toolsTotal = formData.items.reduce((sum, item) => sum + ((Number(item.dailyRate) || 0) * (item.quantity || 1) * totalDays), 0);
     const accTotal = formData.bookingAccessories.reduce((sum, acc) => sum + (acc.price * acc.quantity), 0);
-    const transport = Number(formData.transportCharge || 0);
-    const totalAmount = (toolsTotal + accTotal + transport) - (formData.discount || 0);
-    const balanceAmount = totalAmount - (formData.advancePayment || 0);
+    const transport = Number(formData.transportCharge) || 0;
+    const totalAmount = (toolsTotal + accTotal + transport) - (Number(formData.discount) || 0);
+    const balanceAmount = totalAmount - (Number(formData.advancePayment) || 0);
 
     setCosts({
       baseAmount: (toolsTotal + accTotal + transport),
@@ -212,26 +295,28 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
 
   const addTool = (toolNum) => {
     const tool = availableTools.find(t => t.number === toolNum);
-    if (!tool) return;
+    if (tool) addToolById(tool);
+  };
 
-    // Check if already added
-    if (formData.items.some(item => item.tool === tool._id)) return;
-
-    const newItem = {
+  const buildItemFromTool = (tool, existing) => {
+    if (existing) return existing;
+    return {
       tool: tool._id,
       toolNumber: tool.number,
       model: tool.model,
       category: tool.category,
-      dailyRate: tool.dailyRate || 0,
+      dailyRate: tool.dailyRate || '',
       quantity: 1,
       stock: tool.stock || 1
     };
+  };
 
-    setFormData({
-      ...formData,
-      items: [...formData.items, newItem]
-    });
-    setUnifiedSearch('');
+  const handleToolSearchSelect = (val) => {
+    if (!val || !val.startsWith('[TOOL]')) return;
+    const match = val.match(/\[TOOL\] (.*?) -/);
+    if (!match?.[1]) return;
+    const found = availableTools.find((t) => t.number === match[1].trim());
+    if (found) addToolById(found);
   };
 
   const removeItem = (index) => {
@@ -257,7 +342,13 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         bookingAccessories: [...formData.bookingAccessories, { accessoryId: acc._id, number: acc.number, name: acc.name, quantity: 1, price: acc.price, stock: acc.stock || 0 }]
       });
     }
-    setUnifiedSearch(''); // Clear search after adding
+    setAccSearch('');
+  };
+
+  const handleAccSearchSelect = (val) => {
+    if (!val || !val.startsWith('[PART]')) return;
+    const match = val.match(/\[PART\] (.*?) -/);
+    if (match?.[1]) addAccessory(match[1].trim());
   };
 
   const removeAccessory = (index) => {
@@ -285,25 +376,6 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         setFormData(prev => ({ ...prev, [field]: reader.result }));
       };
       reader.readAsDataURL(file);
-    }
-  };
-
-  const handleQuickAddClient = async () => {
-    if (!newClient.name) return alert('Name is required');
-    try {
-      const res = await clientAPI.create({ ...newClient, status: 'Active' });
-      setClients([...clients, res.data]);
-      setFormData(prev => ({
-        ...prev,
-        clientName: res.data.name,
-        clientPhone: res.data.contact,
-        clientNic: res.data.nic
-      }));
-      setShowAddClient(false);
-      setNewClient({ name: '', contact: '', nic: '' });
-      alert('New customer saved successfully!');
-    } catch (err) {
-      alert('Failed to save customer');
     }
   };
 
@@ -350,7 +422,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
           tool: it.tool,
           toolNumber: it.toolNumber,
           model: it.model,
-          dailyRate: it.dailyRate
+          dailyRate: Number(it.dailyRate) || 0
         }))
       };
 
@@ -410,6 +482,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                         const val = e.target.value.toUpperCase();
                         setFormData(prev => ({ ...prev, clientNic: val }));
                         setCustomerHistory(null);
+                        setIsNewCustomer(false);
                       }}
                       options={clients.map(c => c.nic).filter(Boolean)}
                       placeholder="Enter NIC..."
@@ -435,17 +508,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 )}
               </div>
               <div className="form-group" style={{ position: 'relative' }}>
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Customer Name *</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddClient(!showAddClient)}
-                    className="add-btn"
-                    style={{ height: '34px', padding: '0 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <Plus size={14} /> New
-                  </button>
-                </label>
+                <label>Customer Name *</label>
                 <Autocomplete
                   name="clientName"
                   value={formData.clientName}
@@ -493,23 +556,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
               </div>
             </div>
 
-            {showAddClient && (
-              <div style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: '12px', border: '1px dashed var(--accent)', marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '200px' }}>
-                  <label>New Name</label>
-                  <input type="text" value={newClient.name} onChange={e => setNewClient({ ...newClient, name: e.target.value })} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '150px' }}>
-                  <label>New Contact</label>
-                  <input type="text" value={newClient.contact} onChange={e => setNewClient({ ...newClient, contact: e.target.value })} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '150px' }}>
-                  <label>New NIC</label>
-                  <input type="text" value={newClient.nic} onChange={e => setNewClient({ ...newClient, nic: e.target.value })} />
-                </div>
-                <button type="button" onClick={handleQuickAddClient} style={{ background: 'var(--accent)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, height: '40px' }}>
-                  Save Customer
-                </button>
+            {isNewCustomer && (
+              <div className="new-customer-banner">
+                <strong>New customer</strong>
+                <span>— complete name, phone, and ID photos below. Customer will be saved when you confirm the booking.</span>
               </div>
             )}
 
@@ -558,105 +608,46 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
               <Package size={16} /> Selected Tools & Pricing
             </p>
 
-            <div
-              className="tool-selector"
-              style={{ marginBottom: "16px", position: "relative" }}
-            >
-              <Autocomplete
-                name="unifiedSearch"
-                value={unifiedSearch}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setUnifiedSearch(val);
+            {loadingTools && <p className="tool-search-hint">Loading tools…</p>}
+            {!loadingTools && availableTools.length === 0 && (
+              <p className="tool-search-hint">No tools available. Add tools in Stock Inventory.</p>
+            )}
 
-                  if (val.startsWith('[TOOL]')) {
-                    const match = val.match(/\[TOOL\] (.*?) -/);
-                    if (match && match[1]) {
-                      const tNum = match[1].trim();
-                      const found = availableTools.find(t => t.number === tNum);
-                      if (found) {
-                        if (found.status && found.status !== "Available" && found.status !== "Active" && !initialData) {
-                          alert(`Warning: This tool is currently ${found.status}. Please check availability dates.`);
-                        }
-                        addTool(found.number);
-                      }
-                    }
-                  } else if (val.startsWith('[PART]')) {
-                    const match = val.match(/\[PART\] (.*?) -/);
-                    if (match && match[1]) {
-                      const aNum = match[1].trim();
-                      addAccessory(aNum);
-                    }
-                  } else {
-                    // Fallback for typing manually
-                    const foundTool = availableTools.find(t => t.number === val);
-                    if (foundTool) { addTool(foundTool.number); return; }
-                    const foundAcc = allAccessories.find(a => a.number === val || a.name === val);
-                    if (foundAcc) { addAccessory(val); return; }
-                  }
-                }}
-                options={[
-                  ...availableTools.map(t => `[TOOL] ${t.number} - ${t.model} (${t.stock || 1} available)`),
-                  ...allAccessories.map(a => `[PART] ${a.number || 'No ID'} - ${a.name} (${a.stock || 0} available)`)
-                ]}
-                placeholder="Search Tools & Accessories by ID or Name..."
-                className="full-width-autocomplete"
-              />
+            {!loadingTools && availableTools.length > 0 && (
+              <div className="tool-selector tool-selector-wide" style={{ marginBottom: '16px' }}>
+                <label className="tool-search-label">Select tools *</label>
+                <Autocomplete
+                  name="toolSearch"
+                  value={toolSearch}
+                  multiSelect
+                  onOptionSelect={handleToolSearchSelect}
+                  onChange={(e) => setToolSearch(e.target.value)}
+                  options={availableTools
+                    .filter((t) => t?.number)
+                    .map((t) => `[TOOL] ${t.number} - ${t.model || 'Tool'}`)}
+                  placeholder="Search and select tools"
+                  className="full-width-autocomplete booking-tool-search"
+                  emptyMessage="No tools loaded"
+                />
+              </div>
+            )}
 
-              {/* Clear Search Button */}
-              {unifiedSearch && (
-                <button
-                  type="button"
-                  onClick={() => setUnifiedSearch("")}
-                  title="Clear Search"
-                  style={{
-                    position: "absolute",
-                    right: "10px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    border: "none",
-                    background: "#f3f4f6",
-                    borderRadius: "50%",
-                    width: "24px",
-                    height: "24px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    color: "#666",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    zIndex: 10,
-                  }}
-                >
-                  ×
-                </button>
-              )}
-            </div>
-
-            {/* Clear All Selected Tools */}
-            {formData.items.length > 0 && (
-              <div style={{ marginBottom: "16px", textAlign: "right" }}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData({
-                      ...formData,
-                      items: [],
-                    })
-                  }
-                  style={{
-                    background: "#fee2e2",
-                    color: "#dc2626",
-                    border: "none",
-                    borderRadius: "8px",
-                    padding: "10px 14px",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  Clear All Tools
-                </button>
+            {!loadingTools && availableTools.length > 0 && (
+              <div className="quick-acc-grid booking-tools-quick-add">
+                {availableTools.map((t) => {
+                  const added = formData.items.some((item) => toolIdMatch(item.tool, t._id));
+                  return (
+                    <button
+                      key={t._id}
+                      type="button"
+                      onClick={() => addToolById(t)}
+                      className={`quick-add-badge${added ? ' is-added' : ''}`}
+                      disabled={added}
+                    >
+                      <Plus size={14} strokeWidth={3} /> {t.number}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -681,9 +672,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                   <label>Daily Rate</label>
                   <input
                     type="number"
-                    value={item.dailyRate}
+                    placeholder="Rate"
+                    value={item.dailyRate === 0 ? '' : item.dailyRate}
                     onChange={(e) =>
-                      handleItemChange(index, "dailyRate", Number(e.target.value))
+                      handleItemChange(index, "dailyRate", e.target.value === '' ? '' : Number(e.target.value))
                     }
                   />
                 </div>
@@ -705,7 +697,7 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                   <label>Subtotal</label>
                   <input
                     type="text"
-                    value={`LKR ${(item.dailyRate * (item.quantity || 1) * totalDays).toLocaleString()}`}
+                    value={`LKR ${((Number(item.dailyRate) || 0) * (item.quantity || 1) * totalDays).toLocaleString()}`}
                     readOnly
                     className="input-highlight-blue"
                   />
@@ -807,6 +799,22 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
           {/* ///////////////////////////////////////////////////////////////select////////////////// */}
           <div className="form-section">
             <p className="form-section-title"><Package size={16} /> Selected Parts & Accessories</p>
+            {allAccessories.length > 0 && (
+              <div className="tool-selector tool-selector-wide" style={{ marginBottom: '16px' }}>
+                <Autocomplete
+                  name="accSearch"
+                  value={accSearch}
+                  multiSelect
+                  onOptionSelect={handleAccSearchSelect}
+                  onChange={(e) => setAccSearch(e.target.value)}
+                  options={allAccessories.map(a =>
+                    `[PART] ${a.number || 'No ID'} - ${a.name} (${a.stock || 0} available)`
+                  )}
+                  placeholder="Search parts & accessories to add"
+                  className="full-width-autocomplete"
+                />
+              </div>
+            )}
             {allAccessories.length > 0 ? (
               <div className="quick-acc-grid" style={{
                 display: 'flex',
@@ -1032,13 +1040,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 <label>Advance Payment (LKR)</label>
                 <input
                   type="number"
-                  value={formData.advancePayment || 0}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      advancePayment: Number(e.target.value),
-                    }))
-                  }
+                  min="0"
+                  placeholder="Amount"
+                  value={emptyNum(formData.advancePayment)}
+                  onChange={onNumField('advancePayment')}
                 />
               </div>
 
@@ -1047,13 +1052,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 <label>Deposit (LKR)</label>
                 <input
                   type="number"
-                  value={formData.deposit || 0}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      deposit: Number(e.target.value),
-                    }))
-                  }
+                  min="0"
+                  placeholder="Amount"
+                  value={emptyNum(formData.deposit)}
+                  onChange={onNumField('deposit')}
                 />
               </div>
             </div>
@@ -1063,13 +1065,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 <label>Discount (LKR)</label>
                 <input
                   type="number"
-                  value={formData.discount || 0}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      discount: Number(e.target.value),
-                    }))
-                  }
+                  min="0"
+                  placeholder="Amount"
+                  value={emptyNum(formData.discount)}
+                  onChange={onNumField('discount')}
                 />
               </div>
 
@@ -1077,13 +1076,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 <label>Transport Charges (LKR)</label>
                 <input
                   type="number"
-                  value={formData.transportCharge || 0}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      transportCharge: Number(e.target.value),
-                    }))
-                  }
+                  min="0"
+                  placeholder="Amount"
+                  value={emptyNum(formData.transportCharge)}
+                  onChange={onNumField('transportCharge')}
                 />
               </div>
             </div>

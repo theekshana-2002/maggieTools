@@ -29,8 +29,10 @@ async function buildSMSMessage(templateField, bookingData) {
 Customer: ${bookingData.clientName || 'Customer'}
 Phone: ${bookingData.clientPhone || 'N/A'}
 NIC: ${bookingData.clientNic || 'N/A'}
-Location: ${bookingData.pickupLocation || 'N/A'}
+Pickup Location: ${bookingData.pickupLocation || 'N/A'}
+Return Location: ${bookingData.returnLocation || 'N/A'}
 Date: ${new Date(bookingData.pickupDate).toLocaleDateString()} to ${new Date(bookingData.returnDate).toLocaleDateString()}
+${bookingData.notes ? `Notes: ${bookingData.notes}` : ''}
 
 Items Booked:
 ${toolNo}
@@ -154,22 +156,42 @@ router.get('/check-availability', authMiddleware, async (req, res) => {
 router.get('/available-tools', authMiddleware, async (req, res) => {
   const { pickupDate, returnDate } = req.query;
   try {
-    const start = new Date(pickupDate);
-    const end = new Date(returnDate);
+    const unavailableStatuses = ['Maintenance', 'Repair', 'Maintaining', 'Under Repair', 'Unavailable'];
+    let bookedIds = [];
 
-    // Get IDs of tools already booked in this range
-    const bookedTools = await Booking.find({
-      status: { $ne: 'Cancelled' },
-      $or: [
-        { pickupDate: { $lt: end }, returnDate: { $gt: start } }
-      ]
-    }).distinct('tool');
+    if (pickupDate && returnDate) {
+      const start = new Date(pickupDate);
+      const end = new Date(returnDate);
+      if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+        const overlapping = await Booking.find({
+          status: { $nin: ['Cancelled', 'Returned'] },
+          pickupDate: { $lt: end },
+          returnDate: { $gt: start }
+        }).select('tool items');
 
-    // Find tools not in the booked list
-    const availableTools = await Tool.find({
-      _id: { $nin: bookedTools },
-      status: 'Available'
-    });
+        const idSet = new Set();
+        overlapping.forEach((b) => {
+          if (b.tool) idSet.add(b.tool.toString());
+          (b.items || []).forEach((it) => {
+            if (it.tool) idSet.add(it.tool.toString());
+          });
+        });
+        bookedIds = [...idSet];
+      }
+    }
+
+    const query = {
+      status: { $nin: unavailableStatuses },
+      ...(bookedIds.length ? { _id: { $nin: bookedIds } } : {})
+    };
+
+    let availableTools = await Tool.find(query).sort({ number: 1 });
+
+    // Prefer tools with stock; if none, still return rentable tools (legacy records may lack stock)
+    const withStock = availableTools.filter((t) => (t.stock ?? 1) > 0);
+    if (withStock.length > 0) {
+      availableTools = withStock;
+    }
 
     res.json(availableTools);
   } catch (err) {

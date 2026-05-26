@@ -39,7 +39,11 @@ const BookingBook = () => {
     return `--- MAGGI TOOLS BOOKING BILL ---
 Customer: ${record.clientName || 'Customer'}
 Phone: ${record.clientPhone || 'N/A'}
+NIC: ${record.clientNic || 'N/A'}
+Pickup: ${record.pickupLocation || 'N/A'}
+Return: ${record.returnLocation || 'N/A'}
 Date: ${new Date(record.pickupDate || new Date()).toLocaleDateString()} to ${new Date(record.returnDate || new Date()).toLocaleDateString()}
+${record.notes ? `Notes: ${record.notes}` : ''}
 
 Items Booked:
 ${toolNo}
@@ -125,8 +129,20 @@ ${builder.policies}`.trim();
     }
   };
 
-  const handlePrintQuote = (booking) => {
-    // generateInvoicePDF(booking, 'quotation'); // if we need quotes
+  const handlePrintQuote = async (booking) => {
+    try {
+      const res = await api.get('invoices');
+      const invoices = res.data || [];
+      const invoice = invoices.find(inv => inv.bookingId === booking._id) || booking;
+      generateInvoicePDF(invoice, 'print');
+    } catch (e) {
+      generateInvoicePDF(booking, 'print');
+    }
+  };
+
+  const handleView = (record) => {
+    setSelectedRecord(record.rawData || record);
+    setViewModalOpen(true);
   };
 
   const tableColumns = ['ID', 'CUSTOMER', 'TOOL', 'PICKUP', 'RETURN', 'DAYS', 'TOTAL', 'BALANCE', 'STATUS', 'ACTION'];
@@ -401,9 +417,9 @@ ${builder.policies}`.trim();
     try {
       let createdBookingId = null;
       if (Array.isArray(formData)) {
-        await bookingAPI.bulkCreate(formData);
+        const res = await bookingAPI.bulkCreate(formData);
         setSuccess(`${formData.length} tools booked successfully.`);
-        const firstBooking = res.data.bookings ? res.data.bookings[0] : res.data[0];
+        const firstBooking = res.data?.bookings ? res.data.bookings[0] : res.data?.[0];
         if (firstBooking) {
             setAutoInvoice(firstBooking.invoiceDetails);
             setSmsRecord(firstBooking);
@@ -647,45 +663,67 @@ ${builder.policies}`.trim();
               </select>
             ),
             ACTION: (
-              <div className="table-actions" onClick={e => e.stopPropagation()}>
+              <div className="table-actions booking-record-actions" onClick={e => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="booking-btn-view"
+                  onClick={() => handleView(r)}
+                  title="View Details"
+                >
+                  <Eye size={18} strokeWidth={2.5} />
+                  <span>View</span>
+                </button>
                 {canManage && (
-                  <>
-                    <button className="action-icon-btn btn-print" onClick={() => handlePrint(r.rawData)} title="Print Bill">
+                  <div className="booking-btn-icon-row">
+                    <button
+                      type="button"
+                      className="action-icon-btn btn-print"
+                      onClick={(e) => { e.stopPropagation(); handlePrint(r.rawData); }}
+                      title="Print Bill"
+                    >
                       <Printer />
                     </button>
-                    <button className="action-icon-btn btn-details" onClick={() => handlePrintQuote(r.rawData)} title="Print Quotation">
+                    <button
+                      type="button"
+                      className="action-icon-btn btn-details"
+                      onClick={(e) => { e.stopPropagation(); handlePrintQuote(r.rawData); }}
+                      title="Print Copy"
+                    >
                       <FileText />
                     </button>
-                  </>
-                )}
-                {canManage && r.displayStatus === 'Active' && (
-                  <button
-                    className="action-icon-btn btn-msg"
-                    style={{ width: 'auto', padding: '0 12px' }}
-                    onClick={(e) => { e.stopPropagation(); setReturnRecord(r.rawData || r); setReturnDate(new Date().toISOString().split('T')[0]); setReturnModalOpen(true); }}
-                  >
-                    Mark Returned
-                  </button>
-                )}
-                {/* //////////////////////////////////// */}
-                <button
-                  className="action-icon-btn btn-details"
-                  onClick={() => handleEdit(r)}
-                  title="Edit Booking"
-                >
-                  <Edit />
-                </button>
-                {/* //////////////////////////////////// */}
-                <button className="action-icon-btn btn-bell" onClick={(e) => handleNotify(e, r)} title="Send SMS Reminder">
-                  <Bell />
-                </button>
-                <button className="action-icon-btn btn-msg" onClick={(e) => handleWhatsApp(e, r)} title="Send WhatsApp Reminder">
-                  <MessageCircle />
-                </button>
-                {canManage && (
-                  <button className="action-icon-btn btn-delete" onClick={() => handleDelete(r._id)} title="Delete">
-                    <Trash2 />
-                  </button>
+                    <button
+                      type="button"
+                      className="action-icon-btn btn-edit"
+                      onClick={(e) => { e.stopPropagation(); handleEdit(r); }}
+                      title="Edit"
+                    >
+                      <Edit />
+                    </button>
+                    {(r.displayStatus === 'Active' || r.status === 'Active') && (
+                      <button
+                        type="button"
+                        className="action-icon-btn btn-return"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReturnRecord(r.rawData || r);
+                          setReturnDate(new Date().toISOString().split('T')[0]);
+                          setReturnModalOpen(true);
+                        }}
+                        title="Mark Returned"
+                      >
+                        <Package size={16} />
+                      </button>
+                    )}
+                    <button type="button" className="action-icon-btn btn-bell" onClick={(e) => handleNotify(e, r)} title="SMS">
+                      <Bell />
+                    </button>
+                    <button type="button" className="action-icon-btn btn-msg" onClick={(e) => handleWhatsApp(e, r)} title="WhatsApp">
+                      <MessageCircle />
+                    </button>
+                    <button type="button" className="action-icon-btn btn-delete" onClick={(e) => { e.stopPropagation(); handleDelete(r._id); }} title="Delete">
+                      <Trash2 />
+                    </button>
+                  </div>
                 )}
               </div>
             )
@@ -695,8 +733,16 @@ ${builder.policies}`.trim();
         />
       </div>
 
-      <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="Booking Details">
+      <Modal isOpen={viewModalOpen} onClose={() => setViewModalOpen(false)} title="Booking Details" wide>
         <RecordDetails data={selectedRecord} type="booking" />
+        <div className="modal-actions" style={{ marginTop: 0, paddingTop: 16 }}>
+          <button type="button" className="cancel-btn" onClick={() => setViewModalOpen(false)}>Close</button>
+          {canManage && selectedRecord && (
+            <button type="button" className="submit-btn" onClick={() => { setViewModalOpen(false); handleEdit({ rawData: selectedRecord }); }}>
+              Edit Booking
+            </button>
+          )}
+        </div>
       </Modal>
 
       <Modal isOpen={returnModalOpen} onClose={() => setReturnModalOpen(false)} title="Process Tool Return">

@@ -208,20 +208,28 @@
   /* Last cell is the action footer */
   .data-table td:last-child {
     grid-column: 1 / -1;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
+    flex-direction: column;
+    justify-content: stretch;
+    align-items: stretch;
+    gap: 0;
+    padding: 12px 14px 14px;
     background: var(--bg-main);
     border-bottom: none;
     border-right: none;
     border-top: 1px solid var(--border-soft);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow: visible;
+    min-width: 0;
   }
 
   .data-table td:last-child::before {
     display: none;
+  }
+
+  .data-table td:last-child .booking-record-actions {
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
   }
 
   /* Empty & loading take full width */

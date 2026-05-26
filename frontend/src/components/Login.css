@@ -55,10 +55,35 @@
   text-align: left;
 }
 
-.visual-logo {
-  height: 90px;
-  margin-bottom: 40px;
-  filter: brightness(1.2) contrast(1.1) drop-shadow(0 0 20px rgba(99,102,241,0.4));
+.tool-brand-mark {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 32px;
+}
+
+.tool-brand-photo {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.tool-brand-icon {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--accent-gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.45);
 }
 
 .visual-content h1 {

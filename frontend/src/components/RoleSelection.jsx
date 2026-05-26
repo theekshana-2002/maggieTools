@@ -1,7 +1,8 @@
 import React from 'react';
-import { ShieldCheck, Users, HardHat, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Users, HardHat, ChevronRight, Wrench } from 'lucide-react';
 import './RoleSelection.css';
-import logo from '../logo.png';
+
+const TOOL_BRAND_IMAGE = 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=800&auto=format&fit=crop';
 
 const RoleSelection = ({ onRoleSelect, appSettings }) => {
   const roles = [
@@ -37,7 +38,10 @@ const RoleSelection = ({ onRoleSelect, appSettings }) => {
       
       <div className="gateway-content">
         <div className="gateway-header">
-          <img src={appSettings?.logo || logo} alt={appSettings?.companyName || 'Logo'} className="gateway-logo" />
+          <div className="gateway-tool-brand" aria-hidden="true">
+            <img src={TOOL_BRAND_IMAGE} alt="" className="gateway-tool-photo" />
+            <div className="gateway-tool-icon"><Wrench size={32} /></div>
+          </div>
           <h1>{appSettings?.companyName || 'RAXWO'} <span>Tool Rentals</span></h1>
           <p>The Standard of Excellence in Equipment Management.</p>
         </div>

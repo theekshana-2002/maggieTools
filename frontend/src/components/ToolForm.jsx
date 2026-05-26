@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toolAPI } from '../services/api';
 import { Wrench, Hash, Zap, Calendar, Shield, CreditCard, Package, Settings, Tag, Info, Search, Truck, BatteryCharging } from 'lucide-react';
+import '../styles/forms.css';
 
 const ToolForm = ({ onSubmit, onCancel, initialData }) => {
   const [formData, setFormData] = useState({
@@ -98,7 +99,7 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', fontWeight: '700', fontSize: '1.1rem', marginBottom: '5px' }}>
             <Tag size={18} /> Basic Specifications
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+          <div className="tool-form-spec-grid">
             <div>
               <label style={labelStyle}>Tool ID / Serial *</label>
               <div style={{ position: 'relative' }}>
@@ -113,11 +114,11 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
                 <input style={inputStyle} type="text" placeholder="e.g. Bosch Professional" value={formData.model} onChange={e => setFormData({ ...formData, model: e.target.value })} />
               </div>
             </div>
-            <div>
+            <div className="tool-form-select-wrap">
               <label style={labelStyle}>Category</label>
-              <div style={{ position: 'relative' }}>
-                <Package size={16} style={iconWrapStyle} />
-                <select style={inputStyle} value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
+              <div className="tool-form-select-field">
+                <Package size={16} className="tool-form-select-icon" />
+                <select className="tool-form-select" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
                   <option value="General">General</option>
                   <option value="Kitchen">Kitchen / Catering</option>
                   <option value="Electric">Power Tools</option>
@@ -127,12 +128,12 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
                 </select>
               </div>
             </div>
-            <div>
+            <div className="tool-form-select-wrap">
               <label style={labelStyle}>Power Source</label>
-              <div style={{ position: 'relative' }}>
-                <Zap size={16} style={iconWrapStyle} />
-                <select style={inputStyle} value={formData.powerSource} onChange={e => setFormData({ ...formData, powerSource: e.target.value })}>
-                  <option value="" disabled>Select source</option>
+              <div className="tool-form-select-field">
+                <Zap size={16} className="tool-form-select-icon" />
+                <select className="tool-form-select" value={formData.powerSource} onChange={e => setFormData({ ...formData, powerSource: e.target.value })}>
+                  <option value="">Select power source</option>
                   <option value="Electric">Electric (Corded)</option>
                   <option value="Battery">Battery Powered</option>
                   <option value="Petrol">Petrol / Diesel</option>

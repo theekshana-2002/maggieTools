@@ -317,6 +317,8 @@ const RecordDetails = ({ data, type }) => {
         { label: 'Category', key: 'category' },
         { label: 'Model / Brand', key: 'model' },
         { label: 'Power Source', key: 'powerSource' },
+        { label: 'Quantity', key: 'stock' },
+        { label: 'Daily Rate', key: 'dailyRate' },
       ]
     },
     {

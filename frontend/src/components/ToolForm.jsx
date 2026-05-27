@@ -35,17 +35,36 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
         lastServiceDate: initialData.lastServiceDate ? new Date(initialData.lastServiceDate).toISOString().split('T')[0] : '',
         leaseFinalDate: initialData.leaseFinalDate ? new Date(initialData.leaseFinalDate).toISOString().split('T')[0] : ''
       });
+      return;
     }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await toolAPI.getNextNumber();
+        if (!cancelled && res.data?.number) {
+          setFormData((prev) => ({ ...prev, number: res.data.number }));
+        }
+      } catch (err) {
+        console.warn('Could not fetch next tool ID:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [initialData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
+      const payload = { ...formData };
+      if (!initialData && !String(payload.number || '').trim()) {
+        delete payload.number;
+      }
       if (initialData) {
-        await toolAPI.update(initialData._id, formData);
+        await toolAPI.update(initialData._id, payload);
       } else {
-        await toolAPI.create(formData);
+        await toolAPI.create(payload);
       }
       onSubmit();
     } catch (err) {
@@ -104,8 +123,21 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
               <label style={labelStyle}>Tool ID / Serial *</label>
               <div style={{ position: 'relative' }}>
                 <Hash size={16} style={iconWrapStyle} />
-                <input style={inputStyle} type="text" required placeholder="e.g. DRILL-001" value={formData.number} onChange={e => setFormData({ ...formData, number: e.target.value.toUpperCase() })} />
+                <input
+                  style={{ ...inputStyle, ...(initialData ? {} : { background: 'var(--bg-side)', cursor: 'not-allowed' }) }}
+                  type="text"
+                  required={Boolean(initialData)}
+                  readOnly={!initialData}
+                  placeholder="Auto-generated e.g. TL-0001"
+                  value={formData.number}
+                  onChange={e => setFormData({ ...formData, number: e.target.value.toUpperCase() })}
+                />
               </div>
+              {!initialData && (
+                <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: 'var(--text-dim)' }}>
+                  Tool ID is generated automatically when you save.
+                </p>
+              )}
             </div>
             <div>
               <label style={labelStyle}>Tool Model</label>

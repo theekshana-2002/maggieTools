@@ -1,8 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const Tool = require('../models/Tool');
+const Counter = require('../models/Counter');
+const Accessory = require('../models/Accessory');
 const Expense = require('../models/Expense');
 const { authMiddleware, authorizeRoles } = require('../middleware/authMiddleware');
+
+async function generateToolNumber() {
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const counter = await Counter.findOneAndUpdate(
+      { id: 'toolNumber' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const number = `TL-${String(counter.seq).padStart(4, '0')}`;
+    const [toolExists, accExists] = await Promise.all([
+      Tool.findOne({ number }),
+      Accessory.findOne({ number })
+    ]);
+    if (!toolExists && !accExists) return number;
+  }
+  throw new Error('Could not generate a unique tool ID. Please try again.');
+}
 
 // Renewal logic for maintenance/warranty
 router.patch('/:id/renew', authMiddleware, authorizeRoles('Admin', 'Manager'), async (req, res) => {
@@ -73,19 +92,22 @@ router.get('/', authMiddleware, async (req, res) => {
   }
 });
 
+// Next auto-generated tool ID (for create form)
+router.get('/next-id', authMiddleware, async (req, res) => {
+  try {
+    const number = await generateToolNumber();
+    res.json({ number });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Add new tool — ID must not clash with any Accessory ID
 router.post('/', authMiddleware, async (req, res) => {
   try {
-    const { number } = req.body;
+    const rawNumber = (req.body.number || '').trim();
+    const normNum = rawNumber ? rawNumber.toUpperCase() : await generateToolNumber();
 
-    if (!number) {
-      return res.status(400).json({ message: 'Tool ID (number) is required.' });
-    }
-
-    const normNum = number.trim().toUpperCase();
-
-    // Cross-collection check: Accessory IDs
-    const Accessory = require('../models/Accessory');
     const accExists = await Accessory.findOne({ number: normNum });
     if (accExists) {
       return res.status(400).json({ message: `ID "${normNum}" is already used by an Accessory. Tool and Accessory IDs must be unique across both collections.` });

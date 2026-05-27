@@ -92,7 +92,7 @@ const Tools = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('inventory');
 
-  const columns = ['TOOL ID / SERIAL', 'MODEL', 'CATEGORY', 'DAILY RATE', 'STATUS', 'ACTION'];
+  const columns = ['TOOL ID / SERIAL', 'MODEL', 'CATEGORY', 'DAILY RATE', 'QUANTITY', 'STATUS', 'ACTION'];
 
   useEffect(() => { fetchTools(); }, []);
 
@@ -124,6 +124,11 @@ const Tools = () => {
         'MODEL': t.model || '—',
         'CATEGORY': <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)' }}>{t.category}</span>,
         'DAILY RATE': <strong style={{ color: 'var(--accent)' }}>LKR {(t.dailyRate || 0).toLocaleString()}</strong>,
+        'QUANTITY': (
+          <span className="status-badge status-confirmed" style={{ background: 'var(--bg-side)', color: 'var(--text-main)', fontWeight: 800 }}>
+            {t.stock ?? 1}
+          </span>
+        ),
         'STATUS': (
           <select
             value={t.status || 'Available'}
@@ -170,8 +175,15 @@ const Tools = () => {
   }, [toolRecords, searchQuery]);
 
   const handleExportPDF = () => {
-    const exportColumns = ['ID', 'MODEL', 'CATEGORY', 'STATUS'];
-    const exportData = filteredRecords.map(t => [t.rawData.number, t.rawData.model, t.rawData.category, t.rawData.status]);
+    const exportColumns = ['ID', 'MODEL', 'CATEGORY', 'DAILY RATE', 'QUANTITY', 'STATUS'];
+    const exportData = filteredRecords.map(t => [
+      t.rawData.number,
+      t.rawData.model,
+      t.rawData.category,
+      t.rawData.dailyRate,
+      t.rawData.stock ?? 1,
+      t.rawData.status
+    ]);
     generatePDFReport({ title: 'Tool Inventory Report', columns: exportColumns, data: exportData, filename: `Inventory_Report.pdf` });
   };
 

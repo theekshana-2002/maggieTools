@@ -191,7 +191,10 @@ export const hireAPI       = wrapAPI('hires',      'raxwo_hires');
 export const salaryAPI     = wrapAPI('salaries',   'raxwo_salaries');
 export const paymentAPI    = wrapAPI('payments',   'raxwo_payments');
 export const clientAPI     = wrapAPI('clients',    'raxwo_clients');
-export const toolAPI    = wrapAPI('tools',   'raxwo_tools');
+export const toolAPI    = {
+  ...wrapAPI('tools', 'raxwo_tools'),
+  getNextNumber: () => api.get('tools/next-id')
+};
 export const vehicleAPI = toolAPI; // Alias for backward compatibility
 export const markLeasePayment = async (toolId, year, month, paid) => {
   const res = await api.patch(

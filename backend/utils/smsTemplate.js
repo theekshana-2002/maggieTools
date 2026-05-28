@@ -17,6 +17,7 @@ Discount: {discount}
 Total Price: {totalAmount}
 Paid: {advancePayment}
 Balance Due: {balanceAmount}
+Contact Us: 0777778845
 
 Thank you for choosing {companyName}!`;
 
@@ -33,6 +34,35 @@ function fmtMoney(v) {
   return v != null && v !== '' ? `LKR ${Number(v).toLocaleString()}` : '-';
 }
 
+function fmtOptionalMoney(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return `LKR ${n.toLocaleString()}`;
+}
+
+function normalizeSmsText(text) {
+  return String(text || '')
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      return !/(^|\s)(Transport|Other Charges|Deposit|Discount|Accessories|Notes):\s*$/i.test(trimmed);
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function getBookedItemName(item = {}) {
+  return (
+    item.model ||
+    item.name ||
+    item.toolName ||
+    item.description ||
+    ''
+  );
+}
+
 function isLegacyShortTemplate(template) {
   if (!template || typeof template !== 'string') return true;
   const t = template.trim();
@@ -45,7 +75,7 @@ function buildDetailedBillMessage(bookingData, settings) {
   const itemsList = Array.isArray(bookingData.items) ? bookingData.items : [];
   const accList = Array.isArray(bookingData.accessories) ? bookingData.accessories : [];
   const toolNo =
-    itemsList.map((it) => it.toolNumber).filter(Boolean).join(' / ') ||
+    itemsList.map((it) => getBookedItemName(it)).filter(Boolean).join(' / ') ||
     accList.map((a) => a.name).filter(Boolean).join(' / ') ||
     'Rental';
   const accStr = accList.map((a) => `${a.name} (x${a.quantity})`).join(', ');
@@ -63,14 +93,14 @@ function applySmsTemplate(template, bookingData, settings, precomputed = {}) {
   const accList = Array.isArray(bookingData.accessories) ? bookingData.accessories : [];
   const toolNo =
     precomputed.toolNo ??
-    (itemsList.map((it) => it.toolNumber).filter(Boolean).join(' / ') ||
+    (itemsList.map((it) => getBookedItemName(it)).filter(Boolean).join(' / ') ||
       accList.map((a) => a.name).filter(Boolean).join(' / ') ||
       'Rental');
   const accStr =
     precomputed.accStr ??
     accList.map((a) => `${a.name} (x${a.quantity})`).join(', ');
 
-  const companyName = settings?.companyName || 'MAGGI TOOLS RENTALS';
+  const companyName = 'MAGGI TOOL RENTALS';
   const pickupDate = bookingData.pickupDate
     ? new Date(bookingData.pickupDate).toLocaleDateString()
     : '-';
@@ -89,10 +119,10 @@ function applySmsTemplate(template, bookingData, settings, precomputed = {}) {
     '{toolNo}': toolNo,
     '{accessoriesLine}': accStr ? `Accessories: ${accStr}` : '',
     '{notesLine}': bookingData.notes ? `Notes: ${bookingData.notes}` : '',
-    '{transport}': fmtMoney(bookingData.transportCharge),
-    '{otherCharges}': fmtMoney(bookingData.extraCharges),
-    '{deposit}': fmtMoney(bookingData.securityDeposit ?? bookingData.deposit),
-    '{discount}': fmtMoney(bookingData.discount),
+    '{transport}': fmtOptionalMoney(bookingData.transportCharge),
+    '{otherCharges}': fmtOptionalMoney(bookingData.extraCharges),
+    '{deposit}': fmtOptionalMoney(bookingData.securityDeposit ?? bookingData.deposit),
+    '{discount}': fmtOptionalMoney(bookingData.discount),
     '{totalAmount}': fmtMoney(bookingData.totalAmount),
     '{advancePayment}': fmtMoney(bookingData.advancePayment),
     '{balanceAmount}': fmtMoney(bookingData.balanceAmount),
@@ -113,7 +143,12 @@ function applySmsTemplate(template, bookingData, settings, precomputed = {}) {
     result = result.replace(/\{detailedBill\}/g, bill);
   }
 
-  return result.replace(/LKR\s+LKR/gi, 'LKR').replace(/\n{3,}/g, '\n\n').trim();
+  let finalText = normalizeSmsText(result.replace(/LKR\s+LKR/gi, 'LKR'));
+  finalText = finalText.replace(/raxwo\s+tools?\s+rentals?/gi, companyName);
+  if (!finalText.includes('0777778845')) {
+    finalText = `${finalText}\nContact Us: 0777778845`;
+  }
+  return finalText;
 }
 
 function resolveBookingTemplate(settings) {

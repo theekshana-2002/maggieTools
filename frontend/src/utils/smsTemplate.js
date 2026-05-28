@@ -17,6 +17,7 @@ Discount: {discount}
 Total Price: {totalAmount}
 Paid: {advancePayment}
 Balance Due: {balanceAmount}
+Contact Us: 0777778845
 
 Thank you for choosing {companyName}!`;
 
@@ -59,12 +60,41 @@ const SAMPLE_BOOKING = {
   totalAmount: 12500,
   advancePayment: 5000,
   balanceAmount: 7500,
-  items: [{ toolNumber: 'CP-003', quantity: 1 }],
+  items: [{ model: 'Drill Machine', toolNumber: 'CP-003', quantity: 1 }],
   accessories: [{ name: 'Drill Bit', quantity: 2 }]
 };
 
 function fmtMoney(v) {
   return v != null && v !== '' ? `LKR ${Number(v).toLocaleString()}` : '-';
+}
+
+function fmtOptionalMoney(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return `LKR ${n.toLocaleString()}`;
+}
+
+function normalizeSmsText(text) {
+  return String(text || '')
+    .split('\n')
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      return !/(^|\s)(Transport|Other Charges|Deposit|Discount|Accessories|Notes):\s*$/i.test(trimmed);
+    })
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function getBookedItemName(item = {}) {
+  return (
+    item.model ||
+    item.name ||
+    item.toolName ||
+    item.description ||
+    ''
+  );
 }
 
 export function isLegacyShortTemplate(template) {
@@ -75,18 +105,18 @@ export function isLegacyShortTemplate(template) {
   return t.length < 120 && t.includes('Dear {clientName}');
 }
 
-export function resolveBookingTemplate(stored, companyName = 'MAGGI TOOLS RENTALS') {
+export function resolveBookingTemplate(stored, companyName = 'MAGGI TOOL RENTALS') {
   if (isLegacyShortTemplate(stored)) {
     return DEFAULT_SMS_BOOKING_TEMPLATE.replace(/\{companyName\}/g, companyName);
   }
   return stored.trim();
 }
 
-export function previewSmsTemplate(template, companyName = 'MAGGI TOOLS RENTALS') {
+export function previewSmsTemplate(template, companyName = 'MAGGI TOOL RENTALS') {
   const booking = { ...SAMPLE_BOOKING };
   const itemsList = booking.items || [];
   const accList = booking.accessories || [];
-  const toolNo = itemsList.map((it) => it.toolNumber).join(' / ');
+  const toolNo = itemsList.map((it) => getBookedItemName(it)).filter(Boolean).join(' / ');
   const accStr = accList.map((a) => `${a.name} (x${a.quantity})`).join(', ');
 
   const replacements = {
@@ -100,10 +130,10 @@ export function previewSmsTemplate(template, companyName = 'MAGGI TOOLS RENTALS'
     '{toolNo}': toolNo,
     '{accessoriesLine}': accStr ? `Accessories: ${accStr}` : '',
     '{notesLine}': booking.notes ? `Notes: ${booking.notes}` : '',
-    '{transport}': fmtMoney(booking.transportCharge),
-    '{otherCharges}': fmtMoney(booking.extraCharges),
-    '{deposit}': fmtMoney(booking.securityDeposit),
-    '{discount}': fmtMoney(booking.discount),
+    '{transport}': fmtOptionalMoney(booking.transportCharge),
+    '{otherCharges}': fmtOptionalMoney(booking.extraCharges),
+    '{deposit}': fmtOptionalMoney(booking.securityDeposit),
+    '{discount}': fmtOptionalMoney(booking.discount),
     '{totalAmount}': fmtMoney(booking.totalAmount),
     '{advancePayment}': fmtMoney(booking.advancePayment),
     '{balanceAmount}': fmtMoney(booking.balanceAmount),
@@ -114,5 +144,10 @@ export function previewSmsTemplate(template, companyName = 'MAGGI TOOLS RENTALS'
   Object.entries(replacements).forEach(([key, val]) => {
     result = result.split(key).join(val);
   });
-  return result.replace(/\n{3,}/g, '\n\n').trim();
+  let finalText = normalizeSmsText(result);
+  finalText = finalText.replace(/raxwo\s+tools?\s+rentals?/gi, companyName);
+  if (!finalText.includes('0777778845')) {
+    finalText = `${finalText}\nContact Us: 0777778845`;
+  }
+  return finalText;
 }

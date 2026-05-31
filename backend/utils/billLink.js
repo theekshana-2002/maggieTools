@@ -15,7 +15,7 @@ function getPublicFrontendBase() {
   return (
     process.env.FRONTEND_URL ||
     process.env.PUBLIC_FRONTEND_URL ||
-    'https://maggitools.netlify.app'
+    'https://maggi-tools.netlify.app'
   ).replace(/\/$/, '');
 }
 

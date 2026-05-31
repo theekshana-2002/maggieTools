@@ -143,7 +143,7 @@ function buildItemsBreakdown(bookingData = {}) {
 }
 
 function buildSampleBillLink() {
-  return 'View Bill: https://maggitools.netlify.app/bill/sample-token';
+  return 'View Bill: https://maggi-tools.netlify.app/bill/sample-token';
 }
 
 function migrateBookingTemplate(template) {

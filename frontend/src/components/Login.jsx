@@ -25,12 +25,19 @@ const Login = ({ onLoginSuccess, roleContext, onBack, appSettings }) => {
       }
     } catch (err) {
       const serverMsg = err.response?.data?.message || '';
+      const isNetworkError = !err.response;
       const isServerLoginError = serverMsg.toLowerCase().includes('server error during login');
-      setError(
-        isServerLoginError
-          ? 'Database is temporarily unavailable. You can use emergency login: admin / admin@123'
-          : (serverMsg || 'Sign in failed. Please check your details.')
-      );
+      const isTimeout = err.code === 'ECONNABORTED';
+
+      if (isNetworkError || isTimeout) {
+        setError(
+          'Cannot reach the server. If you are on localhost, run the backend (npm start in backend folder on port 5001). On the live site, wait a moment and try again.'
+        );
+      } else if (isServerLoginError) {
+        setError('Database is temporarily unavailable. Try emergency login: admin / admin@123');
+      } else {
+        setError(serverMsg || 'Sign in failed. Please check your username and password.');
+      }
     } finally {
       setLoading(false);
     }

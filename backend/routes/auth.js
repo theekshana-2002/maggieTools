@@ -30,11 +30,12 @@ router.post('/register', async (req, res) => {
 
 // Login route
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+  const username = String(req.body.username || '').trim();
+  const password = String(req.body.password || '');
 
   try {
     // 1. Check for Hardcoded Admin (Emergency/Initial Setup)
-    if (username === 'admin' && password === 'admin@123') {
+    if (username.toLowerCase() === 'admin' && password === 'admin@123') {
       const token = jwt.sign(
         { id: '000000000000000000000001', username: 'admin', role: 'Admin', name: 'Master Admin' },
         process.env.JWT_SECRET || 'supersecretkey123',
@@ -47,8 +48,10 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 2. Check Database for Employee/Manager/Admin
-    const user = await Employee.findOne({ username });
+    // 2. Check Database for Employee/Manager/Admin (case-insensitive username)
+    const user = await Employee.findOne({
+      username: new RegExp(`^${username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+    });
     if (!user) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }

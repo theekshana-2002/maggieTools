@@ -18,26 +18,48 @@ const { sendSMS } = require('../utils/smsService');
 const {
   buildDetailedBillMessage,
   applySmsTemplate,
-  resolveBookingTemplate
+  resolveBookingTemplate,
+  buildItemsBreakdown,
+  getCompanyName
 } = require('../utils/smsTemplate');
+const { verifyBillViewToken } = require('../utils/billLink');
+const { renderBillViewHtml } = require('../utils/billViewHtml');
 const Account = require('../models/Account');
 const { authMiddleware } = require('../middleware/authMiddleware');
+
+async function enrichBookingForSms(bookingData) {
+  const data = bookingData?.toObject ? bookingData.toObject() : { ...bookingData };
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  for (const item of items) {
+    if (!isValidObjectId(item.tool)) continue;
+    const tool = await Tool.findById(item.tool).select('model number dailyRate').lean();
+    if (!tool) continue;
+    item.model = item.model || tool.model || '';
+    item.dailyRate = Number(item.dailyRate) || Number(tool.dailyRate) || 0;
+    if (!item.model) item.model = tool.model || '';
+  }
+
+  data.items = items;
+  return data;
+}
 
 async function buildSMSMessage(templateField, bookingData) {
   try {
     const settings = await Setting.findOne();
+    const enriched = await enrichBookingForSms(bookingData);
 
     if (templateField === 'smsBookingTemplate') {
       const template = resolveBookingTemplate(settings);
-      return applySmsTemplate(template, bookingData, settings);
+      return applySmsTemplate(template, enriched, settings);
     }
 
     const template = settings?.[templateField];
     if (typeof template === 'string' && template.trim()) {
-      return applySmsTemplate(template.trim(), bookingData, settings);
+      return applySmsTemplate(template.trim(), enriched, settings);
     }
 
-    return buildDetailedBillMessage(bookingData, settings);
+    return buildDetailedBillMessage(enriched, settings);
   } catch (err) {
     console.error('Failed to build SMS from template:', err.message);
     return null;
@@ -141,6 +163,52 @@ router.get('/insights', authMiddleware, async (req, res) => {
     res.json({ topTools, topCustomers });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// Public bill data (for Netlify frontend /bill/:token page)
+router.get('/bill/data/:token', async (req, res) => {
+  try {
+    const { bookingId } = verifyBillViewToken(req.params.token);
+    let booking = await Booking.findById(bookingId).lean();
+    if (!booking) return res.status(404).json({ message: 'Bill not found.' });
+
+    booking = await enrichBookingForSms(booking);
+
+    const [invoice, settings] = await Promise.all([
+      Invoice.findOne({ bookingId: booking._id }).lean(),
+      Setting.findOne().lean()
+    ]);
+
+    res.json({
+      booking,
+      invoice,
+      companyName: getCompanyName(settings),
+      itemsBreakdown: buildItemsBreakdown(booking)
+    });
+  } catch (err) {
+    res.status(400).json({ message: 'This bill link is invalid or has expired.' });
+  }
+});
+
+// Public bill view HTML fallback (direct API link)
+router.get('/bill/view/:token', async (req, res) => {
+  try {
+    const { bookingId } = verifyBillViewToken(req.params.token);
+    let booking = await Booking.findById(bookingId).lean();
+    if (!booking) return res.status(404).send('Bill not found.');
+
+    booking = await enrichBookingForSms(booking);
+
+    const [invoice, settings] = await Promise.all([
+      Invoice.findOne({ bookingId: booking._id }).lean(),
+      Setting.findOne().lean()
+    ]);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(renderBillViewHtml(booking, invoice, settings));
+  } catch (err) {
+    res.status(400).send('This bill link is invalid or has expired.');
   }
 });
 

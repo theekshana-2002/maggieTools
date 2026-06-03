@@ -87,8 +87,13 @@ function calcBookingTotals(body) {
       item.returnDates.forEach(rd => {
         const qty = Number(rd.quantity) || 0;
         returnedQty += qty;
+        
         const rdDate = new Date(rd.date);
-        let diffDays = Math.floor((rdDate - pickup) / (1000 * 60 * 60 * 24));
+        rdDate.setHours(0,0,0,0);
+        const pickupDateObj = new Date(pickup);
+        pickupDateObj.setHours(0,0,0,0);
+        
+        let diffDays = Math.round((rdDate - pickupDateObj) / (1000 * 60 * 60 * 24));
         if (diffDays <= 0) diffDays = 0; // Same day return = no charge
         else diffDays += 1; // Align with totalDays calculation (inclusive of start day)
         cost += rate * qty * diffDays;
@@ -100,7 +105,10 @@ function calcBookingTotals(body) {
       let daysForUnreturned = totalDays;
       if (body.actualReturnDate) {
          const actDate = new Date(body.actualReturnDate);
-         daysForUnreturned = Math.floor((actDate - pickup) / (1000 * 60 * 60 * 24)) + 1;
+         actDate.setHours(0,0,0,0);
+         const pickupDateObj = new Date(pickup);
+         pickupDateObj.setHours(0,0,0,0);
+         daysForUnreturned = Math.round((actDate - pickupDateObj) / (1000 * 60 * 60 * 24)) + 1;
          if (daysForUnreturned < 1) daysForUnreturned = 1;
       }
       cost += rate * unreturned * daysForUnreturned;
@@ -296,6 +304,7 @@ router.get('/', authMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
 
 // Check tool availability
 router.get('/check-availability', authMiddleware, async (req, res) => {
@@ -817,7 +826,7 @@ router.put('/:id/partial-return', authMiddleware, async (req, res) => {
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
-    const { returnDate, returnedItems, returnedAccessories } = req.body;
+    const { returnDate, returnedItems, returnedAccessories, paymentAmount, paymentMethod, accountId } = req.body;
     const returnDateObj = new Date(returnDate || Date.now());
 
     let allFullyReturned = true;
@@ -886,6 +895,12 @@ router.put('/:id/partial-return', authMiddleware, async (req, res) => {
       }
     }
 
+    if (paymentAmount !== undefined) {
+      booking.advancePayment = (booking.advancePayment || 0) + Number(paymentAmount);
+    }
+    if (paymentMethod) booking.paymentMethod = paymentMethod;
+    if (accountId) booking.accountId = accountId;
+
     const totals = calcBookingTotals(booking.toObject());
     booking.baseAmount = totals.baseAmount;
     booking.totalAmount = totals.totalAmount;
@@ -896,6 +911,42 @@ router.put('/:id/partial-return', authMiddleware, async (req, res) => {
 
     const savedBooking = await booking.save();
     await processBookingSideEffects(savedBooking.toObject(), { oldStatus: booking.status });
+
+    // Send return confirmation SMS
+    try {
+      const phone = savedBooking.clientPhone;
+      if (phone) {
+        const settings = await Setting.findOne();
+        const { generateBillViewUrl } = require('../utils/billLink');
+        const billUrl = generateBillViewUrl(savedBooking._id);
+
+        let smsText = settings?.smsReturnTemplate;
+        const companyName = 'MAGGI TOOL RENTALS';
+
+        if (!smsText || !smsText.trim()) {
+          // Build a default return confirmation message
+          const paid = savedBooking.advancePayment || 0;
+          const balance = Math.max(0, (savedBooking.totalAmount || 0) - paid);
+          const itemsList = (savedBooking.items || []).map(it => `${it.toolNumber} - ${it.model}`).join(', ') || 'Item';
+          smsText = `${companyName}\nReturn Confirmed!\nDear ${savedBooking.clientName || 'Customer'}, your return has been processed.\nItems: ${itemsList}\nTotal: LKR ${(savedBooking.totalAmount || 0).toLocaleString()}\nPaid: LKR ${paid.toLocaleString()}\nBalance: LKR ${balance.toLocaleString()}\nView Bill: ${billUrl}\nThank you!`;
+        } else {
+          // Replace placeholders
+          const paid = savedBooking.advancePayment || 0;
+          const balance = Math.max(0, (savedBooking.totalAmount || 0) - paid);
+          smsText = smsText
+            .replace(/{clientName}/g, savedBooking.clientName || '')
+            .replace(/{companyName}/g, companyName)
+            .replace(/{totalAmount}/g, `LKR ${(savedBooking.totalAmount || 0).toLocaleString()}`)
+            .replace(/{advancePayment}/g, `LKR ${paid.toLocaleString()}`)
+            .replace(/{balanceAmount}/g, `LKR ${balance.toLocaleString()}`)
+            .replace(/{billLink}/g, billUrl);
+        }
+
+        await sendSMS(phone, smsText);
+      }
+    } catch (smsErr) {
+      console.error('Return SMS failed (non-critical):', smsErr.message);
+    }
 
     res.json(savedBooking);
   } catch (err) {
@@ -1121,6 +1172,17 @@ router.get('/client-details/:clientName', authMiddleware, async (req, res) => {
         unpaidBookings
       }
     });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Get single booking (MUST be at the end to avoid intercepting other routes)
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id).lean();
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    res.json(booking);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

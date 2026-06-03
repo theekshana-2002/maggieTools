@@ -21,6 +21,7 @@ const Settings = ({ onSettingsUpdate }) => {
     logo: '',
     smsBookingTemplate: '',
     smsFollowupTemplate: '',
+    smsReturnTemplate: '',
     followupDays: 14,
     privacyPolicy: '',
     termsConditions: ''
@@ -45,6 +46,7 @@ const Settings = ({ onSettingsUpdate }) => {
           data.companyName || 'MAGGI TOOLS RENTALS'
         ),
         smsFollowupTemplate: data.smsFollowupTemplate || '',
+        smsReturnTemplate: data.smsReturnTemplate || '',
         followupDays: data.followupDays ?? 14,
         privacyPolicy: data.privacyPolicy || '',
         termsConditions: data.termsConditions || ''
@@ -316,6 +318,18 @@ const Settings = ({ onSettingsUpdate }) => {
                 min="1"
               />
               <p className="upload-hint">Days after pickup to send automatic follow-up reminders.</p>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '28px' }}>
+              <label>Return Confirmation SMS</label>
+              <textarea
+                className="premium-input sms-followup-textarea"
+                rows="5"
+                value={settings.smsReturnTemplate || ''}
+                onChange={(e) => setSettings({ ...settings, smsReturnTemplate: e.target.value })}
+                placeholder={`Sent automatically when a return is confirmed.\nLeave blank to use the default message.\nAvailable: {clientName}, {companyName}, {totalAmount}, {advancePayment}, {balanceAmount}, {billLink}`}
+              />
+              <p className="upload-hint">Sent to the client when you click "Confirm Return &amp; Pay". Leave blank for the default message.</p>
             </div>
           </div>
 

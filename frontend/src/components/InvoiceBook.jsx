@@ -4,6 +4,7 @@ import DataTable from './DataTable';
 import Modal from './Modal';
 import RecordDetails from './RecordDetails';
 import InvoiceForm from './InvoiceForm';
+import CheckoutModal from './CheckoutModal';
 import { FileText, Plus, Download, Trash2, Search, RefreshCw, FileDown, TrendingUp, CheckCircle, Clock, CreditCard, PlusCircle, Printer, Users , Eye } from 'lucide-react';
 import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
@@ -47,19 +48,33 @@ const InvoiceBook = ({ initialTab }) => {
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [selectedClientName, setSelectedClientName] = useState('');
 
+  // Payment Modal
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentInvoice, setPaymentInvoice] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [accountId, setAccountId] = useState('');
+  const [accounts, setAccounts] = useState([]);
+
+  // Checkout Modal for Invoice Bookings
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [checkoutBooking, setCheckoutBooking] = useState(null);
+
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [invRes, payRes, cliRes] = await Promise.all([
+      const [invRes, payRes, cliRes, accRes] = await Promise.all([
         api.get('invoices'),
         paymentAPI.get(),
-        clientAPI.get()
+        clientAPI.get(),
+        api.get('accounts')
       ]);
       setInvoices(Array.isArray(invRes.data) ? invRes.data : []);
       setPayments(Array.isArray(payRes.data) ? payRes.data : []);
       setClients(Array.isArray(cliRes.data) ? cliRes.data : []);
+      setAccounts(Array.isArray(accRes.data) ? accRes.data : []);
     } catch (err) { 
       console.error('Fetch failed', err); 
     } finally { 
@@ -67,16 +82,54 @@ const InvoiceBook = ({ initialTab }) => {
     }
   };
 
-  const handleMarkAsPaid = async (id) => {
-    if (window.confirm('Mark this invoice as fully paid? This will update the balance to zero.')) {
+  const handleMarkAsPaid = async (invId) => {
+    const inv = invoices.find(i => i._id === invId);
+    if (!inv) return;
+    
+    // If the invoice is linked to a booking, open the advanced Checkout Modal
+    if (inv.bookingId) {
       try {
-        await invoiceAPI.pay(id);
-        setSuccessMsg('Invoice marked as Paid!');
-        fetchData();
-        setTimeout(() => setSuccessMsg(''), 3000);
+        setLoading(true);
+        const res = await api.get(`/bookings/${inv.bookingId}`);
+        if (res.data) {
+          setCheckoutBooking(res.data);
+          setCheckoutModalOpen(true);
+          return;
+        }
       } catch (err) {
-        alert('Failed to update invoice status.');
+        console.error('Failed to fetch linked booking', err);
+        // Fallback to generic payment modal
+      } finally {
+        setLoading(false);
       }
+    }
+    
+    // Generic payment modal fallback
+    setPaymentInvoice(inv);
+    const balance = inv.balanceAmount !== undefined ? toNum(inv.balanceAmount) : toNum(inv.totalAmount);
+    setPaymentAmount(balance);
+    setPaymentMethod('Cash');
+    setAccountId('');
+    setPaymentModalOpen(true);
+  };
+
+  const submitPayment = async () => {
+    if (!paymentInvoice) return;
+    setLoading(true);
+    try {
+      await api.post(`/invoices/${paymentInvoice._id}/pay`, {
+        paymentAmount: Number(paymentAmount),
+        paymentMethod,
+        accountId
+      });
+      setSuccessMsg('Payment applied successfully!');
+      setPaymentModalOpen(false);
+      fetchData();
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (err) {
+      alert('Failed to apply payment.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -410,6 +463,81 @@ const InvoiceBook = ({ initialTab }) => {
           />
         </div>
       </Modal>
+
+      {/* Payment Modal */}
+      <Modal isOpen={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title={`Collect Payment: ${paymentInvoice?.invoiceNo}`}>
+        <div className="hire-form" style={{ padding: '20px' }}>
+          <div style={{ padding: '15px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>Total Amount:</span>
+              <strong>LKR {toNum(paymentInvoice?.totalAmount).toLocaleString()}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>Already Paid:</span>
+              <span style={{ color: 'var(--success)' }}>LKR {toNum(paymentInvoice?.advancePayment).toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '5px', marginTop: '5px' }}>
+              <span>Remaining Balance:</span>
+              <strong style={{ color: 'var(--danger)' }}>
+                LKR {Math.max(0, toNum(paymentInvoice?.totalAmount) - toNum(paymentInvoice?.advancePayment)).toLocaleString()}
+              </strong>
+            </div>
+          </div>
+
+          <div className="form-grid-2">
+            <div className="form-group">
+              <label>Amount (LKR)</label>
+              <input 
+                type="number" 
+                min="0"
+                value={paymentAmount} 
+                onChange={e => setPaymentAmount(e.target.value)}
+                placeholder="Enter amount paid"
+              />
+            </div>
+            <div className="form-group">
+              <label>Payment Method</label>
+              <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Card">Card</option>
+              </select>
+            </div>
+          </div>
+          {paymentMethod === 'Bank Transfer' && (
+            <div className="form-group" style={{ marginTop: '10px' }}>
+              <label>Deposit to Bank Account</label>
+              <select value={accountId} onChange={e => setAccountId(e.target.value)}>
+                <option value="">-- Select Bank Account --</option>
+                {accounts.map(acc => (
+                  <option key={acc._id} value={acc._id}>
+                    {acc.accountName} (Balance: LKR {acc.balance.toLocaleString()})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="modal-actions" style={{ marginTop: '20px' }}>
+            <button className="cancel-btn" onClick={() => setPaymentModalOpen(false)}>Cancel</button>
+            <button className="submit-btn" onClick={submitPayment} disabled={loading}>
+              {loading ? 'Processing...' : 'Apply Payment'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <CheckoutModal
+        isOpen={checkoutModalOpen}
+        onClose={() => setCheckoutModalOpen(false)}
+        bookingRecord={checkoutBooking}
+        accounts={accounts}
+        onComplete={() => {
+          setSuccessMsg('Processed successfully!');
+          fetchData();
+          setTimeout(() => setSuccessMsg(''), 3000);
+        }}
+      />
     </div>
   );
 };

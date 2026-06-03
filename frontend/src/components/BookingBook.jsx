@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import DataTable from './DataTable';
 import { Edit } from "lucide-react";
 import Modal from './Modal';
+import CheckoutModal from './CheckoutModal';
 import BookingForm from './BookingForm';
 import RecordDetails from './RecordDetails';
 import { bookingAPI, clientAPI, invoiceAPI } from '../services/api';
@@ -33,10 +34,8 @@ const BookingBook = ({ setActiveTab }) => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [paymentFilter, setPaymentFilter] = useState('All');
   const [returnRecord, setReturnRecord] = useState(null);
-  const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
-  const [returnedItemsState, setReturnedItemsState] = useState([]);
-  const [returnedAccsState, setReturnedAccsState] = useState([]);
+  const [accounts, setAccounts] = useState([]);
 
   // Client lookup state (merged with main search)
   const [allClients, setAllClients] = useState([]);
@@ -85,7 +84,17 @@ const BookingBook = ({ setActiveTab }) => {
   useEffect(() => { 
     fetchBookings(); 
     fetchAllClients();
+    fetchAccounts();
   }, []);
+
+  const fetchAccounts = async () => {
+    try {
+      const res = await api.get('accounts');
+      setAccounts(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch accounts');
+    }
+  };
 
   const fetchAllClients = async () => {
     try {
@@ -284,26 +293,9 @@ const BookingBook = ({ setActiveTab }) => {
   };
 
   const handleMarkAsPaid = async (record) => {
-    const invoiceId = record?.invoiceId || record?.rawData?.invoiceId;
-    const balance = Number(record?.balanceAmount || record?.rawData?.balanceAmount || 0);
-
-    if (!invoiceId) return alert('No linked invoice found for this booking.');
-    if (balance <= 0) return alert('This booking is already paid.');
-    if (!window.confirm('Mark this booking as fully paid? This will update the balance to zero.')) return;
-
-    setLoading(true);
-    try {
-      await invoiceAPI.pay(invoiceId);
-      setSuccess('Booking marked as Paid!');
-      fetchBookings();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      const errMsg = err?.response?.data?.message || err?.message || 'Failed to update invoice status.';
-      setError(errMsg);
-      alert(errMsg);
-    } finally {
-      setLoading(false);
-    }
+    const rec = record.rawData || record;
+    setReturnRecord(rec);
+    setReturnModalOpen(true);
   };
 
   const handleNotify = async (e, record) => {
@@ -339,7 +331,10 @@ const BookingBook = ({ setActiveTab }) => {
     try {
       const payload = {
         returnedItems: returnedItemsState.map(it => ({ id: it.id, quantity: Number(it.returningQty), date: it.date })),
-        returnedAccessories: returnedAccsState.map(ac => ({ id: ac.id, quantity: Number(ac.returningQty), date: ac.date }))
+        returnedAccessories: returnedAccsState.map(ac => ({ id: ac.id, quantity: Number(ac.returningQty), date: ac.date })),
+        paymentAmount: paymentAmount ? Number(paymentAmount) : undefined,
+        paymentMethod: paymentMethod,
+        accountId: accountId
       };
       
       const res = await api.put(`/bookings/${returnRecord._id}/partial-return`, payload);
@@ -437,6 +432,8 @@ const BookingBook = ({ setActiveTab }) => {
       .slice(0, 6)
       .map(c => c.name);
   }, [searchQuery, allClients, showSuggestions]);
+
+
 
   return (
     <div className="book-container">
@@ -697,37 +694,6 @@ const BookingBook = ({ setActiveTab }) => {
                           e.stopPropagation();
                           const rec = r.rawData || r;
                           setReturnRecord(rec);
-                          const todayStr = new Date().toISOString().split('T')[0];
-                          
-                          const initItems = (rec.items || []).map(it => ({
-                            id: it._id,
-                            name: `${it.toolNumber} - ${it.model}`,
-                            maxQty: (it.quantity || 1) - (it.returnedQuantity || 0),
-                            returningQty: (it.quantity || 1) - (it.returnedQuantity || 0),
-                            date: todayStr
-                          })).filter(it => it.maxQty > 0);
-                          
-                          const initAccs = (rec.accessories || []).map(ac => ({
-                            id: ac._id,
-                            name: ac.name,
-                            maxQty: (ac.quantity || 1) - (ac.returnedQuantity || 0),
-                            returningQty: (ac.quantity || 1) - (ac.returnedQuantity || 0),
-                            date: todayStr
-                          })).filter(ac => ac.maxQty > 0);
-                          
-                          // Fallback for legacy
-                          if (initItems.length === 0 && rec.tool) {
-                             initItems.push({
-                               id: rec.tool._id || rec.tool,
-                               name: typeof rec.tool === 'object' ? `${rec.tool.number} - ${rec.tool.model}` : 'Legacy Tool',
-                               maxQty: 1,
-                               returningQty: 1,
-                               date: todayStr
-                             });
-                          }
-
-                          setReturnedItemsState(initItems);
-                          setReturnedAccsState(initAccs);
                           setReturnModalOpen(true);
                         }}
                         title="Mark Returned"
@@ -768,112 +734,17 @@ const BookingBook = ({ setActiveTab }) => {
         </div>
       </Modal>
 
-      <Modal isOpen={returnModalOpen} onClose={() => setReturnModalOpen(false)} title="Process Partial / Full Return">
-        <div className="hire-form" style={{ padding: '20px' }}>
-          
-          <div style={{ marginTop: '5px' }}>
-            <h4 style={{ marginBottom: '10px', fontSize: '1rem', color: 'var(--text-main)' }}>Select Dates & Quantities for Returned Items</h4>
-            {returnedItemsState.length === 0 && returnedAccsState.length === 0 && (
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>All items have already been returned.</p>
-            )}
-            
-            {returnedItemsState.map((it, idx) => (
-              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px', background: 'var(--bg-side)', padding: '10px', borderRadius: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{it.name}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Pending: {it.maxQty}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '5px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Return Date:</label>
-                    <input 
-                      type="date" 
-                      value={it.date} 
-                      onChange={e => {
-                        const copy = [...returnedItemsState];
-                        copy[idx].date = e.target.value;
-                        setReturnedItemsState(copy);
-                      }}
-                      style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Qty:</label>
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max={it.maxQty} 
-                      value={it.returningQty} 
-                      onChange={e => {
-                        const v = Math.min(it.maxQty, Math.max(0, Number(e.target.value)));
-                        const copy = [...returnedItemsState];
-                        copy[idx].returningQty = v;
-                        setReturnedItemsState(copy);
-                      }}
-                      style={{ width: '60px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {returnedAccsState.map((ac, idx) => (
-              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px', background: 'var(--bg-side)', padding: '10px', borderRadius: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>[Acc] {ac.name}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Pending: {ac.maxQty}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '5px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Return Date:</label>
-                    <input 
-                      type="date" 
-                      value={ac.date} 
-                      onChange={e => {
-                        const copy = [...returnedAccsState];
-                        copy[idx].date = e.target.value;
-                        setReturnedAccsState(copy);
-                      }}
-                      style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Qty:</label>
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max={ac.maxQty} 
-                      value={ac.returningQty} 
-                      onChange={e => {
-                        const v = Math.min(ac.maxQty, Math.max(0, Number(e.target.value)));
-                        const copy = [...returnedAccsState];
-                        copy[idx].returningQty = v;
-                        setReturnedAccsState(copy);
-                      }}
-                      style={{ width: '60px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-side)', borderRadius: '8px' }}>
-            <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem' }}>
-              Expected: <strong>{returnRecord ? new Date(returnRecord.returnDate).toLocaleDateString() : ''}</strong>
-            </p>
-            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-              Submitting will automatically recalculate charges, update the invoice, and restore inventory for returned items.
-            </p>
-          </div>
-          <div className="modal-actions" style={{ marginTop: '20px' }}>
-            <button className="cancel-btn" onClick={() => setReturnModalOpen(false)}>Cancel</button>
-            <button className="submit-btn" onClick={handleReturnSubmit} disabled={loading}>
-              {loading ? 'Processing...' : 'Confirm Return'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <CheckoutModal
+        isOpen={returnModalOpen}
+        onClose={() => setReturnModalOpen(false)}
+        bookingRecord={returnRecord}
+        accounts={accounts}
+        onComplete={() => {
+          setSuccess('Processed successfully.');
+          fetchBookings();
+          setTimeout(() => setSuccess(null), 3000);
+        }}
+      />
 
       <Modal
         isOpen={isModalOpen}

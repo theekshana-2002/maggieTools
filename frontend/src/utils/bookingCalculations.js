@@ -15,8 +15,13 @@ export function calculateBookingCosts(formData, totalDays = 1) {
       item.returnDates.forEach(rd => {
         const qty = Number(rd.quantity) || 0;
         returnedQty += qty;
+        
         const rdDate = new Date(rd.date);
-        let diffDays = Math.floor((rdDate - pickup) / (1000 * 60 * 60 * 24));
+        rdDate.setHours(0,0,0,0);
+        const pickupDateObj = new Date(pickup);
+        pickupDateObj.setHours(0,0,0,0);
+        
+        let diffDays = Math.round((rdDate - pickupDateObj) / (1000 * 60 * 60 * 24));
         if (diffDays <= 0) diffDays = 0;
         else diffDays += 1;
         cost += rate * qty * diffDays;
@@ -28,7 +33,10 @@ export function calculateBookingCosts(formData, totalDays = 1) {
       let daysForUnreturned = days;
       if (formData.actualReturnDate) {
          const actDate = new Date(formData.actualReturnDate);
-         daysForUnreturned = Math.floor((actDate - pickup) / (1000 * 60 * 60 * 24)) + 1;
+         actDate.setHours(0,0,0,0);
+         const pickupDateObj = new Date(pickup);
+         pickupDateObj.setHours(0,0,0,0);
+         daysForUnreturned = Math.round((actDate - pickupDateObj) / (1000 * 60 * 60 * 24)) + 1;
          if (daysForUnreturned < 1) daysForUnreturned = 1;
       }
       cost += rate * unreturned * daysForUnreturned;
@@ -36,32 +44,42 @@ export function calculateBookingCosts(formData, totalDays = 1) {
     return cost;
   };
 
-  const toolsTotal = items.reduce(
-    (sum, item) => sum + getCost(item, Number(item.dailyRate) || 0),
-    0
-  );
+  const itemCosts = items.map(item => ({
+    id: item._id || item.tool || item.id,
+    cost: getCost(item, Number(item.dailyRate) || 0)
+  }));
 
-  const accessoriesTotal = accessories.reduce(
-    (sum, acc) => sum + getCost(acc, Number(acc.price) || 0),
-    0
-  );
+  const toolsTotal = itemCosts.reduce((sum, ic) => sum + ic.cost, 0);
+
+  const accessoryCosts = accessories.map(acc => ({
+    id: acc._id || acc.accessory || acc.id,
+    cost: getCost(acc, Number(acc.price) || 0)
+  }));
+
+  const accessoriesTotal = accessoryCosts.reduce((sum, ac) => sum + ac.cost, 0);
 
   const transport = Number(formData.transportCharge) || 0;
   const discount = Number(formData.discount) || 0;
   const advance = Number(formData.advancePayment) || 0;
 
-  const subtotal = toolsTotal + accessoriesTotal + transport;
+  const extraCharges = Number(formData.extraCharges) || 0;
+  const subtotal = toolsTotal + accessoriesTotal + transport + extraCharges;
   const totalAmount = Math.max(0, subtotal - discount);
   const balanceAmount = Math.max(0, totalAmount - advance);
 
   return {
     toolsTotal,
     accessoriesTotal,
+    itemCosts,
+    accessoryCosts,
     subtotal,
+    discount,
+    advance: advance,
+    transport: transport,
+    extraCharges,
     baseAmount: subtotal,
     totalAmount,
-    balanceAmount,
-    totalDays: days
+    balanceAmount
   };
 }
 

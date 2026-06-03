@@ -123,17 +123,30 @@ router.put('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Mark invoice as Paid
+// Mark invoice as Paid or Add Payment
 router.post('/:id/pay', authMiddleware, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
     if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
 
-    const totalToPay = invoice.totalAmount - (invoice.advancePayment || 0);
+    const { paymentAmount, paymentMethod, accountId } = req.body;
     
-    invoice.advancePayment = invoice.totalAmount;
-    invoice.balanceAmount = 0;
-    invoice.status = 'Paid';
+    let amountAdded = 0;
+    if (paymentAmount !== undefined) {
+      amountAdded = Number(paymentAmount);
+      invoice.advancePayment = (invoice.advancePayment || 0) + amountAdded;
+    } else {
+      amountAdded = invoice.totalAmount - (invoice.advancePayment || 0);
+      invoice.advancePayment = invoice.totalAmount;
+    }
+
+    if (paymentMethod) invoice.paymentMethod = paymentMethod;
+    if (accountId) invoice.accountId = accountId;
+
+    const remaining = invoice.totalAmount - invoice.advancePayment;
+    invoice.balanceAmount = remaining > 0 ? remaining : 0;
+    if (invoice.balanceAmount <= 0) invoice.status = 'Paid';
+    
     invoice.updatedBy = req.user.id;
     invoice.updatedByName = req.user.name;
 
@@ -142,8 +155,8 @@ router.post('/:id/pay', authMiddleware, async (req, res) => {
     await syncBookingInvoiceFromInvoice(saved);
 
     // Update bank balance if Bank Transfer
-    if (saved.paymentMethod === 'Bank Transfer' && saved.accountId && totalToPay > 0) {
-        await Account.findByIdAndUpdate(saved.accountId, { $inc: { balance: totalToPay } });
+    if (saved.paymentMethod === 'Bank Transfer' && saved.accountId && amountAdded > 0) {
+        await Account.findByIdAndUpdate(saved.accountId, { $inc: { balance: amountAdded } });
     }
 
     res.json(saved);

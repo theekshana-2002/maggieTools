@@ -18,7 +18,9 @@ const bookingSchema = new mongoose.Schema({
     toolNumber: String,
     model: String,
     dailyRate: Number,
-    quantity: { type: Number, default: 1 }
+    quantity: { type: Number, default: 1 },
+    returnedQuantity: { type: Number, default: 0 },
+    returnDates: [{ quantity: Number, date: Date }]
   }],
   pickupDate: { type: Date, required: true },
   returnDate: { type: Date, required: true },
@@ -37,6 +39,7 @@ const bookingSchema = new mongoose.Schema({
   advancePayment: { type: Number, default: 0 },
   balanceAmount: { type: Number, default: 0 },
   actualReturnDate: { type: Date },
+  earlyReturnDays: { type: Number, default: 0 },
   extraCharges: { type: Number, default: 0 },
   transportCharge: { type: Number, default: 0 },
   totalAfterExtra: { type: Number },
@@ -58,7 +61,9 @@ const bookingSchema = new mongoose.Schema({
     number: String,
     name: String,
     quantity: { type: Number, default: 1 },
-    price: { type: Number, default: 0 }
+    price: { type: Number, default: 0 },
+    returnedQuantity: { type: Number, default: 0 },
+    returnDates: [{ quantity: Number, date: Date }]
   }],
   notes: { type: String },
   followupSent: { type: Boolean, default: false },

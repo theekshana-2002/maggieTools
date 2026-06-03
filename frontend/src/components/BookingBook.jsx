@@ -13,6 +13,7 @@ import InvoiceForm from './InvoiceForm';
 import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send, MessageCircle } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
+import { calculateBookingCosts } from '../utils/bookingCalculations';
 
 const BookingBook = ({ setActiveTab }) => {
   const userRole = localStorage.getItem('raxwo_user_role');
@@ -31,9 +32,11 @@ const BookingBook = ({ setActiveTab }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [paymentFilter, setPaymentFilter] = useState('All');
-  const [returnModalOpen, setReturnModalOpen] = useState(false);
-  const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
   const [returnRecord, setReturnRecord] = useState(null);
+  const [returnDate, setReturnDate] = useState(new Date().toISOString().split('T')[0]);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnedItemsState, setReturnedItemsState] = useState([]);
+  const [returnedAccsState, setReturnedAccsState] = useState([]);
 
   // Client lookup state (merged with main search)
   const [allClients, setAllClients] = useState([]);
@@ -334,32 +337,19 @@ const BookingBook = ({ setActiveTab }) => {
     if (!returnRecord) return;
     setLoading(true);
     try {
-      const actualDate = new Date(returnDate);
-      const expectedDate = new Date(returnRecord.returnDate);
-
-      let extraDays = 0;
-      let extraCharges = 0;
-
-      if (actualDate > expectedDate) {
-        const diffTime = Math.abs(actualDate - expectedDate);
-        extraDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        extraCharges = extraDays * (returnRecord.dailyRate || 0);
-      }
-
-      await bookingAPI.update(returnRecord._id, {
-        status: 'Returned',
-        actualReturnDate: returnDate,
-        extraCharges,
-        totalAfterExtra: (returnRecord.totalAmount || 0) + extraCharges,
-        balanceAmount: (returnRecord.balanceAmount || 0) + extraCharges
-      });
-
-      setSuccess(`Tool Returned. ${extraDays > 0 ? `LKR ${extraCharges.toLocaleString()} extra added for ${extraDays} days.` : 'No extra charges.'}`);
+      const payload = {
+        returnedItems: returnedItemsState.map(it => ({ id: it.id, quantity: Number(it.returningQty), date: it.date })),
+        returnedAccessories: returnedAccsState.map(ac => ({ id: ac.id, quantity: Number(ac.returningQty), date: ac.date }))
+      };
+      
+      const res = await api.put(`/bookings/${returnRecord._id}/partial-return`, payload);
+      
+      setSuccess(`Return processed successfully. Status: ${res.data.status}`);
       setReturnModalOpen(false);
       fetchBookings();
       setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
-      setError('Failed to process return.');
+      setError(err.response?.data?.message || 'Failed to process return.');
     } finally {
       setLoading(false);
     }
@@ -699,14 +689,45 @@ const BookingBook = ({ setActiveTab }) => {
                     >
                       <Edit />
                     </button>
-                    {(r.displayStatus === 'Active' || r.status === 'Active') && (
+                    {(r.status !== 'Draft' && r.status !== 'Cancelled') && (
                       <button
                         type="button"
                         className="action-icon-btn btn-return"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setReturnRecord(r.rawData || r);
-                          setReturnDate(new Date().toISOString().split('T')[0]);
+                          const rec = r.rawData || r;
+                          setReturnRecord(rec);
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          
+                          const initItems = (rec.items || []).map(it => ({
+                            id: it._id,
+                            name: `${it.toolNumber} - ${it.model}`,
+                            maxQty: (it.quantity || 1) - (it.returnedQuantity || 0),
+                            returningQty: (it.quantity || 1) - (it.returnedQuantity || 0),
+                            date: todayStr
+                          })).filter(it => it.maxQty > 0);
+                          
+                          const initAccs = (rec.accessories || []).map(ac => ({
+                            id: ac._id,
+                            name: ac.name,
+                            maxQty: (ac.quantity || 1) - (ac.returnedQuantity || 0),
+                            returningQty: (ac.quantity || 1) - (ac.returnedQuantity || 0),
+                            date: todayStr
+                          })).filter(ac => ac.maxQty > 0);
+                          
+                          // Fallback for legacy
+                          if (initItems.length === 0 && rec.tool) {
+                             initItems.push({
+                               id: rec.tool._id || rec.tool,
+                               name: typeof rec.tool === 'object' ? `${rec.tool.number} - ${rec.tool.model}` : 'Legacy Tool',
+                               maxQty: 1,
+                               returningQty: 1,
+                               date: todayStr
+                             });
+                          }
+
+                          setReturnedItemsState(initItems);
+                          setReturnedAccsState(initAccs);
                           setReturnModalOpen(true);
                         }}
                         title="Mark Returned"
@@ -747,27 +768,109 @@ const BookingBook = ({ setActiveTab }) => {
         </div>
       </Modal>
 
-      <Modal isOpen={returnModalOpen} onClose={() => setReturnModalOpen(false)} title="Process Tool Return">
+      <Modal isOpen={returnModalOpen} onClose={() => setReturnModalOpen(false)} title="Process Partial / Full Return">
         <div className="hire-form" style={{ padding: '20px' }}>
-          <div className="form-group">
-            <label>Actual Return Date</label>
-            <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} />
+          
+          <div style={{ marginTop: '5px' }}>
+            <h4 style={{ marginBottom: '10px', fontSize: '1rem', color: 'var(--text-main)' }}>Select Dates & Quantities for Returned Items</h4>
+            {returnedItemsState.length === 0 && returnedAccsState.length === 0 && (
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem' }}>All items have already been returned.</p>
+            )}
+            
+            {returnedItemsState.map((it, idx) => (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px', background: 'var(--bg-side)', padding: '10px', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{it.name}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Pending: {it.maxQty}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '5px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Return Date:</label>
+                    <input 
+                      type="date" 
+                      value={it.date} 
+                      onChange={e => {
+                        const copy = [...returnedItemsState];
+                        copy[idx].date = e.target.value;
+                        setReturnedItemsState(copy);
+                      }}
+                      style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Qty:</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max={it.maxQty} 
+                      value={it.returningQty} 
+                      onChange={e => {
+                        const v = Math.min(it.maxQty, Math.max(0, Number(e.target.value)));
+                        const copy = [...returnedItemsState];
+                        copy[idx].returningQty = v;
+                        setReturnedItemsState(copy);
+                      }}
+                      style={{ width: '60px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {returnedAccsState.map((ac, idx) => (
+              <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '5px', marginBottom: '15px', background: 'var(--bg-side)', padding: '10px', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>[Acc] {ac.name}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>Pending: {ac.maxQty}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '5px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Return Date:</label>
+                    <input 
+                      type="date" 
+                      value={ac.date} 
+                      onChange={e => {
+                        const copy = [...returnedAccsState];
+                        copy[idx].date = e.target.value;
+                        setReturnedAccsState(copy);
+                      }}
+                      style={{ padding: '4px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <label style={{ fontSize: '0.85rem', margin: 0 }}>Qty:</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max={ac.maxQty} 
+                      value={ac.returningQty} 
+                      onChange={e => {
+                        const v = Math.min(ac.maxQty, Math.max(0, Number(e.target.value)));
+                        const copy = [...returnedAccsState];
+                        copy[idx].returningQty = v;
+                        setReturnedAccsState(copy);
+                      }}
+                      style={{ width: '60px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+
           <div style={{ marginTop: '15px', padding: '15px', background: 'var(--bg-side)', borderRadius: '8px' }}>
-            <p style={{ margin: '0 0 10px 0', fontSize: '0.9rem' }}>
+            <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem' }}>
               Expected: <strong>{returnRecord ? new Date(returnRecord.returnDate).toLocaleDateString() : ''}</strong>
             </p>
-            {returnRecord && new Date(returnDate) > new Date(returnRecord.returnDate) && (
-              <div style={{ color: 'var(--danger)', fontWeight: 'bold' }}>
-                Late by {Math.ceil(Math.abs(new Date(returnDate) - new Date(returnRecord.returnDate)) / (1000 * 60 * 60 * 24))} Days!
-                <br />
-                Extra Charge: LKR {(Math.ceil(Math.abs(new Date(returnDate) - new Date(returnRecord.returnDate)) / (1000 * 60 * 60 * 24)) * (returnRecord.dailyRate || 0)).toLocaleString()}
-              </div>
-            )}
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+              Submitting will automatically recalculate charges, update the invoice, and restore inventory for returned items.
+            </p>
           </div>
           <div className="modal-actions" style={{ marginTop: '20px' }}>
             <button className="cancel-btn" onClick={() => setReturnModalOpen(false)}>Cancel</button>
-            <button className="submit-btn" onClick={handleReturnSubmit}>Confirm Return</button>
+            <button className="submit-btn" onClick={handleReturnSubmit} disabled={loading}>
+              {loading ? 'Processing...' : 'Confirm Return'}
+            </button>
           </div>
         </div>
       </Modal>

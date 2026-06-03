@@ -404,6 +404,7 @@ const RecordDetails = ({ data, type }) => {
         { label: 'Discount', key: 'discount' },
         { label: 'Total Amount', key: 'totalAmount' },
         { label: 'Actual Return Date', key: 'actualReturnDate' },
+        { label: 'Early Return (Days)', key: 'earlyReturnDays' },
         { label: 'Extra Late Charges', key: 'extraCharges' },
         { label: 'Net Total', key: 'totalAfterExtra' },
         { label: 'Advance Payment', key: 'advancePayment' },

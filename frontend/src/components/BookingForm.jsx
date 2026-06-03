@@ -53,7 +53,10 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     paymentMethod: 'Cash',
     customerIdFront: '',
     customerIdBack: '',
-    accountId: ''
+    accountId: '',
+    actualReturnDate: '',
+    earlyReturnDays: '',
+    extraCharges: ''
   };
 
   const [formData, setFormData] = useState(() =>
@@ -100,6 +103,8 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         ...it,
         quantity: it.quantity || 1
       }));
+      
+      if (formattedData.actualReturnDate) formattedData.actualReturnDate = new Date(formattedData.actualReturnDate).toISOString().split('T')[0];
 
       setFormData(sanitizeMoneyFields(formattedData));
     } else {
@@ -1147,6 +1152,43 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {initialData && initialData.status !== 'Draft' && (
+              <div className="form-grid-2" style={{ marginTop: "16px", padding: '15px', background: 'var(--warning-soft)', borderRadius: '8px', border: '1px solid var(--warning)' }}>
+                <div style={{ gridColumn: '1 / -1', marginBottom: '10px' }}>
+                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--warning)' }}>Return Overrides (Manual Adjustments)</p>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-dim)' }}>Use these fields to manually correct past return dates or force extra/early charges.</p>
+                </div>
+                <div className="form-group">
+                  <label>Actual Return Date</label>
+                  <input
+                    type="date"
+                    value={formData.actualReturnDate || ''}
+                    onChange={(e) => setFormData({ ...formData, actualReturnDate: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Early Return Days</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Force early days"
+                    value={emptyNum(formData.earlyReturnDays)}
+                    onChange={onNumField('earlyReturnDays')}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Extra Late Charges (LKR)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="Amount"
+                    value={emptyNum(formData.extraCharges)}
+                    onChange={onNumField('extraCharges')}
+                  />
+                </div>
               </div>
             )}
 

@@ -94,15 +94,15 @@ function buildItemsBreakdown(bookingData = {}) {
     const rate = Number(item.dailyRate) || 0;
     const lineTotal = rate * qty * days;
     const qtyLabel = qty > 1 ? ` (x${qty})` : '';
-    lines.push(`• ${name}${qtyLabel}: ${fmtMoney(lineTotal)}`);
+    lines.push(`• ${name}${qtyLabel} for ${days} days: ${fmtMoney(lineTotal)}`);
   });
 
   accList.forEach((acc) => {
     const name = acc.name || 'Accessory';
     const qty = Number(acc.quantity) || 1;
     const price = Number(acc.price) || 0;
-    const lineTotal = price * qty;
-    lines.push(`• ${name} (x${qty}): ${fmtMoney(lineTotal)}`);
+    const lineTotal = price * qty * days;
+    lines.push(`• ${name} (x${qty}) for ${days} days: ${fmtMoney(lineTotal)}`);
   });
 
   if (lines.length === 0) return '• Rental';
@@ -139,8 +139,8 @@ function applySmsTemplate(template, bookingData, settings, precomputed = {}) {
   const billLinkLine = precomputed.billLinkLine ?? buildBillLinkLine(bookingData);
   const toolNo =
     precomputed.toolNo ??
-    (itemsList.map((it) => getBookedItemName(it)).filter(Boolean).join(' / ') ||
-      accList.map((a) => a.name).filter(Boolean).join(' / ') ||
+    (itemsList.map((it) => `${getBookedItemName(it)} for ${getTotalDays(bookingData)} days`).filter(Boolean).join(' / ') ||
+      accList.map((a) => `${a.name} for ${getTotalDays(bookingData)} days`).filter(Boolean).join(' / ') ||
       'Rental');
   const accStr =
     precomputed.accStr ??

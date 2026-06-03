@@ -5,7 +5,7 @@ import { amountToWords } from './numberToWords';
 import api from '../services/api';
 
 const COMPANY_DETAILS = {
-  name: 'RAXWO TOOL RENTALS',
+  name: 'MAGGI TOOL RENTALS',
   address: 'No. 241, Rajamaha Vihara Rd, Mirihana, Kotte.',
   phones: ['+94 775 085 815', '+94 723 627 888', '+94 766 779 603'],
   email: 'info@raxwo.com',
@@ -168,6 +168,18 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
       console.warn("Logo skipped or format invalid");
     }
 
+    // Print Company Name
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...THEME.primary);
+    doc.text(settings.name || 'MAGGI TOOL RENTALS', 55, 35);
+    
+    // Print Contact Number in header optionally
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text(`Contact: ${(settings.phones && settings.phones[0]) || '0777778845'}`, 55, 42);
+
     const drawDynamicHeader = (doc, title) => {
       drawSidePattern(doc);
       doc.setFillColor(241, 245, 249);
@@ -254,10 +266,11 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     const tableData = [];
     
     // 1. Add Main Tool (Legacy support if items array is empty)
+    const invoiceDays = invoice.totalDays || invoice.totalUnits || 1;
     if ((!invoice.items || invoice.items.length === 0) && invoice.toolNo) {
       tableData.push([
-        `Tool: ${invoice.toolNo} (${invoice.toolCategory || 'N/A'})`,
-        `${invoice.totalUnits || 0} ${invoice.unitType || 'Days'} @ LKR ${(invoice.ratePerUnit || 0).toLocaleString()}`
+        `Tool: ${invoice.toolNo} (${invoice.toolCategory || 'N/A'}) x${invoice.totalUnits || invoice.quantity || 1}`,
+        `${invoiceDays} ${invoice.unitType || 'Days'} @ LKR ${(invoice.dailyRate || invoice.ratePerUnit || 0).toLocaleString()}`
       ]);
       tableData.push(['Service Description', invoice.jobDescription || 'Professional Tool Rental Services']);
     }
@@ -265,9 +278,12 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     // 2. Add Multi-Items
     if (invoice.items && invoice.items.length > 0) {
       invoice.items.forEach((item, idx) => {
+        const itemQty = item.quantity || 1;
+        const itemDays = item.totalUnits || invoiceDays;
+        const itemRate = item.dailyRate || item.ratePerUnit || 0;
         tableData.push([
-          `Tool ${idx + 1}: ${item.toolNumber} (${item.model || item.category || 'N/A'})`,
-          `${item.totalUnits || invoice.totalUnits || 0} ${item.unitType || invoice.unitType || 'Days'} @ LKR ${(item.dailyRate || item.ratePerUnit || 0).toLocaleString()}`
+          `Tool ${idx + 1}: ${item.toolNumber || ''} (${item.model || item.category || 'N/A'}) x${itemQty}`,
+          `${itemDays} ${item.unitType || invoice.unitType || 'Days'} @ LKR ${itemRate.toLocaleString()}`
         ]);
       });
       if (invoice.jobDescription) {
@@ -278,19 +294,20 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     // 3. Add Accessories
     if (invoice.accessories && invoice.accessories.length > 0) {
         invoice.accessories.forEach(acc => {
+            const accQty = acc.quantity || 1;
             tableData.push([
-                `${acc.number ? `[${acc.number}] ` : ''}Accessory: ${acc.name} (x${acc.quantity})`, 
-                `LKR ${(acc.price * acc.quantity).toLocaleString()}`
+                `${acc.number ? `[${acc.number}] ` : ''}Accessory: ${acc.name} (x${accQty}) for ${invoiceDays} days`, 
+                `LKR ${(acc.price * accQty * invoiceDays).toLocaleString()}`
             ]);
         });
     }
 
     // Summary Calculations
     const serviceTotal = invoice.items && invoice.items.length > 0
-        ? invoice.items.reduce((sum, it) => sum + ((it.dailyRate || it.ratePerUnit || 0) * (it.totalUnits || invoice.totalUnits || 0)), 0)
-        : (invoice.totalUnits || 0) * (invoice.ratePerUnit || 0);
+        ? invoice.items.reduce((sum, it) => sum + ((it.dailyRate || it.ratePerUnit || 0) * (it.totalUnits || invoiceDays) * (it.quantity || 1)), 0)
+        : (invoiceDays) * (invoice.dailyRate || invoice.ratePerUnit || 0) * (invoice.totalUnits || invoice.quantity || 1);
         
-    const accTotal = (invoice.accessories || []).reduce((sum, a) => sum + (a.price * a.quantity), 0);
+    const accTotal = (invoice.accessories || []).reduce((sum, a) => sum + (a.price * (a.quantity || 1) * invoiceDays), 0);
     const transportTotal = Number(invoice.transportCharge || 0) + Number(invoice.otherCharges || 0);
     
     const summaryRows = [

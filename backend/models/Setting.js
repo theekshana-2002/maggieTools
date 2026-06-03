@@ -14,7 +14,9 @@ const settingSchema = new mongoose.Schema({
     type: String,
     default: 'Dear {clientName}, This is a reminder from {companyName}. Your rental of {toolNo} was due on {returnDate}. Outstanding balance: LKR {balanceAmount}. Please arrange return/payment at your earliest convenience.'
   },
-  followupDays: { type: Number, default: 14 } // Days after booking to send follow-up
+  followupDays: { type: Number, default: 14 }, // Days after booking to send follow-up
+  privacyPolicy: { type: String, default: 'We value your privacy. Your personal information is securely stored and only used for rental purposes.' },
+  termsConditions: { type: String, default: '1. Tools must be returned in the same condition.\n2. Late returns will incur extra charges.\n3. The renter is responsible for any damage or loss.' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Setting', settingSchema);

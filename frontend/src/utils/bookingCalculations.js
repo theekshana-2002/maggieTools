@@ -2,18 +2,47 @@
 
 export function calculateBookingCosts(formData, totalDays = 1) {
   const days = Math.max(1, Number(totalDays) || 1);
-
   const items = formData.items || [];
   const accessories = formData.bookingAccessories || formData.accessories || [];
+  const pickup = formData.pickupDate ? new Date(formData.pickupDate) : new Date();
+
+  const getCost = (item, rate) => {
+    let cost = 0;
+    const totalQty = Number(item.quantity) || 1;
+    let returnedQty = 0;
+    
+    if (item.returnDates && Array.isArray(item.returnDates)) {
+      item.returnDates.forEach(rd => {
+        const qty = Number(rd.quantity) || 0;
+        returnedQty += qty;
+        const rdDate = new Date(rd.date);
+        let diffDays = Math.floor((rdDate - pickup) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 0) diffDays = 0;
+        else diffDays += 1;
+        cost += rate * qty * diffDays;
+      });
+    }
+    
+    const unreturned = Math.max(0, totalQty - returnedQty);
+    if (unreturned > 0) {
+      let daysForUnreturned = days;
+      if (formData.actualReturnDate) {
+         const actDate = new Date(formData.actualReturnDate);
+         daysForUnreturned = Math.floor((actDate - pickup) / (1000 * 60 * 60 * 24)) + 1;
+         if (daysForUnreturned < 1) daysForUnreturned = 1;
+      }
+      cost += rate * unreturned * daysForUnreturned;
+    }
+    return cost;
+  };
 
   const toolsTotal = items.reduce(
-    (sum, item) =>
-      sum + (Number(item.dailyRate) || 0) * (Number(item.quantity) || 1) * days,
+    (sum, item) => sum + getCost(item, Number(item.dailyRate) || 0),
     0
   );
 
   const accessoriesTotal = accessories.reduce(
-    (sum, acc) => sum + (Number(acc.price) || 0) * (Number(acc.quantity) || 1),
+    (sum, acc) => sum + getCost(acc, Number(acc.price) || 0),
     0
   );
 
@@ -64,15 +93,16 @@ export function formatSmsFromBuilder(builder, record) {
 
   const itemsList = Array.isArray(record.items) ? record.items : [];
   const accList = Array.isArray(record.accessories) ? record.accessories : [];
+  const days = record.totalDays || 1;
   const toolNo =
-    itemsList.map((it) => it.toolNumber).filter(Boolean).join(' / ') ||
-    accList.map((a) => a.name).filter(Boolean).join(' / ') ||
+    itemsList.map((it) => `${it.toolNumber} (x${it.quantity || 1}) for ${days} days`).join('\n') ||
+    accList.map((a) => `${a.name} (x${a.quantity || 1}) for ${days} days`).join('\n') ||
     'Rental';
-  const accStr = accList.map((a) => `${a.name} (x${a.quantity})`).join(', ');
+  const accStr = accList.map((a) => `${a.name} (x${a.quantity || 1}) for ${days} days`).join(', ');
 
   const f = (val) => (val !== '' && val != null ? `LKR ${Number(val).toLocaleString()}` : '-');
 
-  return `--- MAGGI TOOLS BOOKING BILL ---
+  return `--- MAGGI TOOL RENTALS BOOKING BILL ---
 Customer: ${record.clientName || 'Customer'}
 Phone: ${record.clientPhone || 'N/A'}
 NIC: ${record.clientNic || 'N/A'}
@@ -94,5 +124,5 @@ Total Price: ${f(builder.totalPrice)}
 Paid: ${f(builder.advancePaid)}
 Balance Due: ${f(builder.balanceDue)}
 
-${builder.policies || 'Thank you for choosing MAGGI TOOLS RENTALS!'}`.trim();
+${builder.policies || 'Thank you for choosing MAGGI TOOL RENTALS!'}`.trim();
 }

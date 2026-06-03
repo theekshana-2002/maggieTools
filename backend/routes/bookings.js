@@ -78,12 +78,43 @@ function calcBookingTotals(body) {
   const items = Array.isArray(body.items) ? body.items : [];
   const accessories = Array.isArray(body.accessories) ? body.accessories : [];
 
+  const getCost = (item, rate) => {
+    let cost = 0;
+    const totalQty = Number(item.quantity) || 1;
+    let returnedQty = 0;
+    
+    if (item.returnDates && Array.isArray(item.returnDates)) {
+      item.returnDates.forEach(rd => {
+        const qty = Number(rd.quantity) || 0;
+        returnedQty += qty;
+        const rdDate = new Date(rd.date);
+        let diffDays = Math.floor((rdDate - pickup) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 0) diffDays = 0; // Same day return = no charge
+        else diffDays += 1; // Align with totalDays calculation (inclusive of start day)
+        cost += rate * qty * diffDays;
+      });
+    }
+    
+    const unreturned = Math.max(0, totalQty - returnedQty);
+    if (unreturned > 0) {
+      let daysForUnreturned = totalDays;
+      if (body.actualReturnDate) {
+         const actDate = new Date(body.actualReturnDate);
+         daysForUnreturned = Math.floor((actDate - pickup) / (1000 * 60 * 60 * 24)) + 1;
+         if (daysForUnreturned < 1) daysForUnreturned = 1;
+      }
+      cost += rate * unreturned * daysForUnreturned;
+    }
+    return cost;
+  };
+
   const toolsTotal = items.reduce(
-    (sum, it) => sum + (Number(it.dailyRate) || 0) * (Number(it.quantity) || 1) * totalDays,
+    (sum, it) => sum + getCost(it, Number(it.dailyRate) || 0),
     0
   );
+  
   const accTotal = accessories.reduce(
-    (sum, a) => sum + (Number(a.price) || 0) * (Number(a.quantity) || 1),
+    (sum, a) => sum + getCost(a, Number(a.price) || 0),
     0
   );
 
@@ -91,7 +122,20 @@ function calcBookingTotals(body) {
   const discount = Number(body.discount) || 0;
   const advance = Number(body.advancePayment) || 0;
   const subtotal = toolsTotal + accTotal + transport;
-  const totalAmount = Math.max(0, subtotal - discount);
+  
+  // Apply late return extra charges if not handled via returnDates
+  let extra = 0;
+  if (body.actualReturnDate && (!body.items || body.items.length === 0 || !body.items[0].returnDates)) {
+     const actDate = new Date(body.actualReturnDate);
+     if (actDate > ret) {
+       const diffTime = Math.abs(actDate - ret);
+       const extraDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+       const rate = items.length === 1 ? (Number(items[0].dailyRate) || 0) : 0;
+       extra = extraDays * rate;
+     }
+  }
+
+  const totalAmount = Math.max(0, subtotal - discount + extra);
   const balanceAmount = Math.max(0, totalAmount - advance);
 
   return {
@@ -99,6 +143,7 @@ function calcBookingTotals(body) {
     baseAmount: subtotal,
     totalAmount,
     balanceAmount,
+    extraCharges: extra,
     dailyRate: items.length === 1 ? Number(items[0].dailyRate) || 0 : 0
   };
 }
@@ -183,6 +228,7 @@ router.get('/bill/data/:token', async (req, res) => {
     res.json({
       booking,
       invoice,
+      settings,
       companyName: getCompanyName(settings),
       itemsBreakdown: buildItemsBreakdown(booking)
     });
@@ -760,6 +806,98 @@ router.put('/:id', authMiddleware, async (req, res) => {
     await processBookingSideEffects(updatedBooking.toObject(), { oldStatus: booking.status });
     
     res.json(updatedBooking);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Partial Return / Return
+router.put('/:id/partial-return', authMiddleware, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    const { returnDate, returnedItems, returnedAccessories } = req.body;
+    const returnDateObj = new Date(returnDate || Date.now());
+
+    let allFullyReturned = true;
+
+    // Process items
+    if (booking.items && booking.items.length > 0) {
+      for (const item of booking.items) {
+        const returnedData = (returnedItems || []).find(r => String(r.id) === String(item._id));
+        if (returnedData && returnedData.quantity > 0) {
+          const qty = Number(returnedData.quantity);
+          const itemDate = returnedData.date ? new Date(returnedData.date) : returnDateObj;
+          item.returnDates = item.returnDates || [];
+          item.returnDates.push({ quantity: qty, date: itemDate });
+          item.returnedQuantity = (item.returnedQuantity || 0) + qty;
+          
+          // Restore Tool Stock
+          if (isValidObjectId(item.tool)) {
+            const updatedTool = await Tool.findByIdAndUpdate(item.tool, { $inc: { stock: qty } }, { new: true });
+            if (updatedTool && updatedTool.stock > 0 && updatedTool.status === 'Booked') {
+              await Tool.findByIdAndUpdate(item.tool, { status: 'Available' });
+            }
+          }
+        }
+        if ((item.returnedQuantity || 0) < (item.quantity || 1)) {
+          allFullyReturned = false;
+        }
+      }
+    }
+
+    // Process accessories
+    if (booking.accessories && booking.accessories.length > 0) {
+      for (const acc of booking.accessories) {
+        const returnedData = (returnedAccessories || []).find(r => String(r.id) === String(acc._id));
+        if (returnedData && returnedData.quantity > 0) {
+          const qty = Number(returnedData.quantity);
+          const accDate = returnedData.date ? new Date(returnedData.date) : returnDateObj;
+          acc.returnDates = acc.returnDates || [];
+          acc.returnDates.push({ quantity: qty, date: accDate });
+          acc.returnedQuantity = (acc.returnedQuantity || 0) + qty;
+          
+          // Restore Accessory Stock
+          if (isValidObjectId(acc.accessory)) {
+            const updatedAcc = await Accessory.findByIdAndUpdate(acc.accessory, { $inc: { stock: qty } }, { new: true });
+            if (updatedAcc) {
+              let status = 'In Stock';
+              if (updatedAcc.stock <= 0) status = 'Out of Stock';
+              else if (updatedAcc.stock < 5) status = 'Low Stock';
+              await Accessory.findByIdAndUpdate(acc.accessory, { status });
+            }
+          }
+        }
+        if ((acc.returnedQuantity || 0) < (acc.quantity || 1)) {
+          allFullyReturned = false;
+        }
+      }
+    }
+
+    booking.actualReturnDate = returnDateObj;
+    if (allFullyReturned) {
+      booking.status = 'Returned';
+      
+      const expectedDate = new Date(booking.returnDate);
+      if (returnDateObj < expectedDate) {
+        const diffTime = Math.abs(expectedDate - returnDateObj);
+        booking.earlyReturnDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+    }
+
+    const totals = calcBookingTotals(booking.toObject());
+    booking.baseAmount = totals.baseAmount;
+    booking.totalAmount = totals.totalAmount;
+    booking.balanceAmount = totals.balanceAmount;
+    booking.extraCharges = totals.extraCharges;
+    booking.updatedBy = req.user.id;
+    booking.updatedByName = req.user.name;
+
+    const savedBooking = await booking.save();
+    await processBookingSideEffects(savedBooking.toObject(), { oldStatus: booking.status });
+
+    res.json(savedBooking);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }

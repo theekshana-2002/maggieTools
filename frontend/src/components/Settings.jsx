@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../services/api';
-import { Settings as SettingsIcon, Save, Image as ImageIcon, Phone, MapPin, Globe, MessageSquare, RotateCcw, Eye } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Image as ImageIcon, Phone, MapPin, Globe, MessageSquare, RotateCcw, Eye, FileText } from 'lucide-react';
 import {
   DEFAULT_SMS_BOOKING_TEMPLATE,
   SMS_PLACEHOLDER_GROUPS,
@@ -21,7 +21,9 @@ const Settings = ({ onSettingsUpdate }) => {
     logo: '',
     smsBookingTemplate: '',
     smsFollowupTemplate: '',
-    followupDays: 14
+    followupDays: 14,
+    privacyPolicy: '',
+    termsConditions: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,7 +45,9 @@ const Settings = ({ onSettingsUpdate }) => {
           data.companyName || 'MAGGI TOOLS RENTALS'
         ),
         smsFollowupTemplate: data.smsFollowupTemplate || '',
-        followupDays: data.followupDays ?? 14
+        followupDays: data.followupDays ?? 14,
+        privacyPolicy: data.privacyPolicy || '',
+        termsConditions: data.termsConditions || ''
       });
     } catch (err) {
       console.error('Fetch settings error:', err);
@@ -312,6 +316,33 @@ const Settings = ({ onSettingsUpdate }) => {
                 min="1"
               />
               <p className="upload-hint">Days after pickup to send automatic follow-up reminders.</p>
+            </div>
+          </div>
+
+          <div className="settings-section">
+            <h3 className="section-title"><FileText size={18} /> Public Bill & Legal</h3>
+            <div className="form-group">
+              <label>Terms & Conditions</label>
+              <textarea
+                className="premium-input"
+                rows="4"
+                value={settings.termsConditions}
+                onChange={(e) => setSettings({ ...settings, termsConditions: e.target.value })}
+                placeholder="1. Tools must be returned...&#10;2. Late returns..."
+              />
+              <p className="upload-hint">Displayed at the bottom of the public digital bill.</p>
+            </div>
+            
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label>Privacy Policy</label>
+              <textarea
+                className="premium-input"
+                rows="3"
+                value={settings.privacyPolicy}
+                onChange={(e) => setSettings({ ...settings, privacyPolicy: e.target.value })}
+                placeholder="Your privacy is important to us..."
+              />
+              <p className="upload-hint">Displayed at the bottom of the public digital bill.</p>
             </div>
           </div>
 

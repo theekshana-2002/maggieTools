@@ -149,56 +149,52 @@ const PublicBillView = ({ token }) => {
           )}
         </div>
 
-        {/* ── Items Table ── */}
+        {/* ── Items Cards (mobile-friendly) ── */}
         <div style={styles.tableSection}>
           <div style={styles.sectionLabel}>RENTAL ITEMS</div>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.tableHead}>
-                <th style={{ ...styles.th, width: '38%' }}>Item</th>
-                <th style={{ ...styles.th, textAlign: 'center' }}>Qty</th>
-                <th style={{ ...styles.th, textAlign: 'center' }}>Days</th>
-                <th style={{ ...styles.th, textAlign: 'right' }}>Rate/Day</th>
-                <th style={{ ...styles.th, textAlign: 'right' }}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {itemRows.map((row, i) => (
-                <tr key={i} style={i % 2 === 0 ? styles.trEven : styles.trOdd}>
-                  <td style={styles.td}>
-                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{row.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Tool</div>
-                  </td>
-                  <td style={{ ...styles.td, textAlign: 'center' }}>{row.qty}</td>
-                  <td style={{ ...styles.td, textAlign: 'center' }}>
-                    <span style={styles.daysBadge}>{row.days}d</span>
-                  </td>
-                  <td style={{ ...styles.td, textAlign: 'right', color: '#64748b' }}>{fmt(row.rate)}</td>
-                  <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: '#1e293b' }}>{fmt(row.amount)}</td>
-                </tr>
-              ))}
-              {accRows.map((row, i) => (
-                <tr key={`acc-${i}`} style={(itemRows.length + i) % 2 === 0 ? styles.trEven : styles.trOdd}>
-                  <td style={styles.td}>
-                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{row.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Accessory</div>
-                  </td>
-                  <td style={{ ...styles.td, textAlign: 'center' }}>{row.qty}</td>
-                  <td style={{ ...styles.td, textAlign: 'center' }}>
-                    <span style={styles.daysBadge}>{row.days}d</span>
-                  </td>
-                  <td style={{ ...styles.td, textAlign: 'right', color: '#64748b' }}>{fmt(row.rate)}</td>
-                  <td style={{ ...styles.td, textAlign: 'right', fontWeight: 700, color: '#1e293b' }}>{fmt(row.amount)}</td>
-                </tr>
-              ))}
-              {itemRows.length === 0 && accRows.length === 0 && (
-                <tr><td colSpan={5} style={{ ...styles.td, textAlign: 'center', color: '#94a3b8' }}>No items</td></tr>
-              )}
-            </tbody>
-          </table>
+
+          {[...itemRows.map(r => ({ ...r, type: 'Tool' })), ...accRows.map(r => ({ ...r, type: 'Accessory' }))].map((row, i) => (
+            <div key={i} style={{
+              background: i % 2 === 0 ? '#fff' : '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '12px 14px',
+              marginBottom: 10,
+            }}>
+              {/* Row 1: Name + Amount */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.92rem', wordBreak: 'break-word' }}>
+                    {row.name}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 2 }}>{row.type}</div>
+                </div>
+                <div style={{ fontWeight: 800, color: '#4f46e5', fontSize: '1rem', flexShrink: 0, textAlign: 'right' }}>
+                  {fmt(row.amount)}
+                </div>
+              </div>
+              {/* Row 2: Qty × Days @ Rate */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px' }}>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', background: '#f1f5f9', borderRadius: 6, padding: '2px 8px' }}>
+                  Qty: <strong>{row.qty}</strong>
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#7c3aed', background: '#ede9fe', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
+                  {row.days} day{row.days !== 1 ? 's' : ''}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: '#64748b', background: '#f1f5f9', borderRadius: 6, padding: '2px 8px' }}>
+                  {fmt(row.rate)}/day
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {itemRows.length === 0 && accRows.length === 0 && (
+            <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px 0', fontSize: '0.88rem' }}>No items found.</div>
+          )}
         </div>
 
         {/* ── Charges & Totals ── */}
+
         <div style={styles.totalsSection}>
           {/* Extra charges */}
           {(transport > 0 || otherCharges > 0 || deposit > 0 || discount > 0) && (

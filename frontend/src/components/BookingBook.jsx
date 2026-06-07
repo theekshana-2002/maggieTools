@@ -11,7 +11,7 @@ import { generatePDFReport } from '../utils/reportGenerator';
 import { generateInvoicePDF } from '../utils/billingGenerator';
 import { generateGenericReportPDF } from '../utils/genericReportGenerator';
 import InvoiceForm from './InvoiceForm';
-import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send, MessageCircle } from 'lucide-react';
+import { Download, Eye, Search, PlusCircle, RefreshCw, Filter, Calendar as CalIcon, ChevronRight, TrendingUp, Clock, CheckCircle, AlertCircle, Package, Bell, Trash2, Printer, FileText, UserPlus, Users, X, DollarSign, Send, MessageCircle, Calendar } from 'lucide-react';
 import '../styles/forms.css';
 import '../styles/books.css';
 import { calculateBookingCosts } from '../utils/bookingCalculations';
@@ -236,6 +236,21 @@ const BookingBook = ({ setActiveTab }) => {
       setTimeout(() => setSuccess(null), 5000);
     } catch (err) {
       setError('Failed to process follow-ups');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleProcessOverdueCharges = async () => {
+    if (!window.confirm('Calculate and apply daily overdue charges for all active rentals?')) return;
+    setLoading(true);
+    try {
+      const res = await bookingAPI.processOverdueCharges();
+      setSuccess(res.data.message);
+      fetchBookings();
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err) {
+      setError('Failed to process overdue charges');
     } finally {
       setLoading(false);
     }
@@ -497,6 +512,9 @@ const BookingBook = ({ setActiveTab }) => {
           </div>
 
           <div className="bf-action-btns">
+            <button className="utility-icon-btn" onClick={handleProcessOverdueCharges} title="Process Overdue Charges & SMS">
+              <Calendar size={18} />
+            </button>
             <button className="utility-icon-btn" onClick={handleProcessFollowups} title="Process 14-Day SMS Follow-ups">
               <Send size={18} />
             </button>

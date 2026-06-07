@@ -660,3 +660,207 @@
     padding-right: 44px;
   }
 }
+
+/* ══════════════════════════════════════════════
+   ACCESSORY RENTAL ROWS  (Booking Form)
+   Grid: Name | [Rate·Qty·Days·Total] | Remove
+   ══════════════════════════════════════════════ */
+
+.acc-rental-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.acc-rental-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 36px;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-side);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: accRowIn 0.2s ease both;
+}
+
+@keyframes accRowIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.acc-rental-row:hover {
+  border-color: var(--accent-border);
+  box-shadow: 0 2px 10px var(--accent-glow);
+}
+
+/* ── Left: Item identity ── */
+.acc-rental-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.acc-rental-id {
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.acc-rental-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.acc-rental-stock {
+  font-size: 0.67rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+/* ── Middle: Controls grid ── */
+.acc-rental-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  align-items: end;
+}
+
+.acc-rental-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.acc-rental-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Rate/day gets accent styling */
+.acc-rental-field--rate .acc-rental-label {
+  color: var(--accent);
+}
+
+.acc-rental-input {
+  height: 38px;
+  padding: 0 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: var(--bg-main);
+  width: 100%;
+  text-align: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.acc-rental-input::-webkit-outer-spin-button,
+.acc-rental-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.acc-rental-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Rate field — accent tint */
+.acc-rental-field--rate .acc-rental-input {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  font-weight: 800;
+}
+.acc-rental-field--rate .acc-rental-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ── Subtotal cell ── */
+.acc-rental-subtotal {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.acc-rental-subtotal .acc-rental-label { color: var(--text-dim); }
+.acc-rental-subtotal strong {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* ── Remove button ── */
+.acc-rental-remove {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  flex-shrink: 0;
+  align-self: center;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+.acc-rental-remove:hover {
+  background: var(--danger);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+/* ── Tablet (≤ 640px) ── */
+@media (max-width: 640px) {
+  .acc-rental-row {
+    grid-template-columns: 1fr 36px;
+    row-gap: 10px;
+  }
+  .acc-rental-name  { grid-column: 1 / 2; }
+  .acc-rental-remove {
+    grid-column: 2 / 3;
+    grid-row: 1;
+    align-self: start;
+    margin-top: 2px;
+  }
+  .acc-rental-controls {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* ── Phone (≤ 420px): 2 cols ── */
+@media (max-width: 420px) {
+  .acc-rental-controls {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .acc-rental-subtotal {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--accent-soft);
+    border-radius: var(--r-sm);
+    padding: 7px 12px;
+    border: 1px solid var(--accent-border);
+  }
+  .acc-rental-subtotal .acc-rental-label { color: var(--accent); }
+}

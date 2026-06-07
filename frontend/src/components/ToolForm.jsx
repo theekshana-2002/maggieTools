@@ -196,6 +196,13 @@ const ToolForm = ({ onSubmit, onCancel, initialData }) => {
                 <input style={{...inputStyle, borderColor: 'var(--accent)'}} type="number" required min="1" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value === '' ? '' : Number(e.target.value) })} />
               </div>
             </div>
+            <div>
+              <label style={labelStyle}>Custom Overdue Rate / Day (LKR)</label>
+              <div style={{ position: 'relative' }}>
+                <CreditCard size={16} style={iconWrapStyle} />
+                <input style={inputStyle} type="number" min="0" placeholder="Optional (overrides default)" value={formData.customOverdueChargePerDay ?? ''} onChange={e => setFormData({ ...formData, customOverdueChargePerDay: e.target.value === '' ? null : Number(e.target.value) })} />
+              </div>
+            </div>
           </div>
         </div>
 

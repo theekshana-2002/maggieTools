@@ -279,10 +279,14 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
     if (invoice.items && invoice.items.length > 0) {
       invoice.items.forEach((item, idx) => {
         const itemQty = item.quantity || 1;
-        const itemDays = item.totalUnits || invoiceDays;
+        const itemDays = item.rentalDays || invoiceDays;
         const itemRate = item.dailyRate || item.ratePerUnit || 0;
+        let desc = `Tool ${idx + 1}: ${item.toolNumber || ''} (${item.model || item.category || 'N/A'}) x${itemQty}`;
+        if (item.returnStatus === 'Overdue' && invoice.totalOverdueCharges > 0) {
+           desc += ' [OVERDUE]';
+        }
         tableData.push([
-          `Tool ${idx + 1}: ${item.toolNumber || ''} (${item.model || item.category || 'N/A'}) x${itemQty}`,
+          desc,
           `${itemDays} ${item.unitType || invoice.unitType || 'Days'} @ LKR ${itemRate.toLocaleString()}`
         ]);
       });
@@ -314,6 +318,7 @@ export const generateInvoicePDF = async (invoice, mode = 'download') => {
       ['SUBTOTAL (SERVICES & TOOLS)', `LKR ${serviceTotal.toLocaleString()}`],
       ...(accTotal > 0 ? [['PARTS & ACCESSORIES', `LKR ${accTotal.toLocaleString()}`]] : []),
       ...(transportTotal > 0 ? [['TRANSPORT & OTHER CHARGES', `LKR ${transportTotal.toLocaleString()}`]] : []),
+      ...((invoice.totalOverdueCharges || 0) > 0 ? [['LATE RETURN / OVERDUE CHARGES', `+ LKR ${invoice.totalOverdueCharges.toLocaleString()}`]] : []),
       ...(invoice.discount > 0 ? [['DISCOUNT GIVEN', `- LKR ${invoice.discount.toLocaleString()}`]] : []),
       ['GRAND TOTAL', `LKR ${invoice.totalAmount?.toLocaleString()}`],
       ['ADVANCE PAYMENT', `LKR ${invoice.advancePayment?.toLocaleString() || '0'}`],

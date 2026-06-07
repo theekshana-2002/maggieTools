@@ -197,10 +197,11 @@ const PublicBillView = ({ token }) => {
 
         <div style={styles.totalsSection}>
           {/* Extra charges */}
-          {(transport > 0 || otherCharges > 0 || deposit > 0 || discount > 0) && (
+          {(transport > 0 || otherCharges > 0 || deposit > 0 || discount > 0 || booking.totalOverdueCharges > 0) && (
             <div style={styles.chargesBlock}>
               {transport > 0 && <div style={styles.chargeRow}><span>Transport</span><span>{fmt(transport)}</span></div>}
               {otherCharges > 0 && <div style={styles.chargeRow}><span>Other Charges</span><span>{fmt(otherCharges)}</span></div>}
+              {(booking.totalOverdueCharges > 0) && <div style={{ ...styles.chargeRow, color: '#dc2626', fontWeight: 600 }}><span>Late Return / Overdue Charges</span><span>+ {fmt(booking.totalOverdueCharges)}</span></div>}
               {deposit > 0 && <div style={styles.chargeRow}><span>Security Deposit</span><span>{fmt(deposit)}</span></div>}
               {discount > 0 && <div style={{ ...styles.chargeRow, color: '#059669' }}><span>Discount</span><span>− {fmt(discount)}</span></div>}
             </div>

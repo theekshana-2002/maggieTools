@@ -35,7 +35,7 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
           dailyRate: Number(it.dailyRate) || 0,
           totalQty: it.quantity || 1,
           maxQty: pendingQty,
-          returningQty: pendingQty,
+          returningQty: 0,
           date: todayStr,
         };
       }).filter(it => it.maxQty > 0);
@@ -48,7 +48,7 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
           dailyRate: Number(ac.price) || 0,
           totalQty: ac.quantity || 1,
           maxQty: pendingQty,
-          returningQty: pendingQty,
+          returningQty: 0,
           date: todayStr,
         };
       }).filter(ac => ac.maxQty > 0);
@@ -63,17 +63,36 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
 
   // ── Live cost calculation ──────────────────────────────────
   const pickupDate = bookingRecord?.pickupDate;
-  const originalDays = bookingRecord?.totalDays || 1;
 
-  function rowCost(row) {
+  function rowCost(row, originalItemObj) {
     const qty = Number(row.returningQty) || 0;
     if (qty === 0) return 0;
-    const days = calcDays(pickupDate, row.date) || originalDays;
-    return row.dailyRate * qty * days;
+    const baseDays = originalItemObj?.rentalDays || bookingRecord?.totalDays || 1;
+    let cost = row.dailyRate * qty * baseDays;
+    
+    // Add overdue charge if returning late based on expectedReturnDate
+    const expRetDate = originalItemObj?.expectedReturnDate ? new Date(originalItemObj.expectedReturnDate) : new Date(bookingRecord?.returnDate || pickupDate);
+    expRetDate.setHours(0,0,0,0);
+    const actRetDate = new Date(row.date);
+    actRetDate.setHours(0,0,0,0);
+    
+    if (actRetDate > expRetDate) {
+      const overdueDays = Math.ceil((actRetDate - expRetDate) / (1000 * 60 * 60 * 24));
+      const penaltyRate = Number(originalItemObj?.overdueChargePerDay) || 500;
+      cost += (overdueDays * penaltyRate * qty);
+    }
+    
+    return cost;
   }
 
-  const itemsTotal = itemRows.reduce((s, r) => s + rowCost(r), 0);
-  const accsTotal = accRows.reduce((s, r) => s + rowCost(r), 0);
+  const itemsTotal = itemRows.reduce((s, r) => {
+    const orig = (bookingRecord?.items || []).find(it => String(it._id || it.tool) === r.id);
+    return s + rowCost(r, orig);
+  }, 0);
+  const accsTotal = accRows.reduce((s, r) => {
+    const orig = (bookingRecord?.accessories || []).find(ac => String(ac._id || ac.accessory) === r.id);
+    return s + rowCost(r, orig);
+  }, 0);
   const transport = Number(bookingRecord?.transportCharge) || 0;
   const discount = Number(bookingRecord?.discount) || 0;
   const extraCharges = Number(bookingRecord?.extraCharges) || 0;
@@ -135,8 +154,19 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
         )}
 
         {itemRows.map((it, idx) => {
-          const days = calcDays(pickupDate, it.date) || originalDays;
-          const cost = rowCost(it);
+          const orig = (bookingRecord?.items || []).find(origIt => String(origIt._id || origIt.tool) === it.id);
+          const days = orig?.rentalDays || bookingRecord?.totalDays || 1;
+          const cost = rowCost(it, orig);
+          
+          const expRetDate = orig?.expectedReturnDate ? new Date(orig.expectedReturnDate) : new Date(bookingRecord?.returnDate || pickupDate);
+          expRetDate.setHours(0,0,0,0);
+          const actRetDate = new Date(it.date);
+          actRetDate.setHours(0,0,0,0);
+          let overdueDays = 0;
+          if (actRetDate > expRetDate) {
+            overdueDays = Math.ceil((actRetDate - expRetDate) / (1000 * 60 * 60 * 24));
+          }
+
           return (
             <div key={it.id} style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -145,6 +175,21 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
                     LKR {it.dailyRate.toLocaleString()} / day &nbsp;•&nbsp; Max pending: {it.maxQty}
                   </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+                    Expected: <span style={{ fontWeight: 600 }}>{expRetDate.toLocaleDateString()}</span>
+                    {overdueDays > 0 && (
+                      <span style={{ 
+                        marginLeft: '8px', 
+                        background: 'var(--danger-soft, #fee2e2)', 
+                        color: 'var(--danger)', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        fontWeight: 700 
+                      }}>
+                        🚨 {overdueDays} Day{overdueDays > 1 ? 's' : ''} Late
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '1rem' }}>
@@ -152,47 +197,91 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
                     {it.returningQty} × {days} day{days !== 1 ? 's' : ''}
+                    {overdueDays > 0 && (
+                      <span style={{color: 'var(--danger)', marginLeft: '6px', fontWeight: 700}}>+ Late Fee</span>
+                    )}
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Return Date:</label>
-                  <input
-                    type="date"
-                    value={it.date}
-                    onChange={e => {
-                      const copy = [...itemRows];
-                      copy[idx] = { ...copy[idx], date: e.target.value };
-                      setItemRows(copy);
-                    }}
-                    style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
-                  />
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Return Date:</label>
+                    <input
+                      type="date"
+                      value={it.date}
+                      onChange={e => {
+                        const copy = [...itemRows];
+                        copy[idx] = { ...copy[idx], date: e.target.value };
+                        setItemRows(copy);
+                      }}
+                      style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Qty:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={it.maxQty}
+                      value={it.returningQty}
+                      onChange={e => {
+                        const v = Math.min(it.maxQty, Math.max(0, Number(e.target.value)));
+                        const copy = [...itemRows];
+                        copy[idx] = { ...copy[idx], returningQty: v };
+                        setItemRows(copy);
+                      }}
+                      style={{ width: '65px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
+                    />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Qty:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={it.maxQty}
-                    value={it.returningQty}
-                    onChange={e => {
-                      const v = Math.min(it.maxQty, Math.max(0, Number(e.target.value)));
-                      const copy = [...itemRows];
-                      copy[idx] = { ...copy[idx], returningQty: v };
-                      setItemRows(copy);
-                    }}
-                    style={{ width: '65px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
-                  />
-                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    const copy = [...itemRows];
+                    if (it.returningQty === it.maxQty) {
+                      copy[idx].returningQty = 0;
+                    } else {
+                      copy[idx].date = new Date().toISOString().split('T')[0];
+                      copy[idx].returningQty = it.maxQty;
+                    }
+                    setItemRows(copy);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: it.returningQty === it.maxQty ? 'var(--success-soft)' : 'var(--accent-soft)',
+                    color: it.returningQty === it.maxQty ? 'var(--success)' : 'var(--accent)',
+                    border: `1px solid ${it.returningQty === it.maxQty ? 'var(--success)' : 'var(--accent-border)'}`,
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    minWidth: '130px'
+                  }}
+                >
+                  {it.returningQty === it.maxQty ? '✅ Returned' : 'Mark as Returned'}
+                </button>
               </div>
             </div>
           );
         })}
 
         {accRows.map((ac, idx) => {
-          const days = calcDays(pickupDate, ac.date) || originalDays;
-          const cost = rowCost(ac);
+          const orig = (bookingRecord?.accessories || []).find(origAc => String(origAc._id || origAc.accessory) === ac.id);
+          const days = orig?.rentalDays || bookingRecord?.totalDays || 1;
+          const cost = rowCost(ac, orig);
+          
+          const expRetDate = orig?.expectedReturnDate ? new Date(orig.expectedReturnDate) : new Date(bookingRecord?.returnDate || pickupDate);
+          expRetDate.setHours(0,0,0,0);
+          const actRetDate = new Date(ac.date);
+          actRetDate.setHours(0,0,0,0);
+          let overdueDays = 0;
+          if (actRetDate > expRetDate) {
+            overdueDays = Math.ceil((actRetDate - expRetDate) / (1000 * 60 * 60 * 24));
+          }
+
           return (
             <div key={ac.id} style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -201,6 +290,21 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>
                     LKR {ac.dailyRate.toLocaleString()} / day &nbsp;•&nbsp; Max pending: {ac.maxQty}
                   </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+                    Expected: <span style={{ fontWeight: 600 }}>{expRetDate.toLocaleDateString()}</span>
+                    {overdueDays > 0 && (
+                      <span style={{ 
+                        marginLeft: '8px', 
+                        background: 'var(--danger-soft, #fee2e2)', 
+                        color: 'var(--danger)', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        fontWeight: 700 
+                      }}>
+                        🚨 {overdueDays} Day{overdueDays > 1 ? 's' : ''} Late
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '1rem' }}>
@@ -208,39 +312,72 @@ export default function CheckoutModal({ isOpen, onClose, bookingRecord, accounts
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>
                     {ac.returningQty} × {days} day{days !== 1 ? 's' : ''}
+                    {overdueDays > 0 && (
+                      <span style={{color: 'var(--danger)', marginLeft: '6px', fontWeight: 700}}>+ Late Fee</span>
+                    )}
                   </div>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Return Date:</label>
-                  <input
-                    type="date"
-                    value={ac.date}
-                    onChange={e => {
-                      const copy = [...accRows];
-                      copy[idx] = { ...copy[idx], date: e.target.value };
-                      setAccRows(copy);
-                    }}
-                    style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
-                  />
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Return Date:</label>
+                    <input
+                      type="date"
+                      value={ac.date}
+                      onChange={e => {
+                        const copy = [...accRows];
+                        copy[idx] = { ...copy[idx], date: e.target.value };
+                        setAccRows(copy);
+                      }}
+                      style={{ padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Qty:</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max={ac.maxQty}
+                      value={ac.returningQty}
+                      onChange={e => {
+                        const v = Math.min(ac.maxQty, Math.max(0, Number(e.target.value)));
+                        const copy = [...accRows];
+                        copy[idx] = { ...copy[idx], returningQty: v };
+                        setAccRows(copy);
+                      }}
+                      style={{ width: '65px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
+                    />
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <label style={{ fontSize: '0.82rem', margin: 0, color: 'var(--text-dim)' }}>Qty:</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max={ac.maxQty}
-                    value={ac.returningQty}
-                    onChange={e => {
-                      const v = Math.min(ac.maxQty, Math.max(0, Number(e.target.value)));
-                      const copy = [...accRows];
-                      copy[idx] = { ...copy[idx], returningQty: v };
-                      setAccRows(copy);
-                    }}
-                    style={{ width: '65px', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', fontSize: '0.85rem' }}
-                  />
-                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => {
+                    const copy = [...accRows];
+                    if (ac.returningQty === ac.maxQty) {
+                      copy[idx].returningQty = 0;
+                    } else {
+                      copy[idx].date = new Date().toISOString().split('T')[0];
+                      copy[idx].returningQty = ac.maxQty;
+                    }
+                    setAccRows(copy);
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    background: ac.returningQty === ac.maxQty ? 'var(--success-soft)' : 'var(--accent-soft)',
+                    color: ac.returningQty === ac.maxQty ? 'var(--success)' : 'var(--accent)',
+                    border: `1px solid ${ac.returningQty === ac.maxQty ? 'var(--success)' : 'var(--accent-border)'}`,
+                    borderRadius: '6px',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    minWidth: '130px'
+                  }}
+                >
+                  {ac.returningQty === ac.maxQty ? '✅ Returned' : 'Mark as Returned'}
+                </button>
               </div>
             </div>
           );

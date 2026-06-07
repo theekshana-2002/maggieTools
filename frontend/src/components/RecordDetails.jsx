@@ -54,7 +54,7 @@ const RecordDetails = ({ data, type }) => {
       </h4>
       <div className="detail-grid">
         {fields.map((f, i) => (
-          <div key={i} className={`detail-field ${f.isImage ? 'full-width' : ''}`}>
+          <div key={i} className={`detail-field ${(f.isImage || f.fullWidth) ? 'full-width' : ''}`}>
             <label>{f.label}</label>
             <div className="detail-value">
               {(() => {
@@ -381,15 +381,95 @@ const RecordDetails = ({ data, type }) => {
     },
     {
       title: 'Tools in this Booking', fields: [
-        ...(data?.items?.length > 0 ? data.items.map((it, idx) => ({
-          label: `Tool ${idx + 1}`,
-          key: `tool_${idx}`,
-          value: `${it.toolNumber} - ${it.model} (LKR ${Number(it.dailyRate).toLocaleString()}/day)`
-        })) : [
+        ...(data?.items?.length > 0 ? data.items.map((it, idx) => {
+          const expRet = it.expectedReturnDate ? new Date(it.expectedReturnDate) : new Date(data.returnDate || data.pickupDate);
+          expRet.setHours(0,0,0,0);
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          const diff = Math.ceil((expRet - today) / (1000 * 60 * 60 * 24));
+          
+          let statusBadge;
+          if ((it.returnedQuantity || 0) >= (it.quantity || 1)) {
+            statusBadge = <span style={{ background: 'var(--success-soft)', color: 'var(--success)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>✓ RETURNED</span>;
+          } else if (diff > 0) {
+            statusBadge = <span style={{ background: 'var(--accent-soft)', color: 'var(--accent)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>{diff} DAYS LEFT</span>;
+          } else if (diff === 0) {
+            statusBadge = <span style={{ background: 'var(--warning-soft, #fef3c7)', color: 'var(--warning, #d97706)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>DUE TODAY</span>;
+          } else {
+            statusBadge = <span style={{ background: 'var(--danger-soft)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>🚨 {Math.abs(diff)} DAYS OVERDUE</span>;
+          }
+
+          return {
+            label: `Tool ${idx + 1}`,
+            fullWidth: true,
+            value: (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-side)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{it.toolNumber} - {it.model}</div>
+                  {statusBadge}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Rate / Day</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>LKR {Number(it.dailyRate).toLocaleString()}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Duration</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{it.rentalDays || data.totalDays} Days</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Total Qty</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{it.quantity || 1}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Returned Qty</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{it.returnedQuantity || 0}</span></div>
+                </div>
+                <div style={{ borderTop: '1px solid var(--border-soft)', paddingTop: '10px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                  <div><strong style={{ color: 'var(--text-muted)' }}>Expected Return:</strong> <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{expRet.toLocaleDateString()}</span></div>
+                  {it.overdueDays > 0 && <div style={{ color: 'var(--danger)', fontWeight: 700 }}>+ LKR {(it.totalOverdueCharge || 0).toLocaleString()} Late Fee</div>}
+                </div>
+              </div>
+            )
+          };
+        }) : [
           { label: 'Tool ID / Serial', key: 'tool' }
         ])
       ]
     },
+    ...(data?.accessories?.length > 0 ? [{
+      title: 'Parts & Accessories',
+      fields: data.accessories.map((a, i) => {
+        const expRet = a.expectedReturnDate ? new Date(a.expectedReturnDate) : new Date(data.returnDate || data.pickupDate);
+        expRet.setHours(0,0,0,0);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const diff = Math.ceil((expRet - today) / (1000 * 60 * 60 * 24));
+        
+        let statusBadge;
+        if ((a.returnedQuantity || 0) >= (a.quantity || 1)) {
+          statusBadge = <span style={{ background: 'var(--success-soft)', color: 'var(--success)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>✓ RETURNED</span>;
+        } else if (diff > 0) {
+          statusBadge = <span style={{ background: 'var(--accent-soft)', color: 'var(--accent)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>{diff} DAYS LEFT</span>;
+        } else if (diff === 0) {
+          statusBadge = <span style={{ background: 'var(--warning-soft, #fef3c7)', color: 'var(--warning, #d97706)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>DUE TODAY</span>;
+        } else {
+          statusBadge = <span style={{ background: 'var(--danger-soft)', color: 'var(--danger)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 800 }}>🚨 {Math.abs(diff)} DAYS OVERDUE</span>;
+        }
+
+        return {
+          label: `Acc ${i + 1}`,
+          fullWidth: true,
+          value: (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'var(--bg-side)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{a.number ? `[${a.number}] ` : ''}{a.name}</div>
+                {statusBadge}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Rate / Day</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>LKR {Number(a.price).toLocaleString()}</span></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Duration</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{a.rentalDays || data.totalDays} Days</span></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Total Qty</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{a.quantity || 1}</span></div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}><span style={{ fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 800, color: 'var(--text-muted)' }}>Returned Qty</span><span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{a.returnedQuantity || 0}</span></div>
+              </div>
+              <div style={{ borderTop: '1px solid var(--border-soft)', paddingTop: '10px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                <div><strong style={{ color: 'var(--text-muted)' }}>Expected Return:</strong> <span style={{ fontWeight: 600, color: 'var(--text-main)' }}>{expRet.toLocaleDateString()}</span></div>
+                {a.overdueDays > 0 && <div style={{ color: 'var(--danger)', fontWeight: 700 }}>+ LKR {(a.totalOverdueCharge || 0).toLocaleString()} Late Fee</div>}
+              </div>
+            </div>
+          )
+        };
+      })
+    }] : []),
     {
       title: 'Schedule Information', fields: [
         { label: 'Pickup Date', key: 'pickupDate' },
@@ -399,14 +479,12 @@ const RecordDetails = ({ data, type }) => {
     },
     {
       title: 'Financial Summary', fields: [
-        { label: 'Daily Rate', key: 'dailyRate' },
         { label: 'Base Amount', key: 'baseAmount' },
         { label: 'Discount', key: 'discount' },
+        { label: 'Extra Charges', key: 'extraCharges' },
+        { label: 'Total Overdue Days', key: 'totalOverdueDays' },
+        { label: 'Total Overdue Charges', key: 'totalOverdueCharges' },
         { label: 'Total Amount', key: 'totalAmount' },
-        { label: 'Actual Return Date', key: 'actualReturnDate' },
-        { label: 'Early Return (Days)', key: 'earlyReturnDays' },
-        { label: 'Extra Late Charges', key: 'extraCharges' },
-        { label: 'Net Total', key: 'totalAfterExtra' },
         { label: 'Advance Payment', key: 'advancePayment' },
         { label: 'Balance Due', key: 'balanceAmount' }
       ]
@@ -417,15 +495,7 @@ const RecordDetails = ({ data, type }) => {
         { label: 'Notes', key: 'notes' },
         { label: 'Status', key: 'status' }
       ]
-    },
-    ...(data?.accessories?.length > 0 ? [{
-      title: 'Parts & Accessories',
-      fields: data.accessories.map((a, i) => ({
-        label: `${a.number ? `[${a.number}] ` : ''}${a.name} (x${a.quantity})`,
-        key: `acc_${i}`,
-        value: `LKR ${(a.price * a.quantity).toLocaleString()}`
-      }))
-    }] : [])
+    }
   ];
 
   const sectionsMap = {

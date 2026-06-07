@@ -30,7 +30,8 @@ export function calculateBookingCosts(formData, totalDays = 1) {
     
     const unreturned = Math.max(0, totalQty - returnedQty);
     if (unreturned > 0) {
-      let daysForUnreturned = days;
+      // Use per-item rental days if set, otherwise fall back to booking-level totalDays
+      let daysForUnreturned = (item.rentalDays && Number(item.rentalDays) > 0) ? Number(item.rentalDays) : days;
       if (formData.actualReturnDate) {
          const actDate = new Date(formData.actualReturnDate);
          actDate.setHours(0,0,0,0);

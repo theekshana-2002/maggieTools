@@ -8,7 +8,8 @@ const accessorySchema = new mongoose.Schema({
   stock: { type: Number, default: 0 },
   unit: { type: String, default: 'pcs' },
   description: { type: String },
-  status: { type: String, enum: ['In Stock', 'Low Stock', 'Out of Stock'], default: 'In Stock' }
+  status: { type: String, enum: ['In Stock', 'Low Stock', 'Out of Stock'], default: 'In Stock' },
+  customOverdueChargePerDay: { type: Number, default: null } // Optional override for default overdue charge
 }, { timestamps: true });
 
 module.exports = mongoose.model('Accessory', accessorySchema);

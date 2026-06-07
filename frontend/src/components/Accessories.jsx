@@ -203,6 +203,11 @@ const Accessories = () => {
           </div>
 
           <div className="form-group">
+             <label>Custom Overdue Rate / Day (LKR)</label>
+             <input type="number" min="0" placeholder="Optional (overrides default)" value={formData.customOverdueChargePerDay ?? ''} onChange={e => setFormData({ ...formData, customOverdueChargePerDay: e.target.value === '' ? null : Number(e.target.value) })} />
+          </div>
+
+          <div className="form-group">
             <label>Description</label>
             <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows="2" />
           </div>

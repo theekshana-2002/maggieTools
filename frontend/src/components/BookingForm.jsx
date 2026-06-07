@@ -376,6 +376,12 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
     setFormData({ ...formData, bookingAccessories: newAccs });
   };
 
+  const handleAccPriceChange = (index, price) => {
+    const newAccs = [...formData.bookingAccessories];
+    newAccs[index].price = price === '' ? '' : Math.max(0, Number(price));
+    setFormData({ ...formData, bookingAccessories: newAccs });
+  };
+
   const handleIdPhotoChange = (e, field) => {
     const file = e.target.files[0];
     if (file) {
@@ -429,20 +435,36 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
         totalDays,
         securityDeposit: Number(formData.deposit) || 0,
         extraCharges: Number(formData.extraCharges) || 0,
-        accessories: formData.bookingAccessories.map(a => ({
-          accessory: a.accessoryId,
-          name: a.name,
-          quantity: Number(a.quantity) || 1,
-          price: Number(a.price) || 0
-        })),
-        items: formData.items.map(it => ({
-          tool: it.tool,
-          toolNumber: it.toolNumber,
-          model: it.model,
-          category: it.category,
-          dailyRate: Number(it.dailyRate) || 0,
-          quantity: Number(it.quantity) || 1
-        }))
+        accessories: formData.bookingAccessories.map(a => {
+          const rDays = Number(a.rentalDays) || totalDays;
+          const expRet = new Date(formData.pickupDate);
+          expRet.setDate(expRet.getDate() + Math.max(0, rDays - 1));
+          return {
+            accessory: a.accessoryId,
+            name: a.name,
+            quantity: Number(a.quantity) || 1,
+            price: Number(a.price) || 0,
+            rentalDays: rDays,
+            rentalDate: formData.pickupDate,
+            expectedReturnDate: expRet.toISOString()
+          };
+        }),
+        items: formData.items.map(it => {
+          const rDays = Number(it.rentalDays) || totalDays;
+          const expRet = new Date(formData.pickupDate);
+          expRet.setDate(expRet.getDate() + Math.max(0, rDays - 1));
+          return {
+            tool: it.tool,
+            toolNumber: it.toolNumber,
+            model: it.model,
+            category: it.category,
+            dailyRate: Number(it.dailyRate) || 0,
+            quantity: Number(it.quantity) || 1,
+            rentalDays: rDays,
+            rentalDate: formData.pickupDate,
+            expectedReturnDate: expRet.toISOString()
+          };
+        })
       };
       delete finalBooking.deposit;
       delete finalBooking.bookingAccessories;
@@ -725,10 +747,23 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
                 </div>
 
                 <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Duration (Days)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Days"
+                    value={item.rentalDays || totalDays}
+                    onChange={(e) =>
+                      handleItemChange(index, "rentalDays", Number(e.target.value))
+                    }
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Subtotal</label>
                   <input
                     type="text"
-                    value={`LKR ${((Number(item.dailyRate) || 0) * (item.quantity || 1) * totalDays).toLocaleString()}`}
+                    value={`LKR ${((Number(item.dailyRate) || 0) * (item.quantity || 1) * (item.rentalDays || totalDays)).toLocaleString()}`}
                     readOnly
                     className="input-highlight-blue"
                   />
@@ -907,58 +942,80 @@ const BookingForm = ({ onSubmit, onCancel, initialData }) => {
             )}
 
             {formData.bookingAccessories.length > 0 && (
-              <div className="selected-accessories-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="acc-rental-list">
                 {formData.bookingAccessories.map((acc, index) => (
-                  <div key={index} className="accessory-item-row" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    background: 'var(--bg-card)',
-                    borderRadius: '14px',
-                    border: '1px solid var(--border)',
-                    boxShadow: 'var(--shadow-sm)'
-                  }}>
-                    <div className="accessory-info" style={{ flex: 1 }}>
-                      <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>
-                        {acc.number ? <span style={{ color: 'var(--accent)', fontFamily: 'monospace', marginRight: '6px' }}>[{acc.number}]</span> : null}
-                        {acc.name}
-                      </strong>
-                      <div className="accessory-price" style={{ fontSize: '0.75rem', color: 'var(--text-dim)', fontWeight: 600 }}>LKR {acc.price.toLocaleString()} / unit</div>
+                  <div key={index} className="acc-rental-row">
+
+                    {/* ── Item identity ── */}
+                    <div className="acc-rental-name">
+                      {acc.number && (
+                        <span className="acc-rental-id">[{acc.number}]</span>
+                      )}
+                      <span className="acc-rental-title">{acc.name}</span>
+                      <span className="acc-rental-stock">{acc.stock || 0} in stock</span>
                     </div>
-                    <div className="accessory-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div className="qty-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-side)', padding: '4px 8px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-dim)' }}>QTY <span style={{ color: 'var(--text-muted)' }}>({acc.stock || 0} left)</span>:</span>
+
+                    {/* ── Controls: Rate · Qty · Days · Total ── */}
+                    <div className="acc-rental-controls">
+
+                      <div className="acc-rental-field acc-rental-field--rate">
+                        <span className="acc-rental-label">Rate / Day (LKR)</span>
                         <input
+                          className="acc-rental-input"
                           type="number"
-                          value={acc.quantity}
-                          onChange={e => handleAccQtyChange(index, Number(e.target.value))}
-                          style={{
-                            width: '45px',
-                            border: 'none',
-                            background: 'none',
-                            fontSize: '0.9rem',
-                            fontWeight: 800,
-                            color: 'var(--text-main)',
-                            textAlign: 'center',
-                            padding: 0
-                          }}
-                          min="1"
-                          max={acc.stock || 0}
+                          min="0"
+                          placeholder="0"
+                          value={acc.price === '' ? '' : acc.price}
+                          onChange={e => handleAccPriceChange(index, e.target.value)}
                         />
                       </div>
-                      <div className="accessory-subtotal" style={{ minWidth: '100px', textAlign: 'right', fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent)' }}>
-                        LKR {(acc.price * acc.quantity).toLocaleString()}
+
+                      <div className="acc-rental-field">
+                        <span className="acc-rental-label">Qty ({acc.stock || 0})</span>
+                        <input
+                          className="acc-rental-input"
+                          type="number"
+                          min="1"
+                          max={acc.stock || undefined}
+                          value={acc.quantity}
+                          onChange={e => handleAccQtyChange(index, Number(e.target.value))}
+                        />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeAccessory(index)}
-                        className="action-icon-btn btn-delete"
-                        title="Remove Accessory"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+
+                      <div className="acc-rental-field">
+                        <span className="acc-rental-label">Days</span>
+                        <input
+                          className="acc-rental-input"
+                          type="number"
+                          min="1"
+                          value={acc.rentalDays || totalDays}
+                          onChange={e => {
+                            const newAcc = [...formData.bookingAccessories];
+                            newAcc[index].rentalDays = Number(e.target.value);
+                            setFormData({ ...formData, bookingAccessories: newAcc });
+                          }}
+                        />
+                      </div>
+
+                      <div className="acc-rental-subtotal">
+                        <span className="acc-rental-label">Total</span>
+                        <strong>
+                          LKR {((Number(acc.price) || 0) * acc.quantity * (acc.rentalDays || totalDays)).toLocaleString()}
+                        </strong>
+                      </div>
+
                     </div>
+
+                    {/* ── Remove ── */}
+                    <button
+                      type="button"
+                      className="acc-rental-remove"
+                      onClick={() => removeAccessory(index)}
+                      title="Remove accessory"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+
                   </div>
                 ))}
               </div>

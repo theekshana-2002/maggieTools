@@ -24,7 +24,10 @@ const Settings = ({ onSettingsUpdate }) => {
     smsReturnTemplate: '',
     followupDays: 14,
     privacyPolicy: '',
-    termsConditions: ''
+    termsConditions: '',
+    enableOverdueCharges: true,
+    defaultOverdueChargePerDay: 500,
+    smsOverdueReminderTemplate: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,7 +52,10 @@ const Settings = ({ onSettingsUpdate }) => {
         smsReturnTemplate: data.smsReturnTemplate || '',
         followupDays: data.followupDays ?? 14,
         privacyPolicy: data.privacyPolicy || '',
-        termsConditions: data.termsConditions || ''
+        termsConditions: data.termsConditions || '',
+        enableOverdueCharges: data.enableOverdueCharges ?? true,
+        defaultOverdueChargePerDay: data.defaultOverdueChargePerDay ?? 500,
+        smsOverdueReminderTemplate: data.smsOverdueReminderTemplate || ''
       });
     } catch (err) {
       console.error('Fetch settings error:', err);
@@ -330,6 +336,50 @@ const Settings = ({ onSettingsUpdate }) => {
                 placeholder={`Sent automatically when a return is confirmed.\nLeave blank to use the default message.\nAvailable: {clientName}, {companyName}, {totalAmount}, {advancePayment}, {balanceAmount}, {billLink}`}
               />
               <p className="upload-hint">Sent to the client when you click "Confirm Return &amp; Pay". Leave blank for the default message.</p>
+            </div>
+          </div>
+
+          <div className="settings-section sms-settings-section">
+            <h3 className="section-title"><MessageSquare size={18} /> Late Return Management</h3>
+            
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={settings.enableOverdueCharges !== false}
+                  onChange={(e) => setSettings({ ...settings, enableOverdueCharges: e.target.checked })}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                />
+                <span style={{ fontWeight: 600 }}>Enable Automatic Overdue Charges</span>
+              </label>
+              <p className="upload-hint" style={{ marginTop: '5px' }}>If enabled, the system will automatically accumulate daily overdue charges for unreturned items past their expected return date.</p>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '20px' }}>
+              <label>Default Overdue Charge Per Day (LKR)</label>
+              <input
+                type="number"
+                className="premium-input"
+                style={{ maxWidth: '200px' }}
+                value={settings.defaultOverdueChargePerDay || 500}
+                onChange={(e) => setSettings({ ...settings, defaultOverdueChargePerDay: Number(e.target.value) })}
+                min="0"
+                disabled={settings.enableOverdueCharges === false}
+              />
+              <p className="upload-hint">Applied to any item or accessory unless it has a custom overdue rate set in inventory.</p>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '28px' }}>
+              <label>Automated Overdue SMS Reminder</label>
+              <textarea
+                className="premium-input sms-followup-textarea"
+                rows="4"
+                value={settings.smsOverdueReminderTemplate || ''}
+                onChange={(e) => setSettings({ ...settings, smsOverdueReminderTemplate: e.target.value })}
+                placeholder="Dear {clientName}, your rental of {itemName} is overdue by {overdueDays} days. Current overdue charge: LKR {overdueCharge}. Please return the item immediately."
+                disabled={settings.enableOverdueCharges === false}
+              />
+              <p className="upload-hint">This message is sent automatically to customers with overdue items.</p>
             </div>
           </div>
 

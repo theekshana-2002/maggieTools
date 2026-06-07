@@ -8,6 +8,7 @@ const toolSchema = new mongoose.Schema({
   status: { type: String, enum: ['Available', 'Booked', 'Maintenance', 'Repair', 'Maintaining', 'Under Repair', 'Unavailable'], default: 'Available' },
   dailyRate: { type: Number, default: 0 },
   stock: { type: Number, default: 1 },
+  customOverdueChargePerDay: { type: Number, default: null }, // Optional override for default overdue charge
   
   // Maintenance & Warranty
   warrantyExpirationDate: { type: Date },

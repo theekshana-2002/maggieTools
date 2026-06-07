@@ -102,7 +102,8 @@ function calcBookingTotals(body) {
     
     const unreturned = Math.max(0, totalQty - returnedQty);
     if (unreturned > 0) {
-      let daysForUnreturned = totalDays;
+      // Use per-item rental days if set, otherwise fall back to booking-level totalDays
+      let daysForUnreturned = (item.rentalDays && Number(item.rentalDays) > 0) ? Number(item.rentalDays) : totalDays;
       if (body.actualReturnDate) {
          const actDate = new Date(body.actualReturnDate);
          actDate.setHours(0,0,0,0);
@@ -143,7 +144,12 @@ function calcBookingTotals(body) {
      }
   }
 
-  const totalAmount = Math.max(0, subtotal - discount + extra);
+  // Sum overdue charges from all items and accessories
+  const totalOverdueCharges = [...items, ...accessories].reduce(
+    (sum, it) => sum + (Number(it.totalOverdueCharge) || 0), 0
+  );
+
+  const totalAmount = Math.max(0, subtotal - discount + extra + totalOverdueCharges);
   const balanceAmount = Math.max(0, totalAmount - advance);
 
   return {
@@ -152,6 +158,7 @@ function calcBookingTotals(body) {
     totalAmount,
     balanceAmount,
     extraCharges: extra,
+    totalOverdueCharges,
     dailyRate: items.length === 1 ? Number(items[0].dailyRate) || 0 : 0
   };
 }
@@ -842,6 +849,24 @@ router.put('/:id/partial-return', authMiddleware, async (req, res) => {
           item.returnDates.push({ quantity: qty, date: itemDate });
           item.returnedQuantity = (item.returnedQuantity || 0) + qty;
           
+          // Calculate and store overdue penalties
+          const expectedRet = item.expectedReturnDate ? new Date(item.expectedReturnDate) : new Date(booking.returnDate);
+          expectedRet.setHours(0, 0, 0, 0);
+          const actRet = new Date(itemDate);
+          actRet.setHours(0, 0, 0, 0);
+          
+          if (actRet > expectedRet) {
+            const overdueDays = Math.ceil((actRet - expectedRet) / (1000 * 60 * 60 * 24));
+            const penaltyRate = Number(item.overdueChargePerDay) || 500;
+            const penalty = overdueDays * penaltyRate * qty;
+            
+            if (overdueDays > (item.overdueDays || 0)) {
+              item.overdueDays = overdueDays;
+            }
+            item.totalOverdueCharge = (item.totalOverdueCharge || 0) + penalty;
+            item.returnStatus = 'Overdue';
+          }
+          
           // Restore Tool Stock
           if (isValidObjectId(item.tool)) {
             const updatedTool = await Tool.findByIdAndUpdate(item.tool, { $inc: { stock: qty } }, { new: true });
@@ -866,6 +891,24 @@ router.put('/:id/partial-return', authMiddleware, async (req, res) => {
           acc.returnDates = acc.returnDates || [];
           acc.returnDates.push({ quantity: qty, date: accDate });
           acc.returnedQuantity = (acc.returnedQuantity || 0) + qty;
+          
+          // Calculate and store overdue penalties
+          const expectedRet = acc.expectedReturnDate ? new Date(acc.expectedReturnDate) : new Date(booking.returnDate);
+          expectedRet.setHours(0, 0, 0, 0);
+          const actRet = new Date(accDate);
+          actRet.setHours(0, 0, 0, 0);
+          
+          if (actRet > expectedRet) {
+            const overdueDays = Math.ceil((actRet - expectedRet) / (1000 * 60 * 60 * 24));
+            const penaltyRate = Number(acc.overdueChargePerDay) || 500;
+            const penalty = overdueDays * penaltyRate * qty;
+            
+            if (overdueDays > (acc.overdueDays || 0)) {
+              acc.overdueDays = overdueDays;
+            }
+            acc.totalOverdueCharge = (acc.totalOverdueCharge || 0) + penalty;
+            acc.returnStatus = 'Overdue';
+          }
           
           // Restore Accessory Stock
           if (isValidObjectId(acc.accessory)) {
@@ -1177,6 +1220,70 @@ router.get('/client-details/:clientName', authMiddleware, async (req, res) => {
   }
 });
 
+// Get overdue report (all bookings with overdue items)
+router.get('/reports/overdue', authMiddleware, async (req, res) => {
+  try {
+    const bookings = await Booking.find({
+      status: { $in: ['Active', 'Confirmed'] },
+      $or: [
+        { 'items.returnStatus': 'Overdue' },
+        { 'accessories.returnStatus': 'Overdue' },
+        { totalOverdueCharges: { $gt: 0 } }
+      ]
+    }).sort({ totalOverdueCharges: -1 }).lean();
+
+    const report = bookings.map(b => {
+      const overdueItems = [
+        ...(b.items || []).filter(it => it.returnStatus === 'Overdue').map(it => ({
+          type: 'Tool',
+          name: `${it.toolNumber || ''} - ${it.model || ''}`,
+          expectedReturn: it.expectedReturnDate || b.returnDate,
+          overdueDays: it.overdueDays || 0,
+          chargePerDay: it.overdueChargePerDay || 0,
+          totalCharge: it.totalOverdueCharge || 0,
+          quantity: (it.quantity || 1) - (it.returnedQuantity || 0)
+        })),
+        ...(b.accessories || []).filter(ac => ac.returnStatus === 'Overdue').map(ac => ({
+          type: 'Accessory',
+          name: ac.name || '',
+          expectedReturn: ac.expectedReturnDate || b.returnDate,
+          overdueDays: ac.overdueDays || 0,
+          chargePerDay: ac.overdueChargePerDay || 0,
+          totalCharge: ac.totalOverdueCharge || 0,
+          quantity: (ac.quantity || 1) - (ac.returnedQuantity || 0)
+        }))
+      ];
+      return {
+        _id: b._id,
+        bookingId: b.bookingId,
+        clientName: b.clientName,
+        clientPhone: b.clientPhone,
+        totalOverdueDays: b.totalOverdueDays || 0,
+        totalOverdueCharges: b.totalOverdueCharges || 0,
+        totalAmount: b.totalAmount || 0,
+        balanceAmount: b.balanceAmount || 0,
+        status: b.status,
+        overdueItems
+      };
+    });
+
+    const totalOverdueRevenue = report.reduce((s, r) => s + r.totalOverdueCharges, 0);
+    const totalOutstanding = report.reduce((s, r) => s + r.balanceAmount, 0);
+
+    res.json({
+      report,
+      summary: {
+        totalOverdueBookings: report.length,
+        totalOverdueRevenue,
+        totalOutstanding,
+        totalOverdueItems: report.reduce((s, r) => s + r.overdueItems.length, 0)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // Get single booking (MUST be at the end to avoid intercepting other routes)
 router.get('/:id', authMiddleware, async (req, res) => {
   try {
@@ -1184,6 +1291,147 @@ router.get('/:id', authMiddleware, async (req, res) => {
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
     res.json(booking);
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ─── OVERDUE MANAGEMENT ROUTES ──────────────────────────────────────────────
+
+// Process overdue charges for all active bookings (call daily via cron or manually)
+router.post('/process-overdue-charges', authMiddleware, async (req, res) => {
+  try {
+    const settings = await Setting.findOne().lean();
+    const enableOverdue = settings?.enableOverdueCharges !== false;
+    if (!enableOverdue) {
+      return res.json({ message: 'Overdue charges are disabled in settings.', processed: 0 });
+    }
+    const defaultRate = Number(settings?.defaultOverdueChargePerDay) || 500;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeBookings = await Booking.find({
+      status: { $in: ['Active', 'Confirmed'] }
+    });
+
+    let processed = 0;
+    let smsSent = 0;
+    let smsFailed = 0;
+
+    for (const booking of activeBookings) {
+      let bookingChanged = false;
+      let bookingTotalOverdueDays = 0;
+      let bookingTotalOverdueCharges = 0;
+
+      // Process tool items
+      for (const item of (booking.items || [])) {
+        const expectedReturn = item.expectedReturnDate ? new Date(item.expectedReturnDate) : new Date(booking.returnDate);
+        expectedReturn.setHours(0, 0, 0, 0);
+        const returnedQty = item.returnedQuantity || 0;
+        const totalQty = item.quantity || 1;
+        if (returnedQty >= totalQty) {
+          if (item.returnStatus !== 'Returned') { item.returnStatus = 'Returned'; bookingChanged = true; }
+          continue;
+        }
+        if (today > expectedReturn) {
+          const overdueDays = Math.ceil((today - expectedReturn) / (1000 * 60 * 60 * 24));
+          // Determine charge rate: custom tool rate > default rate
+          let chargeRate = defaultRate;
+          if (isValidObjectId(item.tool)) {
+            try {
+              const toolDoc = await Tool.findById(item.tool).select('customOverdueChargePerDay').lean();
+              if (toolDoc?.customOverdueChargePerDay != null) chargeRate = toolDoc.customOverdueChargePerDay;
+            } catch (_) {}
+          }
+          item.overdueDays = overdueDays;
+          item.overdueChargePerDay = chargeRate;
+          item.totalOverdueCharge = overdueDays * chargeRate * (totalQty - returnedQty);
+          item.returnStatus = 'Overdue';
+          bookingTotalOverdueDays = Math.max(bookingTotalOverdueDays, overdueDays);
+          bookingTotalOverdueCharges += item.totalOverdueCharge;
+          bookingChanged = true;
+        }
+      }
+
+      // Process accessories
+      for (const acc of (booking.accessories || [])) {
+        const expectedReturn = acc.expectedReturnDate ? new Date(acc.expectedReturnDate) : new Date(booking.returnDate);
+        expectedReturn.setHours(0, 0, 0, 0);
+        const returnedQty = acc.returnedQuantity || 0;
+        const totalQty = acc.quantity || 1;
+        if (returnedQty >= totalQty) {
+          if (acc.returnStatus !== 'Returned') { acc.returnStatus = 'Returned'; bookingChanged = true; }
+          continue;
+        }
+        if (today > expectedReturn) {
+          const overdueDays = Math.ceil((today - expectedReturn) / (1000 * 60 * 60 * 24));
+          let chargeRate = defaultRate;
+          if (isValidObjectId(acc.accessory)) {
+            try {
+              const accDoc = await Accessory.findById(acc.accessory).select('customOverdueChargePerDay').lean();
+              if (accDoc?.customOverdueChargePerDay != null) chargeRate = accDoc.customOverdueChargePerDay;
+            } catch (_) {}
+          }
+          acc.overdueDays = overdueDays;
+          acc.overdueChargePerDay = chargeRate;
+          acc.totalOverdueCharge = overdueDays * chargeRate * (totalQty - returnedQty);
+          acc.returnStatus = 'Overdue';
+          bookingTotalOverdueDays = Math.max(bookingTotalOverdueDays, overdueDays);
+          bookingTotalOverdueCharges += acc.totalOverdueCharge;
+          bookingChanged = true;
+        }
+      }
+
+      if (bookingChanged) {
+        booking.totalOverdueDays = bookingTotalOverdueDays;
+        booking.totalOverdueCharges = bookingTotalOverdueCharges;
+        // Recalculate totals with overdue
+        const totals = calcBookingTotals(booking.toObject());
+        booking.totalAmount = totals.totalAmount;
+        booking.balanceAmount = totals.balanceAmount;
+        await booking.save();
+        processed++;
+
+        // Send overdue SMS reminder (once per day max)
+        if (booking.clientPhone) {
+          const lastSmsSent = booking.followupSentAt ? new Date(booking.followupSentAt) : null;
+          const shouldSend = !lastSmsSent || (today - lastSmsSent) > (23 * 60 * 60 * 1000);
+          if (shouldSend && bookingTotalOverdueDays > 0) {
+            try {
+              const overdueItems = [
+                ...(booking.items || []).filter(it => it.returnStatus === 'Overdue'),
+                ...(booking.accessories || []).filter(ac => ac.returnStatus === 'Overdue')
+              ];
+              const itemNames = overdueItems.map(it => it.toolNumber || it.name || 'Item').join(', ');
+              let template = settings?.smsOverdueReminderTemplate || 'Dear {clientName}, your rental of {itemName} is overdue by {overdueDays} days. Overdue charge: LKR {overdueCharge}. Please return immediately.';
+              const msg = template
+                .replace(/\{clientName\}/g, booking.clientName || 'Customer')
+                .replace(/\{companyName\}/g, settings?.companyName || 'MAGGI TOOL RENTALS')
+                .replace(/\{itemName\}/g, itemNames)
+                .replace(/\{overdueDays\}/g, String(bookingTotalOverdueDays))
+                .replace(/\{overdueCharge\}/g, `LKR ${bookingTotalOverdueCharges.toLocaleString()}`);
+              const result = await sendSMS(booking.clientPhone, msg);
+              if (result.success) {
+                booking.followupSentAt = new Date();
+                await booking.save();
+                smsSent++;
+              } else { smsFailed++; }
+            } catch (smsErr) {
+              console.error('Overdue SMS failed:', smsErr.message);
+              smsFailed++;
+            }
+          }
+        }
+      }
+    }
+
+    res.json({
+      message: `Overdue processing complete. Updated: ${processed}, SMS Sent: ${smsSent}, SMS Failed: ${smsFailed}`,
+      processed,
+      smsSent,
+      smsFailed
+    });
+  } catch (err) {
+    console.error('Overdue processing error:', err);
     res.status(500).json({ message: err.message });
   }
 });

@@ -244,6 +244,10 @@ export const bookingAPI     = {
   getClientDetails: (clientName) =>
     api.get(`bookings/client-details/${encodeURIComponent(clientName)}`),
   processFollowups: () =>
-    api.post(`bookings/process-followups`)
+    api.post(`bookings/process-followups`),
+  processOverdueCharges: () =>
+    api.post(`bookings/process-overdue-charges`),
+  getOverdueReport: () =>
+    api.get(`bookings/reports/overdue`)
 };
 export default api;
